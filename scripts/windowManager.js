@@ -33,11 +33,11 @@ function windowManager(id, sock) {
 		for(i=1; i<this.nCols; i++){
 			this.ctx.moveTo(i*stepX, 0);
 			this.ctx.lineTo(i*stepX, this.element.height);
-        }
-        for(i=1; i<this.nRows; i++){
+		}
+		for(i=1; i<this.nRows; i++){
 			this.ctx.moveTo(0, i*stepY);
 			this.ctx.lineTo(this.element.width, i*stepY);
-        }
+		}
         this.ctx.closePath();
         this.ctx.stroke();
         
