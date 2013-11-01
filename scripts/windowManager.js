@@ -45,15 +45,15 @@ function windowManager(id, sock) {
         this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
 		this.ctx.lineWidth = 2;
 		this.ctx.strokeStyle = "rgba(90, 90, 90, 255)";
-        for(i=0; i<this.items.length; i++){
-        	var eLeft = this.items[i].left * this.scale;
-        	var eTop = this.items[i].top * this.scale;
-        	var eWidth = this.items[i].width * this.scale;
-        	var eHeight = this.items[i].height * this.scale;
-        	
+		for(i=0; i<this.items.length; i++){
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.items[i].height * this.scale;
+			
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
-        }
+		}
 	};
 	
 	this.resize = function() {
@@ -67,19 +67,19 @@ function windowManager(id, sock) {
 		var globalX = mouseX / this.scale;
 		var globalY = mouseY / this.scale;
 		for(i=this.items.length-1; i>=0; i--){
-        	var eLeft = this.items[i].left * this.scale;
-        	var eTop = this.items[i].top * this.scale;
-        	var eWidth = this.items[i].width * this.scale;
-        	var eHeight = this.items[i].height * this.scale;
-        	
-        	if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
-        		var selectOffsetX = this.items[i].left - globalX;
-        		var selectOffsetY = this.items[i].top - globalY;
-        		
-        		this.socket.emit('selectElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
-        		break;
-        	}
-        }
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.items[i].height * this.scale;
+			
+			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+				var selectOffsetX = this.items[i].left - globalX;
+				var selectOffsetY = this.items[i].top - globalY;
+				
+				this.socket.emit('selectElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
+				break;
+			}
+		}
 	};
 	
 	this.mouseMove = function(event) {
