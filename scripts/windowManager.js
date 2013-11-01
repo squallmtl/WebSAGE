@@ -38,11 +38,11 @@ function windowManager(id, sock) {
 			this.ctx.moveTo(0, i*stepY);
 			this.ctx.lineTo(this.element.width, i*stepY);
 		}
-        this.ctx.closePath();
-        this.ctx.stroke();
+		this.ctx.closePath();
+		this.ctx.stroke();
         
-        /* draw all items */
-        this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
+		/* draw all items */
+		this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
 		this.ctx.lineWidth = 2;
 		this.ctx.strokeStyle = "rgba(90, 90, 90, 255)";
 		for(i=0; i<this.items.length; i++){
