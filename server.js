@@ -93,7 +93,6 @@ sio.sockets.on('connection', function(socket) {
 		if(selectedElemId == null) return;
 		eLeft = move_data.eventX + selectOffsetX;
 		eTop = move_data.eventY + selectOffsetY;
-		
 		sio.sockets.emit('setItemPosition', {elemId: selectedElemId, elemLeft: eLeft, elemTop: eTop});	
 	});
 	

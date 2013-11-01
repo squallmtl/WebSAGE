@@ -77,7 +77,7 @@ function windowManager(id, sock) {
         		var selectOffsetY = this.items[i].top - globalY;
         		
         		this.socket.emit('selectElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
-        		return;
+        		break;
         	}
         }
 	};
@@ -93,6 +93,11 @@ function windowManager(id, sock) {
 	
 	this.mouseRelease = function(event) {
 		this.socket.emit('releaseSelectedElement');
+	};
+	
+	this.addNewElement = function(elem_data) {
+		this.items.push(elem_data);
+		this.draw();
 	};
 	
 	this.initDisplayConfig = function(config) {
@@ -111,10 +116,17 @@ function windowManager(id, sock) {
 		this.draw();
 	};
 	
-	this.addNewElement = function(elem_data) {
-		this.items.push(elem_data);
+	this.setItemPosition = function(position_data) {
+		var i;
+		for(i=0; i<this.items.length; i++){
+			if(this.items[i].id == position_data.elemId){
+				this.items[i].left = position_data.elemLeft;
+				this.items[i].top = position_data.elemTop;
+				break;
+			}
+		}
 		this.draw();
-	};
+	}
 	
 	this.element.addEventListener('mousedown', this.mousePress.bind(this), false);
 	this.element.addEventListener('mousemove', this.mouseMove.bind(this), false);
