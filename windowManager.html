@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="utf-,8">
+<title>Window Manager</title>
+<script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/windowManager.js"></script>
+<script type="text/javascript">
+	var url;
+	var socket;
+	var winMgr;
+	
+	function init() {
+		url = window.location.origin;
+		socket = io.connect(url);
+		console.log("Connected to server: ", url);
+		
+		winMgr = new windowManager('winMgr', socket);
+		winMgr.draw();
+		
+		socket.on('setupDisplayConfiguration', function(config) {
+			winMgr.initDisplayConfig(config);
+		});
+		
+		socket.on('addNewElement', function(elem_data) {
+			if(elem_data.type == "img"){
+				var img = new Image();
+				img.addEventListener('load', function() {
+					var aspect = img.naturalWidth / img.naturalHeight;
+					winMgr.addNewElement({type: "img", id: elem_data.id, left: 0, top: 0, width: img.naturalWidth, height: img.naturalHeight, aspectRatio: aspect});
+				}, false);
+				img.src = elem_data.src;
+			}
+		});
+	}
+	
+</script>
+
+<link rel="stylesheet" type="text/css" href="style_mgr.css" media="screen" />
+
+</head>
+
+<body onload="init()">
+	<div id="wrapper">
+		<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>
+	</div>
+</body>
+</html>
+

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="utf-,8">
+<title>Node Test</title>
+<script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript">
+	var sysTime;
+	var clientID;
+	var offsetX;
+	var offsetY;
+
+	var url;
+	var socket;
+
+	document.addEventListener('mousemove', mouseMove, false);
+	document.addEventListener('mouseup', mouseRelease, false);
+	document.addEventListener('mousewheel', mouseScroll, false);
+	
+	function init() {
+		url = window.location.origin;
+		socket = io.connect(url);
+		console.log("Connected to server: ", url);
+		
+		clientID = parseInt(getParameterByName("clientID"));
+		console.log(clientID);
+		
+		socket.on('setSystemTime', function(time_ms) {
+			sysTime = time_ms;
+			console.log(sysTime);
+		});
+
+		socket.on('setupDisplayConfiguration', function(json_cfg) {
+			var resolutionX = json_cfg.resolution.width;
+			var resolutionY = json_cfg.resolution.height;
+			offsetX = json_cfg.displays[clientID].column * resolutionX;
+			offsetY = json_cfg.displays[clientID].row * resolutionY;
+			console.log('offset: ' + offsetX + ', ' + offsetY);
+		});
+		
+		socket.on('addNewElement', function(elem_data) {
+			if(elem_data.type == "img"){
+				var main = document.getElementById("main");
+				
+				var windowItem = document.createElement("div");
+				windowItem.id = elem_data.id;
+				windowItem.className = "windowItem";
+				windowItem.style.left = (-offsetX).toString() + "px";
+				windowItem.style.top = (-offsetY).toString() + "px";
+				windowItem.addEventListener('mousedown', mousePress, false);
+				windowItem.addEventListener('mousewheel', scrollSelect, false);
+				main.appendChild(windowItem);
+				
+				var img = document.createElement("img");
+				img.className = "sageItem";
+				img.addEventListener('load', function() {
+					var aspect = img.naturalWidth / img.naturalHeight;
+					img.aspectRatio = aspect;
+				}, false);
+				img.src = elem_data.src;
+				img.draggable = false;
+				
+				windowItem.appendChild(img);
+			}
+		});
+		
+		socket.on('itemSelected', function(elemId) {
+			var selectedElem = document.getElementById(elemId);
+			
+			moveItemToFront(selectedElem);
+		});
+		
+		socket.on('setItemPosition', function(position_data) {
+			var selectedElem = document.getElementById(position_data.elemId);
+			
+			var eLeft = position_data.elemLeft - offsetX;
+			var eTop = position_data.elemTop - offsetY;
+			
+			selectedElem.style.left = eLeft.toString() + "px";
+			selectedElem.style.top = eTop.toString() + "px";
+		});
+		
+		socket.on('setItemPositionAndSize', function(position_data) {
+			var selectedElem = document.getElementById(position_data.elemId);
+			
+			var eLeft = position_data.elemLeft - offsetX;
+			var eTop = position_data.elemTop - offsetY;
+			
+			selectedElem.style.left = eLeft.toString() + "px";
+			selectedElem.style.top = eTop.toString() + "px";
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+			child[0].width = Math.round(position_data.elemWidth);
+			child[0].height = Math.round(position_data.elemHeight);
+		});
+	}
+
+	function mousePress(event) {
+		var globalX = event.clientX + offsetX;
+		var globalY = event.clientY + offsetY;
+		
+		var leftpx = event.currentTarget.style.left;
+		var toppx = event.currentTarget.style.top;
+		
+		var eLeft = parseInt(leftpx.substring(0,leftpx.length-2)) + offsetX;
+		var eTop = parseInt(toppx.substring(0,toppx.length-2))+ offsetY;
+		
+		var selectOffsetX = eLeft - globalX;
+		var selectOffsetY = eTop - globalY;
+		
+		socket.emit('selectElementById', {elemId: event.currentTarget.id, elemLeft: eLeft, elemTop: eTop, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
+	}
+	
+	function mouseMove(event) {
+		var globalX = event.clientX + offsetX;
+		var globalY = event.clientY + offsetY;
+		socket.emit('moveSelectedElement', {eventX: globalX, eventY: globalY});
+	}
+	
+	function mouseRelease(event) {
+		socket.emit('releaseSelectedElement');
+	}
+	
+	function scrollSelect(event) {
+		var leftpx = event.currentTarget.style.left;
+		var toppx = event.currentTarget.style.top;
+		
+		var eLeft = parseInt(leftpx.substring(0,leftpx.length-2)) + offsetX;
+		var eTop = parseInt(toppx.substring(0,toppx.length-2))+ offsetY;
+		var eWidth = event.currentTarget.clientWidth;
+		var eHeight = event.currentTarget.clientHeight;
+		
+		var child = event.currentTarget.getElementsByClassName("sageItem");
+		var eRatio = child[0].aspectRatio;
+		
+		socket.emit('selectScrollElementById', {elemId: event.currentTarget.id, elemLeft: eLeft, elemTop: eTop, elemWidth: eWidth, elemHeight: eHeight, elemAspectRatio: eRatio});
+	}
+	
+	function mouseScroll(event) {
+		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
+		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		
+		socket.emit('scrollSelectedElement', scale);
+	}
+	
+	function moveItemToFront(elem) {
+		var last = elem.parentNode.lastChild;
+		if(elem != last){
+			elem.parentNode.replaceChild(elem, last);
+			elem.parentNode.insertBefore(last, elem);
+		}
+	}
+
+	function getParameterByName(name) {
+		name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+		var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+		results = regex.exec(location.search);
+		return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+	}
+</script>
+
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+
+</head>
+
+<body onload="init()">
+	<div id="main">
+		
+	</div>
+</body>
+</html>
+

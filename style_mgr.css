@@ -1,0 +1,17 @@
+@charset "UTF-8";
+/* CSS Document */
+
+* {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	text-align: center;
+}
+	
+#wrapper {
+	margin: 20px 0px auto auto;
+	text-align: center;
+	background-color: #FFFFFF;
+}
