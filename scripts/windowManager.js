@@ -20,11 +20,29 @@ function windowManager(id, sock) {
 		
 		var i;
 		
-		/* draw tiled display layout */
+		/* draw display background */
 		this.ctx.fillStyle = "rgba(200, 200, 200, 255)";
+		this.ctx.fillRect(0,0, this.element.width, this.element.height);
+        
+        
+		/* draw all items */
+		this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
+		this.ctx.lineWidth = 2;
+		this.ctx.strokeStyle = "rgba(90, 90, 90, 255)";
+		for(i=0; i<this.items.length; i++){
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.items[i].height * this.scale;
+			
+			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
+			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
+		}
+		
+		
+		/* draw tiled display layout */
 		this.ctx.lineWidth = 2;
 		this.ctx.strokeStyle = "rgba(0, 0, 0, 255)";
-		this.ctx.fillRect(0,0, this.element.width, this.element.height);
 		this.ctx.strokeRect(0,0, this.element.width, this.element.height);
 		
 		var stepX = this.element.width/this.nCols;
@@ -40,20 +58,6 @@ function windowManager(id, sock) {
 		}
 		this.ctx.closePath();
 		this.ctx.stroke();
-        
-		/* draw all items */
-		this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
-		this.ctx.lineWidth = 2;
-		this.ctx.strokeStyle = "rgba(90, 90, 90, 255)";
-		for(i=0; i<this.items.length; i++){
-			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
-			var eWidth = this.items[i].width * this.scale;
-			var eHeight = this.items[i].height * this.scale;
-			
-			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
-			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
-		}
 	};
 	
 	this.resize = function() {
@@ -95,6 +99,29 @@ function windowManager(id, sock) {
 		this.socket.emit('releaseSelectedElement');
 	};
 	
+	this.mouseScroll = function(event) {
+		var rect = this.element.getBoundingClientRect();
+		var mouseX = event.clientX - rect.left;
+		var mouseY = event.clientY - rect.top;
+		var selection = false;
+		for(i=this.items.length-1; i>=0; i--){
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.items[i].height * this.scale;
+			
+			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+				selection = true;
+				this.socket.emit('selectScrollElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, elemWidth: this.items[i].width, elemHeight: this.items[i].height, elemAspectRatio: this.items[i].aspectRatio});
+				break;
+			}
+		}
+		
+		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
+		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		this.socket.emit('scrollSelectedElement', scale);
+	};
+	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);
 		this.draw();
@@ -116,6 +143,19 @@ function windowManager(id, sock) {
 		this.draw();
 	};
 	
+	this.moveItemToFront = function(elemId) {
+		var i;
+		for(i=0; i<this.items.length; i++){
+			if(this.items[i].id == elemId){
+				tmp = this.items[i];
+				this.items.splice(i, 0);
+				this.items.push(tmp);
+				break;
+			}
+		}
+		this.draw();
+	};
+	
 	this.setItemPosition = function(position_data) {
 		var i;
 		for(i=0; i<this.items.length; i++){
@@ -126,9 +166,24 @@ function windowManager(id, sock) {
 			}
 		}
 		this.draw();
-	}
+	};
+	
+	this.setItemPositionAndSize = function(position_data) {
+		var i;
+		for(i=0; i<this.items.length; i++){
+			if(this.items[i].id == position_data.elemId){
+				this.items[i].left = position_data.elemLeft;
+				this.items[i].top = position_data.elemTop;
+				this.items[i].width = position_data.elemWidth;
+				this.items[i].height = position_data.elemHeight;
+				break;
+			}
+		}
+		this.draw();
+	};
 	
 	this.element.addEventListener('mousedown', this.mousePress.bind(this), false);
 	this.element.addEventListener('mousemove', this.mouseMove.bind(this), false);
 	this.element.addEventListener('mouseup', this.mouseRelease.bind(this), false);
+	this.element.addEventListener('mousewheel', this.mouseScroll.bind(this), false);
 }
