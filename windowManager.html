@@ -15,6 +15,15 @@
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
 		
+		var fileDrop = document.getElementById("fileDrop");
+		fileDrop.addEventListener('dragover', preventFileOpen, false);
+		fileDrop.addEventListener('dragend', preventFileOpen, false);
+		fileDrop.addEventListener('drop', uploadFileToServer, false);
+		
+		window.addEventListener('dragover', preventFileOpen, false);
+		window.addEventListener('dragend', preventFileOpen, false);
+		window.addEventListener('drop', preventFileOpen, false);
+		
 		winMgr = new windowManager('winMgr', socket);
 		winMgr.draw();
 		
@@ -46,6 +55,24 @@
 		});
 	}
 	
+	function preventFileOpen(event) {
+		event.preventDefault();
+	}
+	
+	function uploadFileToServer(event) {
+		var i;
+		event.preventDefault();
+		
+		var files = event.dataTransfer.files;
+		var formdata = new FormData();
+		for(i=0; i<files.length; i++){
+			formdata.append("file"+i.toString(), files[i]);
+			xhr = new XMLHttpRequest();
+			xhr.open("POST", "/upload", true);
+			xhr.send(formdata);
+		}
+	}
+	
 </script>
 
 <link rel="stylesheet" type="text/css" href="style_mgr.css" media="screen" />
@@ -54,7 +81,12 @@
 
 <body onload="init()">
 	<div id="wrapper">
-		<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>
+		<div id="window">
+			<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>
+		</div>
+		<div id="fileDrop">
+			<p>Drag files here to upload</p>
+		</div>
 	</div>
 </body>
 </html>

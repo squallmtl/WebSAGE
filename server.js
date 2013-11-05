@@ -1,14 +1,34 @@
 var express = require("express");
 var http = require('http');
+var fs = require('fs');
+var path = require('path');
 
 var app = express();
 var hport = 9090;
 
 app.configure(function(){
 	app.use(express.methodOverride());
-	app.use(express.bodyParser());
+	app.use(express.bodyParser({uploadDir:__dirname + '/uploads'}));
+	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
+});
+
+app.post('/upload', function(request, response) {
+	//console.log("file name " + request.files.file.name);
+	//console.log("file path " + request.files.file.path);
+	
+	var i;
+	for(var f in request.files){
+		console.log(request.files[f].name);
+		console.log(request.files[f].path);
+		
+		var uploadPath = path.dirname(request.files[f].path);
+		
+		fs.rename(request.files[f].path, path.join(uploadPath, request.files[f].name));
+	}
+	
+	response.end("upload complete");
 });
 
 var server = http.createServer(app);
@@ -22,18 +42,17 @@ var io = require('socket.io');
 var sio = io.listen(server);
 
 sio.configure(function () {
-  sio.set('transports', ['websocket']);
-  sio.set('log level', 0);
+	sio.set('transports', ['websocket']);
+	sio.set('log level', 0);
 });
 
 sio.configure('development', function () {
-  sio.set('transports', ['websocket' ]);
-  sio.disable('log');
+	sio.set('transports', ['websocket' ]);
+	sio.disable('log');
 });
 
 var initDate = new Date();
 
-var fs = require('fs');
 var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
