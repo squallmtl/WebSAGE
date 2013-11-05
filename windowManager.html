@@ -32,6 +32,18 @@
 				img.src = elem_data.src;
 			}
 		});
+		
+		socket.on('itemSelected', function(elemId) {
+			winMgr.moveItemToFront(elemId);
+		});
+		
+		socket.on('setItemPosition', function(position_data) {
+			winMgr.setItemPosition(position_data);
+		});
+		
+		socket.on('setItemPositionAndSize', function(position_data) {
+			winMgr.setItemPositionAndSize(position_data);
+		});
 	}
 	
 </script>

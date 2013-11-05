@@ -34,9 +34,9 @@ sio.configure('development', function () {
 var initDate = new Date();
 
 var fs = require('fs');
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-var file = 'config/jauri-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -101,7 +101,6 @@ sio.sockets.on('connection', function(socket) {
 		if(selectedElemId == null) return;
 		eLeft = move_data.eventX + selectOffsetX;
 		eTop = move_data.eventY + selectOffsetY;
-		
 		sio.sockets.emit('setItemPosition', {elemId: selectedElemId, elemLeft: eLeft, elemTop: eTop});	
 	});
 	
