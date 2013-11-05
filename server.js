@@ -35,7 +35,9 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
+var file = 'config/jauri-cfg.json';
+
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -61,6 +63,12 @@ sio.sockets.on('connection', function(socket) {
 	socket.emit('addNewElement', {type: "img", id: "item1", src: "images/sage_logo.jpg"});
 	socket.emit('addNewElement', {type: "img", id: "item2", src: "images/evl-logo-small.jpg"});
 	socket.emit('addNewElement', {type: "img", id: "item3", src: "images/omegalib-black.png"});
+	
+	/* jillian's elements */
+	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "protovisExample.html", width: 1000, height: 800 });
+	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://www.gmail.com", width: 500, height: 400 });
+	socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://webglmol.sourceforge.jp/glmol/viewer.html", width: 1000, height: 800 });
+
 
 	/* user-interaction methods */
 	var selectedElemId = null;

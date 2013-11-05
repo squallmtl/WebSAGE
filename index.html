@@ -62,6 +62,25 @@
 				
 				windowItem.appendChild(img);
 			}
+			if(elem_data.type == "site"){
+                var main = document.getElementById("main");
+                
+                var windowItem = document.createElement("div");
+                windowItem.id = elem_data.id;
+				windowItem.className = "windowItem";
+				windowItem.style.left = (-offsetX).toString() + "px";
+				windowItem.style.top = (-offsetY).toString() + "px";
+				windowItem.addEventListener('mousedown', mousePress, false);
+				windowItem.addEventListener('mousewheel', scrollSelect, false);
+				main.appendChild(windowItem);
+                
+                var ifrm = document.createElement("IFRAME"); 
+                ifrm.setAttribute("src", elem_data.src); 
+                ifrm.style.width =  elem_data.width +"px";//640+"px"; 
+                ifrm.style.height = elem_data.height + "px"; // 480+"px"; 
+                windowItem.appendChild(ifrm); 
+			}
+
 		});
 		
 		socket.on('itemSelected', function(elemId) {
