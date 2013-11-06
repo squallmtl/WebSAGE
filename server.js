@@ -66,8 +66,9 @@ sio.sockets.on('connection', function(socket) {
 	
 	/* jillian's elements */
 	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "protovisExample.html", width: 1000, height: 800 });
-	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://www.gmail.com", width: 500, height: 400 });
-	socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://webglmol.sourceforge.jp/glmol/viewer.html", width: 1000, height: 800 });
+//	socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://www.gmail.com", width: 500, height: 400 });
+//	socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://webglmol.sourceforge.jp/glmol/viewer.html", width: 1000, height: 800 });
+	socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://www.genome.jp/kegg/", width: 1000, height: 800 });
 
 
 	/* user-interaction methods */
