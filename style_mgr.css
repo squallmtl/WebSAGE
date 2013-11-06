@@ -9,9 +9,26 @@
 body {
 	text-align: center;
 }
+
+p {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 12px;
+}
 	
 #wrapper {
-	margin: 20px 0px auto auto;
+	margin: 0 auto;
 	text-align: center;
 	background-color: #FFFFFF;
+}
+
+#window {
+	margin: 20px 0px 20px 0px;
+}
+
+#fileDrop {
+	margin-left: 10%;
+	width: 300px;
+	height: 62px;
+	line-height: 62px;
+	border: dashed 3px #54C238;
 }
