@@ -2,6 +2,7 @@ var express = require("express");
 var http = require('http');
 var fs = require('fs');
 var path = require('path');
+var gm = require('gm');
 
 var app = express();
 var hport = 9090;
@@ -12,23 +13,6 @@ app.configure(function(){
 	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
-});
-
-app.post('/upload', function(request, response) {
-	//console.log("file name " + request.files.file.name);
-	//console.log("file path " + request.files.file.path);
-	
-	var i;
-	for(var f in request.files){
-		console.log(request.files[f].name);
-		console.log(request.files[f].path);
-		
-		var uploadPath = path.dirname(request.files[f].path);
-		
-		fs.rename(request.files[f].path, path.join(uploadPath, request.files[f].name));
-	}
-	
-	response.end("upload complete");
 });
 
 var server = http.createServer(app);
@@ -66,8 +50,11 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 	console.log(config);
 });
 
+var itemCount = 0;
+var items = [];
 
 sio.sockets.on('connection', function(socket) {
+	var i;
 	var address = socket.handshake.address;
 	console.log("New connection from " + address.address + ":" + address.port);
 	
@@ -78,69 +65,90 @@ sio.sockets.on('connection', function(socket) {
 	socket.emit('setupDisplayConfiguration', config);
 
 	/* adding new elements */
-	socket.emit('addNewElement', {type: "img", id: "item1", src: "images/sage_logo.jpg"});
-	socket.emit('addNewElement', {type: "img", id: "item2", src: "images/evl-logo-small.jpg"});
-	socket.emit('addNewElement', {type: "img", id: "item3", src: "images/omegalib-black.png"});
+	for(i=0; i<items.length; i++){
+		socket.emit('addNewElement', items[i]);
+	}
 
 	/* user-interaction methods */
-	var selectedElemId = null;
-	var scrollElemId = null;
+	var selectedMoveItem;
+	var selectedScrollItem;
 	var selectOffsetX;
 	var selectOffsetY;
-	var eLeft;
-	var eTop;
-	var eWidth;
-	var eHeight;
-	var eCenterX;
-	var eCenterY;
-	var eRatio;
 
 	socket.on('selectElementById', function(select_data) {
-		selectedElemId = select_data.elemId;
+		selectedMoveItem = findItemById(select_data.elemId);
+		selectedScrollItem = null;
 		selectOffsetX = select_data.eventOffsetX;
 		selectOffsetY = select_data.eventOffsetY;
-		eLeft = select_data.elemLeft;
-		eTop = select_data.elemTop;
 		
-		sio.sockets.emit('itemSelected', selectedElemId);
+		sio.sockets.emit('itemSelected', selectedMoveItem.id);
 	});
 	
 	socket.on('releaseSelectedElement', function() {
-		selectedElemId = null;
+		selectedMoveItem = null;
+		selectedScrollItem = null;
 	});
 	
 	socket.on('moveSelectedElement', function(move_data) {
-		if(selectedElemId == null) return;
-		eLeft = move_data.eventX + selectOffsetX;
-		eTop = move_data.eventY + selectOffsetY;
-		sio.sockets.emit('setItemPosition', {elemId: selectedElemId, elemLeft: eLeft, elemTop: eTop});	
+		if(selectedMoveItem == null) return;
+		selectedMoveItem.left = move_data.eventX + selectOffsetX;
+		selectedMoveItem.top = move_data.eventY + selectOffsetY;
+		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top});
 	});
 	
-	socket.on('selectScrollElementById', function(scroll_data) {
-		scrollElemId = scroll_data.elemId;
-		eLeft = scroll_data.elemLeft;
-		eTop = scroll_data.elemTop;
-		eWidth = scroll_data.elemWidth;
-		eHeight = scroll_data.elemHeight;
-		eRatio = scroll_data.elemAspectRatio;
-		eCenterX = eLeft + (eWidth/2);
-		eCenterY = eTop + (eHeight/2);
-		
-		sio.sockets.emit('itemSelected', scrollElemId);
+	socket.on('selectScrollElementById', function(elemId) {
+		console.log("scroll: " + elemId);
+		selectedScrollItem = findItemById(elemId);
+		selectedMoveItem = null;
+		sio.sockets.emit('itemSelected', selectedScrollItem.id);
 	});
 	
 	socket.on('scrollSelectedElement', function(scale) {
-		if(scrollElemId == null) return;
-		eWidth = eWidth*scale;
-		eHeight = eWidth/eRatio;
-		if(eWidth < 20){ eWidth = 20; eHeight = eWidth/eRatio; }
-		if(eHeight < 20){ eHeight = 20; eWidth = eHeight*eRatio; }
-		eLeft = eCenterX - (eWidth/2);
-		eTop = eCenterY - (eHeight/2);
-		
-		sio.sockets.emit('setItemPositionAndSize', {elemId: scrollElemId, elemLeft: eLeft, elemTop: eTop, elemWidth: eWidth, elemHeight: eHeight});
+		if(selectedScrollItem == null) return;
+		var iWidth = selectedScrollItem.width * scale;
+		var iHeight = iWidth / selectedScrollItem.aspectRatio;
+		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspectRatio; }
+		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspectRatio; }
+		var iCenterX = selectedScrollItem.left + (selectedScrollItem.width/2);
+		var iCenterY = selectedScrollItem.top + (selectedScrollItem.height/2);
+		selectedScrollItem.left = iCenterX - (iWidth/2);
+		selectedScrollItem.top = iCenterY - (iHeight/2);
+		selectedScrollItem.width = iWidth;
+		selectedScrollItem.height = iHeight;
+		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height});
 	});
 });
+
+app.post('/upload', function(request, response) {
+	var i;
+	for(var f in request.files){
+		console.log(request.files[f]);
+		
+		var uploadPath = path.dirname(request.files[f].path);
+		var finalPath = path.join(uploadPath, request.files[f].name);
+		fs.rename(request.files[f].path, finalPath);
+		
+		var localPath = finalPath.substring(__dirname.length+1);
+		
+		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
+			gm(localPath).size(function(err, size) {
+				if(!err){
+					var aspect = size.width / size.height;
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: localPath, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect};
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				}
+				else{
+					console.log(err);
+				}
+			});
+		}
+	}
+	
+	response.end("upload complete");
+});
+
 /////////////////////////////////////////////////////////////////////////
 
 
@@ -149,3 +157,9 @@ server.listen(hport);
 
 console.log('Now serving the app at http://localhost:' + hport);
 
+
+function findItemById(id) {
+	for(var i=0; i<items.length; i++){
+		if(items[i].id == id) return items[i];
+	}
+}

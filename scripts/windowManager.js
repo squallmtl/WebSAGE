@@ -80,7 +80,7 @@ function windowManager(id, sock) {
 				var selectOffsetX = this.items[i].left - globalX;
 				var selectOffsetY = this.items[i].top - globalY;
 				
-				this.socket.emit('selectElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
+				this.socket.emit('selectElementById', {elemId: this.items[i].id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
 				break;
 			}
 		}
@@ -103,7 +103,6 @@ function windowManager(id, sock) {
 		var rect = this.element.getBoundingClientRect();
 		var mouseX = event.clientX - rect.left;
 		var mouseY = event.clientY - rect.top;
-		var selection = false;
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
@@ -111,8 +110,7 @@ function windowManager(id, sock) {
 			var eHeight = this.items[i].height * this.scale;
 			
 			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
-				selection = true;
-				this.socket.emit('selectScrollElementById', {elemId: this.items[i].id, elemLeft: this.items[i].left, elemTop: this.items[i].top, elemWidth: this.items[i].width, elemHeight: this.items[i].height, elemAspectRatio: this.items[i].aspectRatio});
+				this.socket.emit('selectScrollElementById', this.items[i].id);
 				break;
 			}
 		}

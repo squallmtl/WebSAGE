@@ -33,12 +33,7 @@
 		
 		socket.on('addNewElement', function(elem_data) {
 			if(elem_data.type == "img"){
-				var img = new Image();
-				img.addEventListener('load', function() {
-					var aspect = img.naturalWidth / img.naturalHeight;
-					winMgr.addNewElement({type: "img", id: elem_data.id, left: 0, top: 0, width: img.naturalWidth, height: img.naturalHeight, aspectRatio: aspect});
-				}, false);
-				img.src = elem_data.src;
+				winMgr.addNewElement(elem_data);
 			}
 		});
 		

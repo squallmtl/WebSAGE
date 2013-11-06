@@ -45,18 +45,17 @@
 				var windowItem = document.createElement("div");
 				windowItem.id = elem_data.id;
 				windowItem.className = "windowItem";
-				windowItem.style.left = (-offsetX).toString() + "px";
-				windowItem.style.top = (-offsetY).toString() + "px";
+				windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
+				windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
 				windowItem.addEventListener('mousedown', mousePress, false);
 				windowItem.addEventListener('mousewheel', scrollSelect, false);
 				main.appendChild(windowItem);
 				
 				var img = document.createElement("img");
 				img.className = "sageItem";
-				img.addEventListener('load', function() {
-					var aspect = img.naturalWidth / img.naturalHeight;
-					img.aspectRatio = aspect;
-				}, false);
+				img.aspectRatio = elem_data.aspectRatio;
+				img.width = elem_data.width;
+				img.height = elem_data.height;
 				img.src = elem_data.src;
 				img.draggable = false;
 				
@@ -108,7 +107,7 @@
 		var selectOffsetX = eLeft - globalX;
 		var selectOffsetY = eTop - globalY;
 		
-		socket.emit('selectElementById', {elemId: event.currentTarget.id, elemLeft: eLeft, elemTop: eTop, eventX: globalX, eventY: globalY, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
+		socket.emit('selectElementById', {elemId: event.currentTarget.id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
 	}
 	
 	function mouseMove(event) {
@@ -122,18 +121,7 @@
 	}
 	
 	function scrollSelect(event) {
-		var leftpx = event.currentTarget.style.left;
-		var toppx = event.currentTarget.style.top;
-		
-		var eLeft = parseInt(leftpx.substring(0,leftpx.length-2)) + offsetX;
-		var eTop = parseInt(toppx.substring(0,toppx.length-2))+ offsetY;
-		var eWidth = event.currentTarget.clientWidth;
-		var eHeight = event.currentTarget.clientHeight;
-		
-		var child = event.currentTarget.getElementsByClassName("sageItem");
-		var eRatio = child[0].aspectRatio;
-		
-		socket.emit('selectScrollElementById', {elemId: event.currentTarget.id, elemLeft: eLeft, elemTop: eTop, elemWidth: eWidth, elemHeight: eHeight, elemAspectRatio: eRatio});
+		socket.emit('selectScrollElementById', event.currentTarget.id);
 	}
 	
 	function mouseScroll(event) {
