@@ -62,10 +62,10 @@
 		var formdata = new FormData();
 		for(i=0; i<files.length; i++){
 			formdata.append("file"+i.toString(), files[i]);
-			xhr = new XMLHttpRequest();
-			xhr.open("POST", "/upload", true);
-			xhr.send(formdata);
 		}
+		xhr = new XMLHttpRequest();
+		xhr.open("POST", "/upload", true);
+		xhr.send(formdata);
 	}
 	
 </script>

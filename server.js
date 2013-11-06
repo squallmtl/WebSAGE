@@ -37,9 +37,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -121,26 +121,28 @@ sio.sockets.on('connection', function(socket) {
 
 app.post('/upload', function(request, response) {
 	var i;
+	console.log("### " + request.files);
 	for(var f in request.files){
-		console.log(request.files[f]);
+		//console.log(request.files[f]);
 		
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
 		fs.rename(request.files[f].path, finalPath);
 		
 		var localPath = finalPath.substring(__dirname.length+1);
+		console.log(localPath);
 		
 		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: localPath, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect};
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				}
 				else{
-					console.log(err);
+					console.log("Error: " + err);
 				}
 			});
 		}
