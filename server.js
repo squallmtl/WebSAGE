@@ -35,8 +35,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+//var file = 'config/thor-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -68,7 +68,7 @@ sio.sockets.on('connection', function(socket) {
 	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "protovisExample.html", width: 1000, height: 800 });
 	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://www.gmail.com", width: 500, height: 400 });
 	//socket.emit('addNewElement', {type: "site", id: "keggPathway", src: "http://webglmol.sourceforge.jp/glmol/viewer.html", width: 1000, height: 800 });
-    //socket.emit('addNewElement',  {type: "site", id: "webglExample", src: "http://webglsamples.googlecode.com/hg/blob/blob.html", width: 1000, height: 800 });
+    socket.emit('addNewElement',  {type: "site", id: "webglExample", src: "http://webglsamples.googlecode.com/hg/blob/blob.html", width: 1000, height: 800 });
 
 	/* user-interaction methods */
 	var selectedElemId = null;
