@@ -37,9 +37,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -100,7 +100,6 @@ sio.sockets.on('connection', function(socket) {
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
-		console.log("scroll: " + elemId);
 		selectedScrollItem = findItemById(elemId);
 		selectedMoveItem = null;
 		sio.sockets.emit('itemSelected', selectedScrollItem.id);
@@ -126,8 +125,6 @@ app.post('/upload', function(request, response) {
 	var i;
 	console.log("### " + request.files);
 	for(var f in request.files){
-		//console.log(request.files[f]);
-		
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
 		fs.rename(request.files[f].path, finalPath);

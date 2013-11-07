@@ -32,9 +32,7 @@
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
-			if(elem_data.type == "img"){
-				winMgr.addNewElement(elem_data);
-			}
+			winMgr.addNewElement(elem_data);
 		});
 		
 		socket.on('itemSelected', function(elemId) {

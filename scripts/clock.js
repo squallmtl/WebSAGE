@@ -2,8 +2,6 @@ function clock(id){
 	this.element = document.getElementById(id);
 	this.ctx = this.element.getContext("2d");
 	
-	this.minDim = Math.min(this.element.width, this.element.height);
-	
 	this.draw = function() {
 		// clear canvas		
 		this.ctx.clearRect(0,0, this.element.width, this.element.height);
@@ -12,6 +10,8 @@ function clock(id){
 		this.ctx.fillRect(0,0, this.element.width, this.element.height)
 		
 		var time = new Date();
+		
+		this.minDim = Math.min(this.element.width, this.element.height);
 		
 		var radius = 0.95 * this.minDim / 2;
 		var centerX = this.element.width / 2;

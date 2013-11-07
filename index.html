@@ -18,6 +18,8 @@
 	document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
+		//document.body.style.cursor = 'text';
+	
 		url = window.location.origin;
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
