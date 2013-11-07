@@ -39,18 +39,18 @@
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
+			var main = document.getElementById("main");
+				
+			var windowItem = document.createElement("div");
+			windowItem.id = elem_data.id;
+			windowItem.className = "windowItem";
+			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
+			windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
+			windowItem.addEventListener('mousedown', mousePress, false);
+			windowItem.addEventListener('mousewheel', scrollSelect, false);
+			main.appendChild(windowItem);
+			
 			if(elem_data.type == "img"){
-				var main = document.getElementById("main");
-				
-				var windowItem = document.createElement("div");
-				windowItem.id = elem_data.id;
-				windowItem.className = "windowItem";
-				windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
-				windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
-				windowItem.addEventListener('mousedown', mousePress, false);
-				windowItem.addEventListener('mousewheel', scrollSelect, false);
-				main.appendChild(windowItem);
-				
 				var img = document.createElement("img");
 				img.className = "sageItem";
 				img.aspectRatio = elem_data.aspectRatio;
@@ -60,6 +60,27 @@
 				img.draggable = false;
 				
 				windowItem.appendChild(img);
+			}
+			else if(elem_data.type == "canvas2d"){
+				console.log(elem_data);
+				
+				var canvas2d = document.createElement("canvas");
+				canvas2d.id = elem_data.id + "_canvas2d"
+				canvas2d.className = "sageItem";
+				canvas2d.aspectRatio = elem_data.aspectRatio;
+				canvas2d.width = elem_data.width;
+				canvas2d.height = elem_data.height;
+				
+				windowItem.appendChild(canvas2d);
+				
+				var canvasJS = document.createElement('script')
+  				canvasJS.type = "text/javascript";
+  				canvasJS.src = elem_data.src;
+  				document.getElementsByTagName("head")[0].appendChild(canvasJS);
+  				
+  				canvasJS.addEventListener('load', function(event) {
+  					eval(elem_data.initFunction);
+  				}, false);
 			}
 		});
 		
@@ -153,7 +174,6 @@
 
 <body onload="init()">
 	<div id="main">
-		
 	</div>
 </body>
 </html>

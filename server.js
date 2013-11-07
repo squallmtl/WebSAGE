@@ -37,9 +37,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -52,6 +52,9 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 
 var itemCount = 0;
 var items = [];
+
+var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
+items.push(itemTest);
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -136,7 +139,7 @@ app.post('/upload', function(request, response) {
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect};
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, initFunction: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
