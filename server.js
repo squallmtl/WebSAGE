@@ -37,9 +37,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -53,8 +53,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 var itemCount = 0;
 var items = [];
 
-var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
-items.push(itemTest);
+//var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
+//items.push(itemTest);
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -123,7 +123,6 @@ sio.sockets.on('connection', function(socket) {
 
 app.post('/upload', function(request, response) {
 	var i;
-	console.log("### " + request.files);
 	for(var f in request.files){
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
@@ -136,7 +135,7 @@ app.post('/upload', function(request, response) {
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, initFunction: ""};
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, extra: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -145,6 +144,17 @@ app.post('/upload', function(request, response) {
 					console.log("Error: " + err);
 				}
 			});
+		}
+		else if(request.files[f].type == "application/x-javascript"){
+			var itemId = "item"+itemCount.toString();
+			var className = request.files[f].name.substring(0, request.files[f].name.length-3);
+			var newItem = {type: "canvas", id: itemId, src: localPath, left: 0, top: 0, width: 800, height: 400, aspectRatio: 2.0, extra: className};
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+		}
+		else{
+			console.log("Unknown type: " + request.files[f].type);
 		}
 	}
 	
