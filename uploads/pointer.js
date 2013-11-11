@@ -1,24 +1,28 @@
-//WS: width=400
-//WS: height=200
+//WS: width=450
+//WS: height=150
 //WS: animation=none
 
 function pointer(){
 	this.element = null;
 	this.ctx = null;
 	
+	this.pointerOffset = null;
+	
 	this.init = function(id, date) {
 		this.element = document.getElementById(id);
 		this.ctx = this.element.getContext("2d");
+		
+		this.pointerOffset = [0.0, 0.0];
 	}
 	
 	this.draw = function(date) {
 		// clear canvas		
 		this.ctx.clearRect(0,0, this.element.width, this.element.height);
 		
-		//this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
-		//this.ctx.fillRect(0,0, this.element.width, this.element.height);
-		
 		var minDim = Math.min(this.element.width, this.element.height);
+		
+		this.pointerOffset[0] = Math.round(0.025384*minDim); 
+		this.pointerOffset[1] = Math.round(0.060805*minDim);
 		
 		// pointer
 		this.ctx.lineWidth = (3.0/100.0) * minDim;
@@ -26,30 +30,30 @@ function pointer(){
 		this.ctx.strokeStyle = "rgba(0, 0, 0, 1.0)";
 		this.ctx.lineJoin = "round";
 		this.ctx.beginPath();
-		this.ctx.moveTo(0.20*minDim, 0.90*minDim);
-		this.ctx.lineTo(0.20*minDim, 0.10*minDim);
-		this.ctx.lineTo(0.80*minDim, 0.60*minDim);
-		this.ctx.lineTo(0.43*minDim, 0.58*minDim);
-		this.ctx.lineTo(0.20*minDim, 0.90*minDim);
+		this.ctx.moveTo(0.025384*minDim, 0.934002*minDim);
+		this.ctx.lineTo(0.025384*minDim, 0.060805*minDim);
+		this.ctx.lineTo(0.665052*minDim, 0.649706*minDim);
+		this.ctx.lineTo(0.284297*minDim, 0.654782*minDim);
+		this.ctx.lineTo(0.025384*minDim, 0.934002*minDim);
 		this.ctx.closePath();
 		this.ctx.fill();
 		this.ctx.stroke();
 		
 		// name
-		var name = "Thomas";
+		var name = "Megatron";
 		var size = Math.round(0.15*minDim);
 		this.ctx.font = size.toString() + "pt Arial";
 		var metrics = this.ctx.measureText(name);
 		var textWidth = metrics.width;
 		var textHeight = metrics.height;
       
-		this.ctx.lineWidth = 1.4*size;
+		this.ctx.lineWidth = 1.5*size;
 		this.ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
 		this.ctx.lineCap = "round";   
 		this.ctx.beginPath();
-		this.ctx.moveTo(0.80*minDim, 0.80*minDim);
-		this.ctx.lineTo(0.80*minDim+textWidth, 0.80*minDim);
-		this.ctx.moveTo(0.80*minDim, 0.80*minDim);
+		this.ctx.moveTo(0.80*minDim, 0.81*minDim);
+		this.ctx.lineTo(0.80*minDim+textWidth, 0.81*minDim);
+		this.ctx.moveTo(0.80*minDim, 0.81*minDim);
 		this.ctx.closePath();
 		this.ctx.stroke();
 		

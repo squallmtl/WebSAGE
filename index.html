@@ -84,7 +84,6 @@
   				
   				canvasJS.addEventListener('load', function(event) {
   					var canvas = new window[elem_data.extra];
-  					console.log("Init: " + date.getTime());
   					canvas.init(elem_data.id + "_canvas", date);
   					canvas.draw(date);
   					canvasItems[elem_data.id + "_canvas"] = canvas;
@@ -134,7 +133,6 @@
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
 			if(child[0].tagName.toLowerCase() == "canvas"){
-				console.log("Anim: " + date.getTime());
 				canvasItems[child[0].id].draw(date);
 			}
 		});
