@@ -1,3 +1,8 @@
+//WS: width=600
+//WS: height=600
+//WS: animation=timer
+//WS: timeout=1000
+
 function clock(){
 	this.element = null;
 	this.ctx = null;

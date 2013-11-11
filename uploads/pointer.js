@@ -1,3 +1,7 @@
+//WS: width=400
+//WS: height=200
+//WS: animation=none
+
 function pointer(){
 	this.element = null;
 	this.ctx = null;
