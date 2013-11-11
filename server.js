@@ -101,7 +101,8 @@ sio.sockets.on('connection', function(socket) {
 		if(selectedMoveItem == null) return;
 		selectedMoveItem.left = move_data.eventX + selectOffsetX;
 		selectedMoveItem.top = move_data.eventY + selectOffsetY;
-		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top});
+		var now = new Date();
+		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
@@ -122,7 +123,8 @@ sio.sockets.on('connection', function(socket) {
 		selectedScrollItem.top = iCenterY - (iHeight/2);
 		selectedScrollItem.width = iWidth;
 		selectedScrollItem.height = iHeight;
-		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height});
+		var now = new Date();
+		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
 	});
 });
 
@@ -140,7 +142,8 @@ app.post('/upload', function(request, response) {
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, extra: ""};
+					var now = new Date();
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, extra: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -155,7 +158,7 @@ app.post('/upload', function(request, response) {
 			var cWidth = Math.round(totalWidth / 4);
 			var cHeight = Math.round(totalHeight / 4);
 			var cAnimation = "none";
-			var cTimeout = 16;
+			var cInterval = 16;
 			
 			// read file for WebSAGE information
 			fs.readFile(localPath, 'utf8', function(err, data) {
@@ -176,8 +179,8 @@ app.post('/upload', function(request, response) {
 						else if(param[0] == "animation"){
 							cAnimation = param[1];
 						}
-						else if(param[0] == "timeout"){
-							cTimeout = parseInt(param[1]);
+						else if(param[0] == "interval"){
+							cInterval = parseInt(param[1]);
 						}
 					}
 				}
@@ -186,10 +189,19 @@ app.post('/upload', function(request, response) {
 				// add item to clients
 				var itemId = "item"+itemCount.toString();
 				var className = request.files[f].name.substring(0, request.files[f].name.length-3);
-				var newItem = {type: "canvas", id: itemId, src: localPath, left: 0, top: 0, width: cWidth, height: cHeight, aspectRatio: cAspect, extra: className};
+				var now = new Date();
+				var newItem = {type: "canvas", id: itemId, src: localPath, left: 0, top: 0, width: cWidth, height: cHeight, aspectRatio: cAspect, date: now, extra: className};
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
+				
+				// set interval timer if specified
+				if(cAnimation == "timer"){
+					setInterval(function() {
+						var now = new Date();
+						sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+					}, cInterval);
+				}
 			});
 		}
 		else{

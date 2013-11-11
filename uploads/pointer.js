@@ -6,12 +6,12 @@ function pointer(){
 	this.element = null;
 	this.ctx = null;
 	
-	this.init = function(id) {
+	this.init = function(id, date) {
 		this.element = document.getElementById(id);
 		this.ctx = this.element.getContext("2d");
 	}
 	
-	this.draw = function() {
+	this.draw = function(date) {
 		// clear canvas		
 		this.ctx.clearRect(0,0, this.element.width, this.element.height);
 		
