@@ -33,3 +33,8 @@ body {
 .sageItem {
 	display: block;
 }
+
+.pointerItem{
+    position:absolute;
+    display: block;
+}

@@ -12,6 +12,10 @@
 
 	var url;
 	var socket;
+    
+    //store total resolution so pointer events can be processed appropriately
+    var totalResolutionX;
+    var totalResolutionY;
 
 	document.addEventListener('mousemove', mouseMove, false);
 	document.addEventListener('mouseup', mouseRelease, false);
@@ -33,6 +37,10 @@
 		socket.on('setupDisplayConfiguration', function(json_cfg) {
 			var resolutionX = json_cfg.resolution.width;
 			var resolutionY = json_cfg.resolution.height;
+                  
+            totalResolutionX = resolutionX;
+            totalResolutionY = resolutionY;
+                  
 			offsetX = json_cfg.displays[clientID].column * resolutionX;
 			offsetY = json_cfg.displays[clientID].row * resolutionY;
 			console.log('offset: ' + offsetX + ', ' + offsetY);
@@ -81,6 +89,7 @@
 			}
 
 		});
+
 		
 		socket.on('itemSelected', function(elemId) {
 			var selectedElem = document.getElementById(elemId);
@@ -111,6 +120,45 @@
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
 		});
+		
+		
+		//----------------------------------------------------------------//
+        //---------------------------  POINTER  --------------------------//
+        //----------------------------------------------------------------//
+
+        socket.on('createPointer', function(pointerData){
+              var main = document.getElementById("main");
+              
+              var pointerImage = document.createElement("img");
+              pointerImage.id = pointerData.id;
+              pointerImage.className = "pointerItem";
+              pointerImage.aspectRatio = 36/48;//pointerData.aspectRatio;
+              pointerImage.width = 36;//pointerData.width;
+              pointerImage.height = 48;//pointerData.height;
+              pointerImage.style.left = (-100-offsetX).toString() + "px";
+              pointerImage.style.top = (-100-offsetY).toString() + "px";
+              pointerImage.src = pointerData.src;
+              pointerImage.draggable = false;
+              main.appendChild(pointerImage);
+
+          });
+        
+
+        //Single pointer only
+        socket.on('movePointer', function(position_data){
+            var selectedElem = document.getElementById(position_data.elemId);
+            elemLeftPix = position_data.elemLeft * totalResolutionX;
+            elemTopPix =  position_data.elemTop * totalResolutionY;
+
+            var eLeft = elemLeftPix - offsetX;
+            var eTop = elemTopPix - offsetY;
+
+            console.log( "pointer move: " + eLeft + " " + eTop );
+
+            selectedElem.style.left = eLeft.toString() + "px";
+            selectedElem.style.top = eTop.toString() + "px";
+          });
+        //-------------------------  END POINTER -------------------------//
 	}
 
 	function mousePress(event) {
