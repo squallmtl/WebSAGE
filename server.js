@@ -236,16 +236,31 @@ app.post('/upload', function(request, response) {
 			// once all files/folders have been extracted
 			zipfile.on('close', function() {
 				// read instructions for how to handle
-				var instuctionsFile = localPath.substring(0, localPath.length-4) + "/instructions.txt";
-				fs.readFile(instuctionsFile, 'utf8', function(err, data) {
+				var zipPath = localPath.substring(0, localPath.length-4);
+				var instuctionsFile = zipPath + "/instructions.json";
+				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 					if(err){
 						console.log('Error: ' + err);
 						return;
 					}
-					var lines = data.toString().split("\n");
-					console.log("Application Instructions");
-					for(i=0; i<lines.length; i++){
-						console.log("  " + lines[i]);
+					var instructions = JSON.parse(json_str);
+					
+					// add item to clients
+					var itemId = "item"+itemCount.toString();
+					var className = instructions.main_script.substring(0, instructions.main_script.length-3);
+					var now = new Date();
+					var aspect = instructions.width / instructions.height;
+					var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, extra: className};
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+						}, instructions.interval);
 					}
 				});
 				
