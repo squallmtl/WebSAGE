@@ -3,6 +3,7 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 var gm = require('gm');
+var unzip = require('unzip');
 
 var app = express();
 var hport = 9090;
@@ -203,6 +204,58 @@ app.post('/upload', function(request, response) {
 					}, cInterval);
 				}
 			});
+		}
+		else if(request.files[f].type == "application/zip"){
+			var parentDir = request.files[f].name.substring(0, request.files[f].name.length-4);
+			
+			// unzip file
+			var zipfile = fs.createReadStream(localPath).pipe(unzip.Parse());
+			zipfile.on('entry', function(entry) {
+				if(entry.path.substring(0, parentDir.length) == parentDir) {
+					if(entry.type == "Directory"){
+						var exist = fs.existsSync(__dirname + "/uploads/" + entry.path);
+						if(!exist) {
+							fs.mkdir(__dirname + "/uploads/" + entry.path, function(err) {
+								if(err) console.log(err);
+							});
+						}
+					}
+					else if(entry.type == "File"){
+						var output = fs.createWriteStream(__dirname + "/uploads/" + entry.path);
+						output.on('finish', function() {
+							console.log("finished writing: " + entry.path);
+						});
+						entry.pipe(output);
+					}
+				}
+				else {
+					entry.autodrain();
+				}
+			});
+			
+			// once all files/folders have been extracted
+			zipfile.on('close', function() {
+				// read instructions for how to handle
+				var instuctionsFile = localPath.substring(0, localPath.length-4) + "/instructions.txt";
+				fs.readFile(instuctionsFile, 'utf8', function(err, data) {
+					if(err){
+						console.log('Error: ' + err);
+						return;
+					}
+					var lines = data.toString().split("\n");
+					console.log("Application Instructions");
+					for(i=0; i<lines.length; i++){
+						console.log("  " + lines[i]);
+					}
+				});
+				
+				// delete original zip file
+				fs.unlink(localPath, function(err) {
+					if(err) console.log(err);
+				});
+			});
+			
+			//zipfile.pipe(unzip.Parse());
 		}
 		else{
 			console.log("Unknown type: " + request.files[f].type);
