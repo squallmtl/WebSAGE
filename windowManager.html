@@ -57,7 +57,7 @@
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
-		var url = event.dataTransfer.getData("Url");
+		var url = event.dataTransfer.getData("Text");
 		if(files.length > 0){
 			var formdata = new FormData();
 			for(i=0; i<files.length; i++){

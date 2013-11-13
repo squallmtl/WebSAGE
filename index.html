@@ -4,6 +4,7 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -84,7 +85,7 @@
   				
   				canvasJS.addEventListener('load', function(event) {
   					var canvas = new window[elem_data.extra];
-  					canvas.init(elem_data.id + "_canvas", date);
+  					canvas.init(elem_data.id + "_canvas", date, elem_data.resrc);
   					canvas.draw(date);
   					canvasItems[elem_data.id + "_canvas"] = canvas;
   				}, false);

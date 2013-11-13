@@ -84,10 +84,11 @@ sio.sockets.on('connection', function(socket) {
 				if(!err){
 					var aspect = size.width / size.height;
 					var now = new Date();
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, extra: ""};
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
+					console.log(this.source);
 				}
 				else{
 					console.log("Error: " + err);
@@ -98,10 +99,11 @@ sio.sockets.on('connection', function(socket) {
 			var aspect = 16/9;
 			var now = new Date();
 			var source = elem_data.src.replace("watch?v=", "embed/");
-			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, extra: ""};
+			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: ""};
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);
 			itemCount++;
+			console.log(source);
 		}
 	});
 
@@ -171,7 +173,7 @@ app.post('/upload', function(request, response) {
 				if(!err){
 					var aspect = size.width / size.height;
 					var now = new Date();
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, extra: ""};
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -226,7 +228,7 @@ app.post('/upload', function(request, response) {
 					var className = instructions.main_script.substring(0, instructions.main_script.length-3);
 					var now = new Date();
 					var aspect = instructions.width / instructions.height;
-					var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, extra: className};
+					var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, resrc: zipPath+"/", extra: className};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
