@@ -3,6 +3,7 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 var gm = require('gm');
+var unzip = require('unzip');
 
 var app = express();
 var hport = 9090;
@@ -43,17 +44,25 @@ var file = 'config/desktop-cfg.json';
 //var file = 'config/iridium-cfg.json';
 
 var config;
+var totalWidth;
+var totalHeight;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
 		console.log('Error: ' + err);
 		return;
 	}
 	config = JSON.parse(json_str);
+	totalWidth = config.resolution.width * config.layout.columns;
+	totalHeight = config.resolution.height * config.layout.rows;
 	console.log(config);
+	console.log("Total Resolution: " + totalWidth + "x" + totalHeight);
 });
 
 var itemCount = 0;//num windows 
 var items = [];//windows
+
+//var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
+//items.push(itemTest);
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -91,6 +100,35 @@ sio.sockets.on('connection', function(socket) {
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
+	
+	socket.on('addNewWebElement', function(elem_data) {
+		if(elem_data.type == "img"){
+			gm(elem_data.src).size(function(err, size) {
+				if(!err){
+					var aspect = size.width / size.height;
+					var now = new Date();
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+					console.log(this.source);
+				}
+				else{
+					console.log("Error: " + err);
+				}
+			});
+		}
+		else if(elem_data.type == "youtube"){
+			var aspect = 16/9;
+			var now = new Date();
+			var source = elem_data.src.replace("watch?v=", "embed/");
+			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: ""};
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+			console.log(source);
+		}
+	});
 
 	/* user-interaction methods */
 	var selectedMoveItem;
@@ -116,11 +154,11 @@ sio.sockets.on('connection', function(socket) {
 		if(selectedMoveItem == null) return;
 		selectedMoveItem.left = move_data.eventX + selectOffsetX;
 		selectedMoveItem.top = move_data.eventY + selectOffsetY;
-		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top});
+		var now = new Date();
+		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
-		console.log("scroll: " + elemId);
 		selectedScrollItem = findItemById(elemId);
 		selectedMoveItem = null;
 		sio.sockets.emit('itemSelected', selectedScrollItem.id);
@@ -138,34 +176,105 @@ sio.sockets.on('connection', function(socket) {
 		selectedScrollItem.top = iCenterY - (iHeight/2);
 		selectedScrollItem.width = iWidth;
 		selectedScrollItem.height = iHeight;
-		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height});
+		var now = new Date();
+		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
 	});
 });
 
 app.post('/upload', function(request, response) {
 	var i;
 	for(var f in request.files){
-		console.log(request.files[f]);
-		
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
 		fs.rename(request.files[f].path, finalPath);
 		
 		var localPath = finalPath.substring(__dirname.length+1);
+		console.log(localPath);
 		
 		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: localPath, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect};
+					var now = new Date();
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				}
 				else{
-					console.log(err);
+					console.log("Error: " + err);
 				}
 			});
+		}
+		else if(request.files[f].type == "application/zip"){
+			var parentDir = request.files[f].name.substring(0, request.files[f].name.length-4);
+			
+			// unzip file
+			var zipfile = fs.createReadStream(localPath).pipe(unzip.Parse());
+			zipfile.on('entry', function(entry) {
+				if(entry.path.substring(0, parentDir.length) == parentDir) {
+					if(entry.type == "Directory"){
+						var exist = fs.existsSync(__dirname + "/uploads/" + entry.path);
+						if(!exist) {
+							fs.mkdir(__dirname + "/uploads/" + entry.path, function(err) {
+								if(err) console.log(err);
+							});
+						}
+					}
+					else if(entry.type == "File"){
+						var output = fs.createWriteStream(__dirname + "/uploads/" + entry.path);
+						output.on('finish', function() {
+							console.log("finished writing: " + entry.path);
+						});
+						entry.pipe(output);
+					}
+				}
+				else {
+					entry.autodrain();
+				}
+			});
+			
+			// once all files/folders have been extracted
+			zipfile.on('close', function() {
+				// read instructions for how to handle
+				var zipPath = localPath.substring(0, localPath.length-4);
+				var instuctionsFile = zipPath + "/instructions.json";
+				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
+					if(err){
+						console.log('Error: ' + err);
+						return;
+					}
+					var instructions = JSON.parse(json_str);
+					
+					// add item to clients
+					var itemId = "item"+itemCount.toString();
+					var className = instructions.main_script.substring(0, instructions.main_script.length-3);
+					var now = new Date();
+					var aspect = instructions.width / instructions.height;
+					var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, resrc: zipPath+"/", extra: className};
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+						}, instructions.interval);
+					}
+				});
+				
+				// delete original zip file
+				fs.unlink(localPath, function(err) {
+					if(err) console.log(err);
+				});
+			});
+			
+			//zipfile.pipe(unzip.Parse());
+		}
+		else{
+			console.log("Unknown type: " + request.files[f].type);
 		}
 	}
 	

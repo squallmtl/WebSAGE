@@ -5,6 +5,7 @@
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
+<script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -17,12 +18,16 @@
     //store total resolution so pointer events can be processed appropriately
     var totalResolutionX;
     var totalResolutionY;
+	
+	var canvasItems = {};
 
 	document.addEventListener('mousemove', mouseMove, false);
 	document.addEventListener('mouseup', mouseRelease, false);
 	document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
+		//document.body.style.cursor = 'text';
+	
 		url = window.location.origin;
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
@@ -48,18 +53,20 @@
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
+			var date = new Date(elem_data.date);
+		
+			var main = document.getElementById("main");
+				
+			var windowItem = document.createElement("div");
+			windowItem.id = elem_data.id;
+			windowItem.className = "windowItem";
+			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
+			windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
+			windowItem.addEventListener('mousedown', mousePress, false);
+			windowItem.addEventListener('mousewheel', scrollSelect, false);
+			main.appendChild(windowItem);
+			
 			if(elem_data.type == "img"){
-				var main = document.getElementById("main");
-				
-				var windowItem = document.createElement("div");
-				windowItem.id = elem_data.id;
-				windowItem.className = "windowItem";
-				windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
-				windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
-				windowItem.addEventListener('mousedown', mousePress, false);
-				windowItem.addEventListener('mousewheel', scrollSelect, false);
-				main.appendChild(windowItem);
-				
 				var img = document.createElement("img");
 				img.className = "sageItem";
 				img.aspectRatio = elem_data.aspectRatio;
@@ -88,16 +95,49 @@
                 ifrm.style.height = elem_data.height + "px"; // 480+"px"; 
                 windowItem.appendChild(ifrm); 
                 
-                socket.on('pointerClick', function(x, y) {
-                    var event = document.createEvent("MouseEvents"); 
-                    event.type = "click";
-                    event.x = x;
-                    event.y = y; 
-                    
-                    ifrm.fireEvent('onclick', event ) ; 
-                });
+//                 socket.on('pointerClick', function(x, y) {
+//                     var event = document.createEvent("MouseEvents"); 
+//                     event.type = "click";
+//                     event.x = x;
+//                     event.y = y; 
+//                     
+//                     ifrm.fireEvent('onclick', event ) ; 
+//                 });
 			}
-
+			else if(elem_data.type == "canvas"){
+				var canvas2d = document.createElement("canvas");
+				canvas2d.id = elem_data.id + "_canvas"
+				canvas2d.className = "sageItem";
+				canvas2d.aspectRatio = elem_data.aspectRatio;
+				canvas2d.width = elem_data.width;
+				canvas2d.height = elem_data.height;
+				
+				windowItem.appendChild(canvas2d);
+				
+				var canvasJS = document.createElement('script')
+  				canvasJS.type = "text/javascript";
+  				canvasJS.src = elem_data.src;
+  				document.getElementsByTagName("head")[0].appendChild(canvasJS);
+  				
+  				canvasJS.addEventListener('load', function(event) {
+  					var canvas = new window[elem_data.extra];
+  					canvas.init(elem_data.id + "_canvas", date, elem_data.resrc);
+  					canvas.draw(date);
+  					canvasItems[elem_data.id + "_canvas"] = canvas;
+  				}, false);
+			}
+			else if(elem_data.type == "youtube"){
+				console.log(elem_data.src);
+				var frame = document.createElement("iframe");
+				frame.className = "sageItem";
+				frame.aspectRatio = elem_data.aspectRatio;
+				frame.width = elem_data.width;
+				frame.height = elem_data.height;
+				frame.src = elem_data.src+"?autoplay=1&vq=hd1080";
+				frame.frameborder = "0";
+				
+				windowItem.appendChild(frame);
+			}
 		});
 
 		
@@ -108,6 +148,7 @@
 		});
 		
 		socket.on('setItemPosition', function(position_data) {
+			var date = new Date(position_data.date);
 			var selectedElem = document.getElementById(position_data.elemId);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -118,6 +159,7 @@
 		});
 		
 		socket.on('setItemPositionAndSize', function(position_data) {
+			var date = new Date(position_data.date);
 			var selectedElem = document.getElementById(position_data.elemId);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -129,6 +171,20 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
+			
+			if(child[0].tagName.toLowerCase() == "canvas"){
+				canvasItems[child[0].id].draw(date)
+			}
+		});
+		
+		socket.on('animateCanvas', function(animate_data) {
+			var date = new Date(animate_data.date);
+			
+			var canvasElem = document.getElementById(animate_data.elemId);
+			var child = canvasElem.getElementsByClassName("sageItem");
+			if(child[0].tagName.toLowerCase() == "canvas"){
+				canvasItems[child[0].id].draw(date);
+			}
 		});
 		
 		
@@ -259,7 +315,6 @@
 
 <body onload="init()" onclick="console.log(window.event)">
 	<div id="main">
-		
 	</div>
 </body>
 </html>

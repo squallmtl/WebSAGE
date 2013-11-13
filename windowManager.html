@@ -32,6 +32,7 @@
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
+<<<<<<< HEAD
 			if(elem_data.type == "img"){
 				winMgr.addNewElement(elem_data);
 			}
@@ -40,6 +41,9 @@
                   var aspect = elem_data.width / elem_data.height;
                   winMgr.addNewElement({type: "site", id: elem_data.id, left: 0, top: 0, width: elem_data.width, height: elem_data.height, aspectRatio: aspect});
             }
+=======
+			winMgr.addNewElement(elem_data);
+>>>>>>> master
 		});
 		
 		socket.on('itemSelected', function(elemId) {
@@ -64,12 +68,25 @@
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
-		var formdata = new FormData();
-		for(i=0; i<files.length; i++){
-			formdata.append("file"+i.toString(), files[i]);
+		var url = event.dataTransfer.getData("Text");
+		if(files.length > 0){
+			var formdata = new FormData();
+			for(i=0; i<files.length; i++){
+				formdata.append("file"+i.toString(), files[i]);
+			}
 			xhr = new XMLHttpRequest();
 			xhr.open("POST", "/upload", true);
 			xhr.send(formdata);
+		}
+		else if(url != null){
+			var urlType = "";
+			var youtube = url.indexOf("www.youtube.com");
+			var ext = url.substring(url.lastIndexOf('.')+1);
+			if(youtube >= 0) urlType = "youtube";
+			else if(ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "bmp") urlType = "img";
+			
+			console.log("URL: " + url + ", type: " + urlType);
+			socket.emit('addNewWebElement', {type: urlType, src: url});
 		}
 	}
 	
