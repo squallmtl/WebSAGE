@@ -89,6 +89,18 @@
   					canvasItems[elem_data.id + "_canvas"] = canvas;
   				}, false);
 			}
+			else if(elem_data.type == "youtube"){
+				console.log(elem_data.src);
+				var frame = document.createElement("iframe");
+				frame.className = "sageItem";
+				frame.aspectRatio = elem_data.aspectRatio;
+				frame.width = elem_data.width;
+				frame.height = elem_data.height;
+				frame.src = elem_data.src+"?autoplay=1&vq=hd1080";
+				frame.frameborder = "0";
+				
+				windowItem.appendChild(frame);
+			}
 		});
 		
 		socket.on('itemSelected', function(elemId) {

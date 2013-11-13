@@ -57,13 +57,26 @@
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
-		var formdata = new FormData();
-		for(i=0; i<files.length; i++){
-			formdata.append("file"+i.toString(), files[i]);
+		var url = event.dataTransfer.getData("Url");
+		if(files.length > 0){
+			var formdata = new FormData();
+			for(i=0; i<files.length; i++){
+				formdata.append("file"+i.toString(), files[i]);
+			}
+			xhr = new XMLHttpRequest();
+			xhr.open("POST", "/upload", true);
+			xhr.send(formdata);
 		}
-		xhr = new XMLHttpRequest();
-		xhr.open("POST", "/upload", true);
-		xhr.send(formdata);
+		else if(url != null){
+			var urlType = "";
+			var youtube = url.indexOf("www.youtube.com");
+			var ext = url.substring(url.lastIndexOf('.')+1);
+			if(youtube >= 0) urlType = "youtube";
+			else if(ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "bmp") urlType = "img";
+			
+			console.log("URL: " + url + ", type: " + urlType);
+			socket.emit('addNewWebElement', {type: urlType, src: url});
+		}
 	}
 	
 </script>

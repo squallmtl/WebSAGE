@@ -77,6 +77,33 @@ sio.sockets.on('connection', function(socket) {
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
+	
+	socket.on('addNewWebElement', function(elem_data) {
+		if(elem_data.type == "img"){
+			gm(elem_data.src).size(function(err, size) {
+				if(!err){
+					var aspect = size.width / size.height;
+					var now = new Date();
+					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, extra: ""};
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				}
+				else{
+					console.log("Error: " + err);
+				}
+			});
+		}
+		else if(elem_data.type == "youtube"){
+			var aspect = 16/9;
+			var now = new Date();
+			var source = elem_data.src.replace("watch?v=", "embed/");
+			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, extra: ""};
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+		}
+	});
 
 	/* user-interaction methods */
 	var selectedMoveItem;
@@ -151,57 +178,6 @@ app.post('/upload', function(request, response) {
 				}
 				else{
 					console.log("Error: " + err);
-				}
-			});
-		}
-		else if(request.files[f].type == "application/x-javascript"){
-			// default values
-			var cWidth = Math.round(totalWidth / 4);
-			var cHeight = Math.round(totalHeight / 4);
-			var cAnimation = "none";
-			var cInterval = 16;
-			
-			// read file for WebSAGE information
-			fs.readFile(localPath, 'utf8', function(err, data) {
-				if(err){
-					console.log('Error: ' + err);
-					return;
-				}
-				var lines = data.toString().split("\n");
-				for(i=0; i<lines.length; i++){
-					if(lines[i].substring(0,6) == "//WS: "){
-						var param = lines[i].substring(6).split("=");
-						if(param[0] == "width"){
-							cWidth = parseInt(param[1]);
-						}
-						else if(param[0] == "height"){
-							cHeight = parseInt(param[1]);
-						}
-						else if(param[0] == "animation"){
-							cAnimation = param[1];
-						}
-						else if(param[0] == "interval"){
-							cInterval = parseInt(param[1]);
-						}
-					}
-				}
-				var cAspect = cWidth / cHeight;
-			
-				// add item to clients
-				var itemId = "item"+itemCount.toString();
-				var className = request.files[f].name.substring(0, request.files[f].name.length-3);
-				var now = new Date();
-				var newItem = {type: "canvas", id: itemId, src: localPath, left: 0, top: 0, width: cWidth, height: cHeight, aspectRatio: cAspect, date: now, extra: className};
-				items.push(newItem);
-				sio.sockets.emit('addNewElement', newItem);
-				itemCount++;
-				
-				// set interval timer if specified
-				if(cAnimation == "timer"){
-					setInterval(function() {
-						var now = new Date();
-						sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
-					}, cInterval);
 				}
 			});
 		}
