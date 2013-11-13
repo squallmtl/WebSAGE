@@ -4,6 +4,7 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -38,8 +39,8 @@
 			var resolutionX = json_cfg.resolution.width;
 			var resolutionY = json_cfg.resolution.height;
                   
-            totalResolutionX = resolutionX;
-            totalResolutionY = resolutionY;
+            totalResolutionX = resolutionX * json_cfg.layout.columns;
+            totalResolutionY = resolutionY * json_cfg.layout.rows;
                   
 			offsetX = json_cfg.displays[clientID].column * resolutionX;
 			offsetY = json_cfg.displays[clientID].row * resolutionY;
@@ -86,6 +87,15 @@
                 ifrm.style.width =  elem_data.width +"px";//640+"px"; 
                 ifrm.style.height = elem_data.height + "px"; // 480+"px"; 
                 windowItem.appendChild(ifrm); 
+                
+                socket.on('pointerClick', function(x, y) {
+                    var event = document.createEvent("MouseEvents"); 
+                    event.type = "click";
+                    event.x = x;
+                    event.y = y; 
+                    
+                    ifrm.fireEvent('onclick', event ) ; 
+                });
 			}
 
 		});
@@ -126,38 +136,67 @@
         //---------------------------  POINTER  --------------------------//
         //----------------------------------------------------------------//
 
+        //----------CREATE POINTER-----------
         socket.on('createPointer', function(pointerData){
-              var main = document.getElementById("main");
-              
-              var pointerImage = document.createElement("img");
-              pointerImage.id = pointerData.id;
-              pointerImage.className = "pointerItem";
-              pointerImage.aspectRatio = 36/48;//pointerData.aspectRatio;
-              pointerImage.width = 36;//pointerData.width;
-              pointerImage.height = 48;//pointerData.height;
-              pointerImage.style.left = (-100-offsetX).toString() + "px";
-              pointerImage.style.top = (-100-offsetY).toString() + "px";
-              pointerImage.src = pointerData.src;
-              pointerImage.draggable = false;
-              main.appendChild(pointerImage);
+            var main = document.getElementById("main");
 
+            var pointerImage = document.getElementById( pointerData.id );
+            pointerImage = document.createElement("canvas"); //create canvas element
+            pointerImage.id = pointerData.id; 
+            pointerImage.className = "pointerItem";
+            pointerImage.aspectRatio = 36/48;//pointerData.aspectRatio;
+            pointerImage.width = 48*3;//pointerData.width;
+            pointerImage.height = 48;//pointerData.height;
+            pointerImage.style.left = (-100-offsetX).toString() + "px";
+            pointerImage.style.top = (-100-offsetY).toString() + "px";
+
+            main.appendChild(pointerImage); 
+
+            var ptr = new pointer() ; 
+            ptr.init(pointerImage.id, pointerData.label, pointerData.color) ;
+            ptr.draw(); 
+    
+            //----------MOVE POINTER-----------
+            socket.on('movePointer', function(position_data){
+                var selectedElem = document.getElementById(position_data.elemId);
+                elemLeftPix = position_data.elemLeft * totalResolutionX;
+                elemTopPix =  position_data.elemTop * totalResolutionY;
+
+                var eLeft = elemLeftPix - offsetX;
+                var eTop = elemTopPix - offsetY;
+
+                console.log( "pointer move: " + eLeft + " " + eTop );
+
+                selectedElem.style.left = eLeft.toString() + "px";
+                selectedElem.style.top = eTop.toString() + "px";
+              });
+              
+              socket.on('changeMode', function(mode){
+                ptr.setColor( [0, 0, 0, 1] );
+                ptr.draw();
+              });
           });
         
 
-        //Single pointer only
-        socket.on('movePointer', function(position_data){
-            var selectedElem = document.getElementById(position_data.elemId);
-            elemLeftPix = position_data.elemLeft * totalResolutionX;
-            elemTopPix =  position_data.elemTop * totalResolutionY;
-
-            var eLeft = elemLeftPix - offsetX;
-            var eTop = elemTopPix - offsetY;
-
-            console.log( "pointer move: " + eLeft + " " + eTop );
-
-            selectedElem.style.left = eLeft.toString() + "px";
-            selectedElem.style.top = eTop.toString() + "px";
-          });
+       //  //Single pointer only
+//         socket.on('movePointer', function(position_data){
+//             var selectedElem = document.getElementById(position_data.elemId);
+//             elemLeftPix = position_data.elemLeft * totalResolutionX;
+//             elemTopPix =  position_data.elemTop * totalResolutionY;
+// 
+//             var eLeft = elemLeftPix - offsetX;
+//             var eTop = elemTopPix - offsetY;
+// 
+//             console.log( "pointer move: " + eLeft + " " + eTop );
+// 
+//             selectedElem.style.left = eLeft.toString() + "px";
+//             selectedElem.style.top = eTop.toString() + "px";
+//             
+//             var script = selectedElem.getElement("script"); 
+// //             pointer().color = "rgba(255, 0, 0, 1)";
+//             
+// //             selectedElem.
+//           });
         //-------------------------  END POINTER -------------------------//
 	}
 
@@ -218,7 +257,7 @@
 
 </head>
 
-<body onload="init()">
+<body onload="init()" onclick="console.log(window.event)">
 	<div id="main">
 		
 	</div>
