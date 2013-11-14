@@ -398,18 +398,26 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
-                                        //console.log("\t zoom ");
+//                                         console.log("\t zoom ");
                                         if (e.sourceId in ptrs) {
 //                                                 ptrs[e.sourceId].position = [e.posx, e.posy];
 //                                                 ptrs[e.sourceId].zoom = 1;
-
+                                                zoom = 1; 
                                                 if (offset < msg.length) {
                                                         // One int for zoom value
                                                         if (e.extraDataType == 2 && e.extraDataItems == 1) {
+                                                                //which elem:
+                                                                
+                                                        
                                                                 e.extraInt = msg.readInt32LE(offset);
-                                                                offset += 4;
+                                                                offset += 4
+                                                                zoom = e.extraInt; 
+;
 //                                                                 ptrs[e.sourceId].zoom = e.extraInt;
-                                                            sio.sockets.emit( 'pointerScroll', {elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy, elemZoom: e.extraInt} ); 
+//                                                             sio.sockets.emit( 'pointerScroll', {elemId: e.sourceId, x: e.posx, y: e.posy, elemZoom: zoom} ); 
+
+                                                                //first find element under pointer
+                                                                //then implement the scroll  
                                                         }
                                                 }
                                         }
@@ -525,4 +533,17 @@ function findItemById(id) {
 	for(var i=0; i<items.length; i++){
 		if(items[i].id == id) return items[i];
 	}
+}
+
+function findItemByPosition(x, y){
+    for(var i=0; i<items.length; i++){
+        var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) {   // the check for top!   
+		    return items[i];
+        }
+	}
+
 }

@@ -242,14 +242,17 @@
                 selectedElem.style.left = eLeft.toString() + "px";
                 selectedElem.style.top = eTop.toString() + "px";
               });
-              
-              socket.on('ponterScroll', function(scroll_data){
-                console.log(scroll_data.elemZoom );
-                //var scale = 1.0 + Math.abs(event.wheelDelta)/256;
-                //if(event.wheelDelta < 0) scale = 1.0 / scale;		
-//                 socket.emit('scrollSelectedElement', scroll_);
+            
+            socket.on('pointerScroll', function(scroll_data){
+                console.log("zoom   " );
+                
+                event = document.createEvent("MouseEvent");   
+                event.x = scroll_data.x * totalResolutionX - offsetX;
+                event.y = scroll_data.y * totalResolutionY - offsetY;   
+                //need target
+                pointerScrollSelect( event, scroll_data.elemZoom );
               });
-              
+          
               socket.on('changeMode', function(mode){
                 ptr.setColor( [0, 0, 0, 1] );
                 ptr.draw();
@@ -314,6 +317,14 @@
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
 		
 		socket.emit('scrollSelectedElement', scale);
+	}
+	
+	function pointerScrollSelect(event, zoom){
+	    console.log("in pointer scroll select");
+        socket.emit('selectScrollElementById', event.currentTarget.id);
+        if(zoom < 0) zoom = 1.0 / zoom;
+
+        socket.emit('scrollSelectedElement', zoom);
 	}
 	
 	function moveItemToFront(elem) {
