@@ -20,6 +20,7 @@
     var totalResolutionY;
 	
 	var canvasItems = {};
+	var interactableItems = {}; //stores items that should receive events
 
 	document.addEventListener('mousemove', mouseMove, false);
 	document.addEventListener('mouseup', mouseRelease, false);
@@ -77,23 +78,32 @@
 				
 				windowItem.appendChild(img);
 			}
-			if(elem_data.type == "site"){
-                var main = document.getElementById("main");
-                
-                var windowItem = document.createElement("div");
-                windowItem.id = elem_data.id;
-				windowItem.className = "windowItem";
-				windowItem.style.left = (-offsetX).toString() + "px";
-				windowItem.style.top = (-offsetY).toString() + "px";
-				windowItem.addEventListener('mousedown', mousePress, false);
-				windowItem.addEventListener('mousewheel', scrollSelect, false);
-				main.appendChild(windowItem);
-                
+			else if(elem_data.type == "site"){
+// 			    var border = 10; 
+//                 var sageItm = document.createElement("div");
+// //                 sageItm.id = elem_data.id + "sageItm"; 
+// //                 sageItm.addEventListener('mousedown', mousePress, false);
+// //                 sageItm.addEventListener('mousewheel', scrollSelect, false);
+// 				sageItm.className = "sageItem";
+// 				sageItm.aspectRatio = ( elem_data.width + border )/(elem_data.height + border);
+// 				sageItm.width = elem_data.width+border;
+// 				sageItm.height = elem_data.height+border;
+// 				sageItm.src = elem_data.src;
+// 				sageItm.draggable = false;
+// 				
+// 				windowItem.appendChild(sageItm);
+			
                 var ifrm = document.createElement("IFRAME"); 
-                ifrm.setAttribute("src", elem_data.src); 
-                ifrm.style.width =  elem_data.width +"px";//640+"px"; 
-                ifrm.style.height = elem_data.height + "px"; // 480+"px"; 
+//                 ifrm.className = "siteItem";
+				ifrm.id = elem_data.id + "_site"
+                ifrm.className = "sageItem";
+                ifrm.src = elem_data.src; 
+                ifrm.width =  elem_data.width;
+                ifrm.height = elem_data.height;
+//                 ifrm.style.border = "border: solid " + border + "px #afb7ed"; //does not work... 
                 windowItem.appendChild(ifrm); 
+
+//                 sageItm.appendChild(ifrm); 
                 
 //                 socket.on('pointerClick', function(x, y) {
 //                     var event = document.createEvent("MouseEvents"); 
@@ -174,6 +184,12 @@
 			
 			if(child[0].tagName.toLowerCase() == "canvas"){
 				canvasItems[child[0].id].draw(date)
+			}
+			if( child[0].tagName.toLowerCase() == "iframe"){ //resize an iframe
+			    console.log("side resized");
+                var e = document.createEvent('HTMLEvents');
+                e.initEvent('resize', true, false);
+                child[0].dispatchEvent(e);
 			}
 		});
 		

@@ -32,18 +32,15 @@
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
-<<<<<<< HEAD
-			if(elem_data.type == "img"){
-				winMgr.addNewElement(elem_data);
-			}
-            if( elem_data.type == 'site')
-            {
-                  var aspect = elem_data.width / elem_data.height;
-                  winMgr.addNewElement({type: "site", id: elem_data.id, left: 0, top: 0, width: elem_data.width, height: elem_data.height, aspectRatio: aspect});
-            }
-=======
+// 			if(elem_data.type == "img"){
+// 				winMgr.addNewElement(elem_data);
+// 			}
+//             if( elem_data.type == 'site')
+//             {
+//                   var aspect = elem_data.width / elem_data.height;
+//                   winMgr.addNewElement({type: "site", id: elem_data.id, left: 0, top: 0, width: elem_data.width, height: elem_data.height, aspectRatio: aspect});
+//             }
 			winMgr.addNewElement(elem_data);
->>>>>>> master
 		});
 		
 		socket.on('itemSelected', function(elemId) {
@@ -68,7 +65,7 @@
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
-		var url = event.dataTransfer.getData("Text");
+		var url = event.dataTransfer.getData("Url");
 		if(files.length > 0){
 			var formdata = new FormData();
 			for(i=0; i<files.length; i++){

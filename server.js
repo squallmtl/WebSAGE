@@ -90,9 +90,6 @@ sio.sockets.on('connection', function(socket) {
 
 //    socket.emit('addNewElement',  {type: "site", id: "webglExample1", src: "http://webglsamples.googlecode.com/hg/blob/blob.html", width: 1000, height: 800 });
 ////    socket.emit('addNewElement',  {type: "site", id: "webglExample2", src: "http://threejs.org/examples/#webgl_animation_skinning_morph", width: 1000, height: 800 });  //Good test of synchronization
-//
-        socket.emit('addNewElement',  {type: "site", id: "webglExample2", src: "http://threejs.org/examples/#webgl_animation_skinning_morph", width: 1000, height: 800 });  //Good test of synchronization
-        items.push( 
                
    /* test pointer */
 //    socket.emit('createPointer', {type: 'ptr', id: '0', src: "resources/mouse-pointer-hi.png" });
@@ -128,7 +125,18 @@ sio.sockets.on('connection', function(socket) {
 			itemCount++;
 			console.log(source);
 		}
+		else if(elem_data.type = "site" ){
+            var aspect = 16/9;
+			var now = new Date();
+            var newItem ={type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+			console.log(elem_data.src);
+		}
 	});
+	
+	socket.emit("addNewWebElement", {src: "http://webglsamples.googlecode.com/hg/blob/blob.html" });
 
 	/* user-interaction methods */
 	var selectedMoveItem;
