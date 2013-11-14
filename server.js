@@ -393,8 +393,6 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 else if (e.type == 4) { // move
                                         //console.log("\t move ", e.posx, e.posy);
                                         if (e.sourceId in ptrs) {
-//                                                 ptrs[e.sourceId].position = [e.posx, e.posy];
-//                                                 ptrs[e.sourceId].zoom = 0;
                                            sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
                                         }
                                 }
