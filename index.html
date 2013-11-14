@@ -4,7 +4,6 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -41,6 +40,13 @@
 			offsetX = json_cfg.displays[clientID].column * resolutionX;
 			offsetY = json_cfg.displays[clientID].row * resolutionY;
 			console.log('offset: ' + offsetX + ', ' + offsetY);
+		});
+		
+		socket.on('addScript', function(source) {
+			var js = document.createElement('script')
+  			js.type = "text/javascript";
+  			js.src = source;
+  			document.head.appendChild(js);
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
@@ -81,7 +87,7 @@
 				var canvasJS = document.createElement('script')
   				canvasJS.type = "text/javascript";
   				canvasJS.src = elem_data.src;
-  				document.getElementsByTagName("head")[0].appendChild(canvasJS);
+  				document.head.appendChild(canvasJS);
   				
   				canvasJS.addEventListener('load', function(event) {
   					var canvas = new window[elem_data.extra];

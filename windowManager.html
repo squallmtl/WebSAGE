@@ -57,7 +57,8 @@
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
-		var url = event.dataTransfer.getData("Text");
+		var url = event.dataTransfer.getData("Url");
+		var text = event.dataTransfer.getData("Text");
 		if(files.length > 0){
 			var formdata = new FormData();
 			for(i=0; i<files.length; i++){
@@ -67,15 +68,16 @@
 			xhr.open("POST", "/upload", true);
 			xhr.send(formdata);
 		}
-		else if(url != null){
+		else if(url != null || text != null){
+			var dataUrl = (url.length > text.length) ? url : text;
 			var urlType = "";
-			var youtube = url.indexOf("www.youtube.com");
-			var ext = url.substring(url.lastIndexOf('.')+1);
+			var youtube = dataUrl.indexOf("www.youtube.com");
+			var ext = dataUrl.substring(url.lastIndexOf('.')+1);
 			if(youtube >= 0) urlType = "youtube";
 			else if(ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "bmp") urlType = "img";
 			
-			console.log("URL: " + url + ", type: " + urlType);
-			socket.emit('addNewWebElement', {type: urlType, src: url});
+			console.log("URL: " + dataUrl + ", type: " + urlType);
+			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
 	}
 	
