@@ -2,8 +2,9 @@ var express = require("express");
 var http = require('http');
 var fs = require('fs');
 var path = require('path');
-var gm = require('gm');
 var unzip = require('unzip');
+var gm = require('gm');
+var ytdl = require('ytdl');
 
 var app = express();
 var hport = 9090;
@@ -116,14 +117,24 @@ sio.sockets.on('connection', function(socket) {
 			});
 		}
 		else if(elem_data.type == "youtube"){
-			var aspect = 16/9;
-			var now = new Date();
-			var source = elem_data.src.replace("watch?v=", "embed/");
-			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: ""};
-			items.push(newItem);
-			sio.sockets.emit('addNewElement', newItem);
-			itemCount++;
-			console.log(source);
+			ytdl.getInfo(elem_data.src, function(err, info){
+				for(i=0; i<info.formats.length; i++){
+					if(info.formats[i].container == "mp4"){
+						var aspect = 16/9;
+						var now = new Date();
+						var resolutionY = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
+						var resolutionX = resolutionY * aspect;
+						var poster = info.iurlmaxres;
+						if(poster == null) poster = info.iurlsd;
+						var newItem = {type: "video", id: "item"+itemCount.toString(), src: info.formats[i].url, left: 0, top: 0, width: resolutionX, height: resolutionY, aspectRatio: aspect, date: now, resrc: "", extra: poster};
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
+			});
 		}
 		else if(elem_data.type = "site" ){
             var aspect = 16/9;
@@ -254,23 +265,32 @@ app.post('/upload', function(request, response) {
 					}
 					var instructions = JSON.parse(json_str);
 					
-					// add item to clients
-					var itemId = "item"+itemCount.toString();
-					var className = instructions.main_script.substring(0, instructions.main_script.length-3);
-					var now = new Date();
-					var aspect = instructions.width / instructions.height;
-					var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, resrc: zipPath+"/", extra: className};
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
-					itemCount++;
-				
-					// set interval timer if specified
-					if(instructions.animation == "timer"){
-						setInterval(function() {
-							var now = new Date();
-							sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
-						}, instructions.interval);
+					// add resource scripts to clients
+					for(i=0; i<instructions.resources.length; i++){
+						if(instructions.resources[i].type == "script"){
+							sio.sockets.emit('addScript', zipPath+"/"+instructions.resources[i].src);
+						}
 					}
+					
+					// add item to clients (after waiting 1 second to ensure resources have loaded)
+					setTimeout(function() {
+						var itemId = "item"+itemCount.toString();
+						var className = instructions.main_script.substring(0, instructions.main_script.length-3);
+						var now = new Date();
+						var aspect = instructions.width / instructions.height;
+						var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, resrc: zipPath+"/", extra: className};
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+				
+						// set interval timer if specified
+						if(instructions.animation == "timer"){
+							setInterval(function() {
+								var now = new Date();
+								sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+							}, instructions.interval);
+						}
+					}, 1000);
 				});
 				
 				// delete original zip file
