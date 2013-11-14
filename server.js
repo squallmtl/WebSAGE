@@ -4,7 +4,6 @@ var fs = require('fs');
 var path = require('path');
 var unzip = require('unzip');
 var gm = require('gm');
-var youtube = require('youtube-feeds');
 var ytdl = require('ytdl');
 
 var app = express();
@@ -98,29 +97,24 @@ sio.sockets.on('connection', function(socket) {
 			});
 		}
 		else if(elem_data.type == "youtube"){
-			var vid = elem_data.src.substring(elem_data.src.indexOf("v=") + 2);
-			youtube.video(vid, function(e, youtube_data){
-				var ytmp4 = fs.createWriteStream("videos/" + youtube_data.title + ".mp4");
-				ytmp4.on('close', function() {
-					console.log("Finished downloading: " + youtube_data.title + ".mp4")
-				});
-				var download = ytdl(elem_data.src);
-				download.pipe(ytmp4);
-				console.log(download);
-				
-				if(e) console.log(e);
+			ytdl.getInfo(elem_data.src, function(err, info){
+				for(i=0; i<info.formats.length; i++){
+					if(info.formats[i].container == "mp4"){
+						var aspect = 16/9;
+						var now = new Date();
+						var resolutionY = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
+						var resolutionX = resolutionY * aspect;
+						var poster = info.iurlmaxres;
+						if(poster == null) poster = info.iurlsd;
+						var newItem = {type: "video", id: "item"+itemCount.toString(), src: info.formats[i].url, left: 0, top: 0, width: resolutionX, height: resolutionY, aspectRatio: aspect, date: now, resrc: "", extra: poster};
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
 			});
-			
-			/*
-			var aspect = 16/9;
-			var now = new Date();
-			var source = elem_data.src.replace("watch?v=", "embed/");
-			var newItem = {type: "youtube", id: "item"+itemCount.toString(), src: source, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: ""};
-			items.push(newItem);
-			sio.sockets.emit('addNewElement', newItem);
-			itemCount++;
-			console.log(source);
-			*/
 		}
 	});
 

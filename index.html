@@ -65,6 +65,7 @@
 			
 			if(elem_data.type == "img"){
 				var img = document.createElement("img");
+				img.id = elem_data.id + "_img";
 				img.className = "sageItem";
 				img.aspectRatio = elem_data.aspectRatio;
 				img.width = elem_data.width;
@@ -96,17 +97,22 @@
   					canvasItems[elem_data.id + "_canvas"] = canvas;
   				}, false);
 			}
-			else if(elem_data.type == "youtube"){
-				console.log(elem_data.src);
-				var frame = document.createElement("iframe");
-				frame.className = "sageItem";
-				frame.aspectRatio = elem_data.aspectRatio;
-				frame.width = elem_data.width;
-				frame.height = elem_data.height;
-				frame.src = elem_data.src+"?autoplay=1&vq=hd1080";
-				frame.frameborder = "0";
+			else if(elem_data.type == "video"){
+				var vid = document.createElement("video");
+				vid.id = elem_data.id + "_video";
+				vid.className = "sageItem";
+				vid.aspectRatio = elem_data.aspectRatio;
+				vid.width = elem_data.width;
+				vid.height = elem_data.height;
+				vid.controls = true;
+				vid.poster = elem_data.extra;
 				
-				windowItem.appendChild(frame);
+				var source = document.createElement("source");
+				source.src = elem_data.src;
+				source.type = "video/mp4";
+				vid.appendChild(source);
+				
+				windowItem.appendChild(vid);
 			}
 		});
 		
