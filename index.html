@@ -9,6 +9,8 @@
 	var clientID;
 	var offsetX;
 	var offsetY;
+	var titleBarHeight;
+	var titleTextSize;
 
 	var url;
 	var socket;
@@ -39,6 +41,8 @@
 			var resolutionY = json_cfg.resolution.height;
 			offsetX = json_cfg.displays[clientID].column * resolutionX;
 			offsetY = json_cfg.displays[clientID].row * resolutionY;
+			titleBarHeight = 0.03 * (json_cfg.resolution.height * json_cfg.layout.rows);
+			titleTextSize = 0.6 * titleBarHeight;
 			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
@@ -62,6 +66,20 @@
 			windowItem.addEventListener('mousedown', mousePress, false);
 			windowItem.addEventListener('mousewheel', scrollSelect, false);
 			main.appendChild(windowItem);
+			
+			var windowTitle = document.createElement("div");
+			windowTitle.id = elem_data.id + "_title";
+			windowTitle.className = "windowTitle";
+			windowTitle.style.height = Math.round(titleBarHeight) + "px";
+			windowItem.appendChild(windowTitle);
+			
+			var titleText = document.createElement("p");
+			titleText.style.lineHeight = Math.round(titleBarHeight) + "px";
+			titleText.style.fontSize = Math.round(titleTextSize) + "px";
+			titleText.style.color = "#FFFFFF";
+			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
+			titleText.textContent = "Window Title";
+			windowTitle.appendChild(titleText);
 			
 			if(elem_data.type == "img"){
 				var img = document.createElement("img");

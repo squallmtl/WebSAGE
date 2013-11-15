@@ -1,5 +1,6 @@
 var express = require("express");
 var http = require('http');
+var request = require('request');
 var fs = require('fs');
 var path = require('path');
 var unzip = require('unzip');
@@ -60,9 +61,6 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 var itemCount = 0;
 var items = [];
 
-//var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
-//items.push(itemTest);
-
 sio.sockets.on('connection', function(socket) {
 	var i;
 	var address = socket.handshake.address;
@@ -81,20 +79,33 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('addNewWebElement', function(elem_data) {
 		if(elem_data.type == "img"){
-			gm(elem_data.src).size(function(err, size) {
-				if(!err){
-					var aspect = size.width / size.height;
-					var now = new Date();
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
-					itemCount++;
-					console.log(this.source);
-				}
-				else{
-					console.log("Error: " + err);
-				}
+			var fileName = "tmp/" + elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+			var tmpFile = fs.createWriteStream(fileName);
+			request(elem_data.src).pipe(tmpFile);
+			
+			tmpFile.on('finish', function() {
+				gm(fileName).size(function(err, size) {
+					if(!err){
+						var aspect = size.width / size.height;
+						var now = new Date();
+						var newItem = {type: "img", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						console.log(elem_data.src);
+						
+						// delete tmp file
+						fs.unlink(fileName, function(err) {
+							if(err) console.log(err);
+						});
+					}
+					else{
+						console.log("Error: " + err);
+					}
+				});
+				
 			});
+			
 		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
@@ -180,6 +191,16 @@ app.post('/upload', function(request, response) {
 		console.log(localPath);
 		
 		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
+			fs.readFile(localPath, function(err, data) {
+				if(err) console.log(err);
+				
+				console.log(data);
+				var info = imageinfo(data);
+				console.log("Data is type:", info.mimeType);
+				console.log("  Size:", data.length, "bytes");
+				console.log("  Dimensions:", info.width, "x", info.height);
+			});
+			
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;

@@ -6,6 +6,7 @@ function windowManager(id, sock) {
 	this.nCols = 0;
 	this.aspectRatio = 1.0;
 	this.scale = 1.0;
+	this.titleBarHeight = 0;
 	this.items = [];
 	
 	var widthPercent = this.element.style.width;
@@ -21,19 +22,34 @@ function windowManager(id, sock) {
 		var i;
 		
 		/* draw display background */
-		this.ctx.fillStyle = "rgba(200, 200, 200, 255)";
+		this.ctx.fillStyle = "rgba(200, 200, 200, 1.0)";
 		this.ctx.fillRect(0,0, this.element.width, this.element.height);
         
         
 		/* draw all items */
-		this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
-		this.ctx.lineWidth = 2;
-		this.ctx.strokeStyle = "rgba(90, 90, 90, 255)";
 		for(i=0; i<this.items.length; i++){
+			// item
+			this.ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+			this.ctx.lineWidth = 2;
+			this.ctx.strokeStyle = "rgba(90, 90, 90, 1.0)";
+			
 			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
+			var eTop = (this.items[i].top+this.titleBarHeight) * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
+			
+			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
+			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
+			
+			// title bar
+			this.ctx.fillStyle = "rgba(102, 102, 102, 1.0)";
+			this.ctx.lineWidth = 2;
+			this.ctx.strokeStyle = "rgba(90, 90, 90, 1.0)";
+			
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = (this.items[i].top) * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.titleBarHeight * this.scale;
 			
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
@@ -42,7 +58,7 @@ function windowManager(id, sock) {
 		
 		/* draw tiled display layout */
 		this.ctx.lineWidth = 2;
-		this.ctx.strokeStyle = "rgba(0, 0, 0, 255)";
+		this.ctx.strokeStyle = "rgba(0, 0, 0, 1.0)";
 		this.ctx.strokeRect(0,0, this.element.width, this.element.height);
 		
 		var stepX = this.element.width/this.nCols;
@@ -68,13 +84,15 @@ function windowManager(id, sock) {
 		var rect = this.element.getBoundingClientRect();
 		var mouseX = event.clientX - rect.left;
 		var mouseY = event.clientY - rect.top;
+		console.log(event.clientX + ", " + mouseX);
+		console.log(event.clientY + ", " + mouseY);
 		var globalX = mouseX / this.scale;
 		var globalY = mouseY / this.scale;
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
 			var eWidth = this.items[i].width * this.scale;
-			var eHeight = this.items[i].height * this.scale;
+			var eHeight = (this.items[i].height+this.titleBarHeight) * this.scale;
 			
 			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
 				var selectOffsetX = this.items[i].left - globalX;
@@ -120,6 +138,30 @@ function windowManager(id, sock) {
 		this.socket.emit('scrollSelectedElement', scale);
 	};
 	
+	this.mouseScrollFF = function(event) {
+		var rect = this.element.getBoundingClientRect();
+		var mouseX = event.clientX - rect.left;
+		var mouseY = event.clientY - rect.top;
+		console.log(event.clientX + ", " + mouseX);
+		console.log(event.clientY + ", " + mouseY);
+		for(i=this.items.length-1; i>=0; i--){
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = this.items[i].height * this.scale;
+			
+			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+				this.socket.emit('selectScrollElementById', this.items[i].id);
+				break;
+			}
+		}
+		
+		var wheelDelta = -120*event.detail;
+		var scale = 1.0 + Math.abs(wheelDelta)/256;
+		if(wheelDelta < 0) scale = 1.0 / scale;
+		this.socket.emit('scrollSelectedElement', scale);
+	};
+	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);
 		this.draw();
@@ -137,6 +179,8 @@ function windowManager(id, sock) {
 		this.ctx.canvas.height = widthPx / this.aspectRatio;
 		
 		this.scale = this.ctx.canvas.width / (config.resolution.width*this.nCols);
+		
+		this.titleBarHeight = Math.round(0.03 * (config.resolution.height * config.layout.rows));
 		
 		this.draw();
 	};
@@ -184,4 +228,5 @@ function windowManager(id, sock) {
 	this.element.addEventListener('mousemove', this.mouseMove.bind(this), false);
 	this.element.addEventListener('mouseup', this.mouseRelease.bind(this), false);
 	this.element.addEventListener('mousewheel', this.mouseScroll.bind(this), false);
+	this.element.addEventListener('DOMMouseScroll', this.mouseScrollFF.bind(this), false);
 }

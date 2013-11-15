@@ -72,10 +72,9 @@
 			var dataUrl = (url.length > text.length) ? url : text;
 			var urlType = "";
 			var youtube = dataUrl.indexOf("www.youtube.com");
-			var ext = dataUrl.substring(url.lastIndexOf('.')+1);
+			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(youtube >= 0) urlType = "youtube";
 			else if(ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "bmp") urlType = "img";
-			
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
