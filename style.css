@@ -29,8 +29,10 @@ body {
 	border: solid 1px #000000;
 }
 .windowTitle {
-	width: 100%;
+	position:absolute;
 	background-color: #666666;
+	border: solid 1px #000000;
+	overflow: hidden;
 }
 
 .sageItem {

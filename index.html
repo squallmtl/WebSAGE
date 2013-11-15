@@ -15,14 +15,15 @@
 	var url;
 	var socket;
 	
+	var itemCount = 0;
 	var canvasItems = {};
 
-	document.addEventListener('mousemove', mouseMove, false);
-	document.addEventListener('mouseup', mouseRelease, false);
-	document.addEventListener('mousewheel', mouseScroll, false);
+	//document.addEventListener('mousemove', mouseMove, false);
+	//document.addEventListener('mouseup', mouseRelease, false);
+	//document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
-		//document.body.style.cursor = 'text';
+		//document.body.style.cursor = 'none'; // page needs to have mouse in focus to initiate 
 	
 		url = window.location.origin;
 		socket = io.connect(url);
@@ -37,12 +38,10 @@
 		});
 
 		socket.on('setupDisplayConfiguration', function(json_cfg) {
-			var resolutionX = json_cfg.resolution.width;
-			var resolutionY = json_cfg.resolution.height;
-			offsetX = json_cfg.displays[clientID].column * resolutionX;
-			offsetY = json_cfg.displays[clientID].row * resolutionY;
-			titleBarHeight = 0.03 * (json_cfg.resolution.height * json_cfg.layout.rows);
-			titleTextSize = 0.6 * titleBarHeight;
+			offsetX = json_cfg.displays[clientID].column * json_cfg.resolution.width;
+			offsetY = json_cfg.displays[clientID].row * json_cfg.resolution.height;
+			titleBarHeight = json_cfg.titleBarHeight;
+			titleTextSize = json_cfg.titleTextSize;
 			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
@@ -57,29 +56,34 @@
 			var date = new Date(elem_data.date);
 		
 			var main = document.getElementById("main");
-				
-			var windowItem = document.createElement("div");
-			windowItem.id = elem_data.id;
-			windowItem.className = "windowItem";
-			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
-			windowItem.style.top = (elem_data.top-offsetY).toString() + "px";
-			windowItem.addEventListener('mousedown', mousePress, false);
-			windowItem.addEventListener('mousewheel', scrollSelect, false);
-			main.appendChild(windowItem);
 			
 			var windowTitle = document.createElement("div");
 			windowTitle.id = elem_data.id + "_title";
 			windowTitle.className = "windowTitle";
-			windowTitle.style.height = Math.round(titleBarHeight) + "px";
-			windowItem.appendChild(windowTitle);
+			windowTitle.style.width = elem_data.width.toString() + "px";
+			windowTitle.style.height = titleBarHeight.toString() + "px";
+			windowTitle.style.left = (elem_data.left-offsetX).toString() + "px";
+			windowTitle.style.top = (elem_data.top-offsetY).toString() + "px";
+			windowTitle.style.zIndex = itemCount.toString();
+			main.appendChild(windowTitle);
 			
 			var titleText = document.createElement("p");
 			titleText.style.lineHeight = Math.round(titleBarHeight) + "px";
 			titleText.style.fontSize = Math.round(titleTextSize) + "px";
 			titleText.style.color = "#FFFFFF";
 			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
-			titleText.textContent = "Window Title";
+			titleText.textContent = elem_data.title;
 			windowTitle.appendChild(titleText);
+			
+			var windowItem = document.createElement("div");
+			windowItem.id = elem_data.id;
+			windowItem.className = "windowItem";
+			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
+			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
+			windowItem.style.zIndex = (itemCount+1).toString();
+			//windowItem.addEventListener('mousedown', mousePress, false);
+			//windowItem.addEventListener('mousewheel', scrollSelect, false);
+			main.appendChild(windowItem);
 			
 			if(elem_data.type == "img"){
 				var img = document.createElement("img");
@@ -132,34 +136,53 @@
 				
 				windowItem.appendChild(vid);
 			}
+			
+			itemCount += 2;
 		});
 		
-		socket.on('itemSelected', function(elemId) {
-			var selectedElem = document.getElementById(elemId);
-			
-			moveItemToFront(selectedElem);
+		socket.on('updateItemOrder', function(idList) {
+			var i;
+			var zval = 0;
+			for(i=0; i<idList.length; i++){
+				var selectedElemTitle = document.getElementById(idList[i] + "_title");
+				var selectedElem = document.getElementById(idList[i]);
+				
+				selectedElemTitle.style.zIndex = zval.toString();
+				selectedElem.style.zIndex = (zval+1).toString();
+				
+				zval += 2;
+			}
 		});
 		
 		socket.on('setItemPosition', function(position_data) {
 			var date = new Date(position_data.date);
-			var selectedElem = document.getElementById(position_data.elemId);
 			
 			var eLeft = position_data.elemLeft - offsetX;
 			var eTop = position_data.elemTop - offsetY;
 			
+			var selectedElemTitle = document.getElementById(position_data.elemId + "_title");
+			selectedElemTitle.style.left = eLeft.toString() + "px";
+			selectedElemTitle.style.top = eTop.toString() + "px";
+			
+			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
-			selectedElem.style.top = eTop.toString() + "px";
+			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 		});
 		
 		socket.on('setItemPositionAndSize', function(position_data) {
 			var date = new Date(position_data.date);
-			var selectedElem = document.getElementById(position_data.elemId);
 			
 			var eLeft = position_data.elemLeft - offsetX;
 			var eTop = position_data.elemTop - offsetY;
 			
+			var selectedElemTitle = document.getElementById(position_data.elemId + "_title");
+			selectedElemTitle.style.left = eLeft.toString() + "px";
+			selectedElemTitle.style.top = eTop.toString() + "px";
+			selectedElemTitle.style.width = Math.round(position_data.elemWidth).toString() + "px";
+			
+			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
-			selectedElem.style.top = eTop.toString() + "px";
+			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
 			child[0].width = Math.round(position_data.elemWidth);
@@ -181,6 +204,7 @@
 		});
 	}
 
+	/*
 	function mousePress(event) {
 		var globalX = event.clientX + offsetX;
 		var globalY = event.clientY + offsetY;
@@ -217,6 +241,7 @@
 		
 		socket.emit('scrollSelectedElement', scale);
 	}
+	*/
 	
 	function moveItemToFront(elem) {
 		var last = elem.parentNode.lastChild;

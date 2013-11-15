@@ -35,8 +35,8 @@
 			winMgr.addNewElement(elem_data);
 		});
 		
-		socket.on('itemSelected', function(elemId) {
-			winMgr.moveItemToFront(elemId);
+		socket.on('updateItemOrder', function(idList) {
+			winMgr.updateItemOrder(idList);
 		});
 		
 		socket.on('setItemPosition', function(position_data) {

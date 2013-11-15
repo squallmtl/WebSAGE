@@ -185,6 +185,22 @@ function windowManager(id, sock) {
 		this.draw();
 	};
 	
+	this.updateItemOrder = function(idList) {
+		var i;
+		var j;
+		for(i=0; i<idList.length; i++){
+			for(j=0; j<this.items.length; j++){
+				if(this.items[j].id == idList[i]){
+					var tmp = this.items[i];
+					this.items[i] = this.items[j];
+					this.items[j] = tmp;
+				}
+			}
+		}
+		
+		this.draw();
+	}
+	
 	this.moveItemToFront = function(elemId) {
 		var i;
 		for(i=0; i<this.items.length; i++){
