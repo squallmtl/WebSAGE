@@ -64,12 +64,14 @@ function windowManager(id, sock) {
 		alert("resize");
 	};
 	
+	//this function is called when a mouse is pressed within the window manager 
 	this.mousePress = function(event) {
 		var rect = this.element.getBoundingClientRect();
 		var mouseX = event.clientX - rect.left;
 		var mouseY = event.clientY - rect.top;
 		var globalX = mouseX / this.scale;
 		var globalY = mouseY / this.scale;
+		console.log("mouseX : " + mouseX + " mouseY: " + mouseY + " globalX " + globalX + " globalY " + globalY ); 
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
@@ -80,7 +82,7 @@ function windowManager(id, sock) {
 				var selectOffsetX = this.items[i].left - globalX;
 				var selectOffsetY = this.items[i].top - globalY;
 				
-				this.socket.emit('selectElementById', {elemId: this.items[i].id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
+				this.socket.emit('selectElementById', {elemId: this.items[i].id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});//this call is caught by the server.  The selected element is marked for future updates. 
 				break;
 			}
 		}
@@ -120,7 +122,7 @@ function windowManager(id, sock) {
 		this.socket.emit('scrollSelectedElement', scale);
 	};
 	
-	this.addNewElement = function(elem_data) {
+	this.addNewElement = function(elem_data) {  //called when server adds an element  
 		this.items.push(elem_data);
 		this.draw();
 	};

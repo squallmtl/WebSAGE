@@ -65,16 +65,16 @@ var items = [];//windows
 //var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
 //items.push(itemTest);
 
-sio.sockets.on('connection', function(socket) {
+sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
 	var i;
 	var address = socket.handshake.address;
 	console.log("New connection from " + address.address + ":" + address.port);
 	
 	var cDate = new Date();
 
-	console.log(cDate.getTime()-initDate.getTime());
+	console.log(cDate.getTime()-initDate.getTime()); 
 	socket.emit('setSystemTime', cDate.getTime()-initDate.getTime());
-	socket.emit('setupDisplayConfiguration', config);
+	socket.emit('setupDisplayConfiguration', config); //window manager will show appropriate display config
 
 //	/* adding new elements */
 //	socket.emit('addNewElement', {type: "img", id: "item1", src: "images/sage_logo.jpg"});
@@ -96,18 +96,18 @@ sio.sockets.on('connection', function(socket) {
 //    socket.emit('createPointer', {type: 'ptr', id: '0', src: "resources/mouse-pointer-hi.png" });
                
 	for(i=0; i<items.length; i++){
-		socket.emit('addNewElement', items[i]);
+		socket.emit('addNewElement', items[i]);  //tell window manager that just connected what is on-screen
 	}
 	
-	socket.on('addNewWebElement', function(elem_data) {
-		if(elem_data.type == "img"){
+	socket.on('addNewWebElement', function(elem_data) { //call this when window manager receives a new element to add
+		if(elem_data.type == "img"){ 
 			gm(elem_data.src).size(function(err, size) {
 				if(!err){
 					var aspect = size.width / size.height;
 					var now = new Date();
 					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
+					items.push(newItem);  //store item in list 
+					sio.sockets.emit('addNewElement', newItem); //emit an addNewElement, will be caught by index.html and windowManager.html
 					itemCount++;
 					console.log(this.source);
 				}
@@ -128,7 +128,7 @@ sio.sockets.on('connection', function(socket) {
 						if(poster == null) poster = info.iurlsd;
 						var newItem = {type: "video", id: "item"+itemCount.toString(), src: info.formats[i].url, left: 0, top: 0, width: resolutionX, height: resolutionY, aspectRatio: aspect, date: now, resrc: "", extra: poster};
 						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
+						sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 						itemCount++;
 						
 						break;
@@ -141,25 +141,23 @@ sio.sockets.on('connection', function(socket) {
 			var now = new Date();
             var newItem ={type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
 			items.push(newItem);
-			sio.sockets.emit('addNewElement', newItem);
+			sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 			itemCount++;
 			console.log(elem_data.src);
 		}
 	});
 	
-	socket.emit("addNewWebElement", {src: "http://webglsamples.googlecode.com/hg/blob/blob.html" });
-
 	/* user-interaction methods */
 	var selectedMoveItem;
 	var selectedScrollItem;
 	var selectOffsetX;
 	var selectOffsetY;
 
-	socket.on('selectElementById', function(select_data) {
+	socket.on('selectElementById', function(select_data) { //when window manager or pointer selects a window, this gets called.  
 		selectedMoveItem = findItemById(select_data.elemId);
 		selectedScrollItem = null;
 		selectOffsetX = select_data.eventOffsetX;
-		selectOffsetY = select_data.eventOffsetY;
+		selectOffsetY = select_data.eventOffsetY; 
 		
 		sio.sockets.emit('itemSelected', selectedMoveItem.id);
 	});
@@ -309,7 +307,137 @@ app.post('/upload', function(request, response) {
 	response.end("upload complete");
 });
 
+var clickingMode = 0;
 
+//MOVE ITEM TO FRONT
+function moveItemToFront(elemId) {
+
+    console.log("elemID to front:  " + elemId );
+    var i;
+    for(i=0; i<this.items.length; i++){
+        if(this.items[i].id == elemId){
+            tmp = this.items[i];
+            this.items.splice(i, 0);
+            this.items.push(tmp);
+            break;
+        }
+    }
+    sio.sockets.emit('itemSelected',elemId );
+
+};
+
+var selectedScrollItem; 
+var selectedMoveItem;
+var selectOffsetX;
+var selectOffsetY;  
+
+//this will be invoked on every sage pointer click 
+function handleSagePointerClick(x, y){
+    moveItemToFront(x, y);  //move item to front and return the item
+    selectedScrollItem = null;
+    
+    if( selectedMoveItem != null ){
+        //determine distance btw event and offset 
+        selectOffsetX = selectedMoveItem.left - x; 
+        selectOffsetY = selectedMoveItem.top - y; 
+    }
+}
+
+function moveItemToFront(x, y) {
+    console.log("x " + x + " y " + y );
+    potentialItems = []; 
+    idx = [] ;
+    for(var i=0; i<items.length; i++){
+        var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) {   
+		    potentialItems.push( items[i] ) ;
+		    idx.push( i ); 
+        } 
+	}
+	if( potentialItems.length == 0 ){
+        console.log("change mode");
+        clickMode = 1; 
+        sio.sockets.emit("changeMode", clickMode);   
+        return;      
+    }
+    
+    if( clickMode == 1 ){
+        clickMode = 0; 
+        sio.sockets.emit("changeMode", clickMode);   
+    }
+    
+    console.log("item: " + potentialItems[0].id );
+    items.splice(idx[0], 0);
+    items.push( potentialItems[0] ); 
+    sio.sockets.emit('itemSelected', potentialItems[0].id );
+    selectedMoveItem = potentialItems[0]; 
+};
+
+function handleSagePointerZoom(zoom, x, y){
+    console.log("x " + x + " y " + y + " zoom " + zoom );
+    idx = [] ;
+    for(var i=0; i<items.length; i++){
+        var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) { 
+		    selectedScrollItem = items[i];    //not checking for z!
+        } 
+	}
+	
+	if(selectedScrollItem == null )
+	    return;
+	    
+    zoom = 1.0 - zoom*.01; 
+    var iWidth = selectedScrollItem.width * zoom;
+    var iHeight = iWidth / selectedScrollItem.aspectRatio;
+    console.log( "w: " + iWidth + " h:" + iHeight );
+    if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspectRatio; }
+    if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspectRatio; }
+    var iCenterX = selectedScrollItem.left + (selectedScrollItem.width/2);
+    var iCenterY = selectedScrollItem.top + (selectedScrollItem.height/2);
+    selectedScrollItem.left = iCenterX - (iWidth/2);
+    selectedScrollItem.top = iCenterY - (iHeight/2);
+    selectedScrollItem.width = iWidth;
+    selectedScrollItem.height = iHeight;
+    var now = new Date();
+    sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
+
+}
+
+function handleSagePointerDrag(x, y){
+    console.log( "x = " + x + " y = " + y);
+    idx = [] ;
+    for(var i=0; i<items.length; i++){
+        var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) { 
+		    selectedMoveItem = items[i];    //not checking for z!
+        } 
+	}
+
+    if(selectedMoveItem == null) 
+        return;
+
+    selectedMoveItem.left = x + selectOffsetX;
+    selectedMoveItem.top = y + selectOffsetY;
+    var now = new Date();
+    sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
+}
+
+function releaseSelectedMoveItem(){
+    selectedMoveItem = null;
+}
+
+function releaseSelectedZoomItem(){
+    selectedZoomItem = null;
+}
 
 // ---------------------------------------------
 // DATA FROM OMICRONJS
@@ -357,7 +485,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
         var mousez  = 0;
 
         udp.on("message", function (msg, rinfo) {
-                // console.log("UDP> got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+//                 console.log("UDP> got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
                 // var out = util.format("UDP> msg from [%s:%d] %d bytes", rinfo.address,rinfo.port,msg.length);
                 // console.log(out);
 
@@ -396,12 +524,15 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                         var r_pitch = Math.atan2(2.0*e.orx*e.orw-2.0*e.ory*e.orz , 1.0 - 2.0*e.orx*e.orx - 2.0*e.orz*e.orz);
 
                         if (e.serviceType == 0) {  // ServiceTypePointer
-
+                                console.log("pointer event! type: " + e.type  );
                                 //console.log("ServiceTypePointer> source ", e.sourceId);
                                 if (e.type == 3) { // update
+                                        if( e.sourceId in ptrs )
+                                            return;
                                         colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
                                         if (offset < msg.length) {
                                                 if (e.extraDataType == 4 && e.extraDataItems > 0) {
+                                                        console.log("create pointer"); 
                                                         e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
                                                         ptrinfo = e.extraString.split(" ");
                                                         offset += e.extraDataItems;
@@ -414,14 +545,31 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                         //console.log("\t move ", e.posx, e.posy);
                                         if (e.sourceId in ptrs) {
                                            sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
+                                           
+                                           if( ptrs[e.sourceId].mouse[0] == 1 )
+                                                handleSagePointerDrag( e.posx * totalWidth, e.posy*totalHeight );
                                         }
+                                        else{
+                                              colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
+                                                if (offset < msg.length) {
+                                                    if (e.extraDataType == 4 && e.extraDataItems > 0) {
+                                                            console.log("create pointer"); 
+                                                            e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
+                                                            ptrinfo = e.extraString.split(" ");
+                                                            offset += e.extraDataItems;
+                                                            ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0]};
+                                                            sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
+                                                    }
+                                            }  
+                                        }
+                                        
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
 //                                         console.log("\t zoom ");
                                         if (e.sourceId in ptrs) {
-//                                                 ptrs[e.sourceId].position = [e.posx, e.posy];
-//                                                 ptrs[e.sourceId].zoom = 1;
+                                                ptrs[e.sourceId].position = [e.posx, e.posy];
+                                                ptrs[e.sourceId].zoom = 1;
                                                 zoom = 1; 
                                                 if (offset < msg.length) {
                                                         // One int for zoom value
@@ -432,12 +580,8 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                                 e.extraInt = msg.readInt32LE(offset);
                                                                 offset += 4
                                                                 zoom = e.extraInt; 
-;
-//                                                                 ptrs[e.sourceId].zoom = e.extraInt;
-//                                                             sio.sockets.emit( 'pointerScroll', {elemId: e.sourceId, x: e.posx, y: e.posy, elemZoom: zoom} ); 
-
-                                                                //first find element under pointer
-                                                                //then implement the scroll  
+                                                                
+                                                                handleSagePointerZoom( zoom, e.posx*totalWidth, e.posy*totalHeight); 
                                                         }
                                                 }
                                         }
@@ -445,27 +589,32 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 else if (e.type == 5) { // button down
                                         //console.log("\t down , flags ", e.flags);
                                         if (e.sourceId in ptrs) {
-//                                                 ptrs[e.sourceId].position = [e.posx, e.posy];
+                                                ptrs[e.sourceId].position = [e.posx, e.posy];
                                                 
                                                 var counter, i;
                                                 for(counter=0; counter < 3; counter++)
                                                 { 
                                                         i = Math.pow(2, counter);
-//                                                         if (e.flags & i)
-//                                                                 ptrs[e.sourceId].mouse[counter] = 1;
-//                                                         else
-//                                                                 ptrs[e.sourceId].mouse[counter] = 0;
+                                                        if (e.flags & i)
+                                                                ptrs[e.sourceId].mouse[counter] = 1;
+                                                        else
+                                                                ptrs[e.sourceId].mouse[counter] = 0;
+
                                                 }
+
+                                                if( ptrs[e.sourceId].mouse[0] == 1 )
+                                                    handleSagePointerClick( e.posx * totalWidth, e.posy*totalHeight );
                                         }
                                 }
                                 else if (e.type == 6) { // button up
                                         //console.log("\t up , flags ", e.flags);
                                         if (e.sourceId in ptrs) {
-//                                                 ptrs[e.sourceId].position = [e.posx, e.posy];
+                                           ptrs[e.sourceId].position = [e.posx, e.posy];
                                                         
-//                                                 ptrs[e.sourceId].mouse[0] = 0;
-//                                                 ptrs[e.sourceId].mouse[1] = 0;
-//                                                 ptrs[e.sourceId].mouse[2] = 0;
+                                            ptrs[e.sourceId].mouse[0] = 0;
+                                            ptrs[e.sourceId].mouse[1] = 0;
+                                            ptrs[e.sourceId].mouse[2] = 0;
+                                            releaseSelectedMoveItem(); 
                                         }
                                 }
                                 else {
@@ -556,14 +705,19 @@ function findItemById(id) {
 }
 
 function findItemByPosition(x, y){
+    console.log("x " + x + " y " + y );
+    potentialItems = []; 
     for(var i=0; i<items.length; i++){
         var l = items[i].left;
         var w = items[i].width;
         var t = items[i].top;
         var h = items[i].height; 
-		if(l < x && l+w > x && t < y && t+h > y) {   // the check for top!   
-		    return items[i];
+		if(l < x && l+w > x && t < y && t+h > y) {   
+		    //return items[i];
+		    potentialItems.push( items[i] ); 
         }
 	}
-
+	if( potentialItems.length == 0 )
+        return "0";
+    return potentialItems[0].id; //must check Z as well...  
 }
