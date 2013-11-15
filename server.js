@@ -1,5 +1,6 @@
 var express = require("express");
 var http = require('http');
+var request = require('request');
 var fs = require('fs');
 var path = require('path');
 var unzip = require('unzip');
@@ -45,25 +46,22 @@ var file = 'config/desktop-cfg.json';
 //var file = 'config/iridium-cfg.json';
 
 var config;
-var totalWidth;
-var totalHeight;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
 		console.log('Error: ' + err);
 		return;
 	}
 	config = JSON.parse(json_str);
-	totalWidth = config.resolution.width * config.layout.columns;
-	totalHeight = config.resolution.height * config.layout.rows;
+	config.totalWidth = config.resolution.width * config.layout.columns;
+	config.totalHeight = config.resolution.height * config.layout.rows;
+	config.titleBarHeight = Math.round(0.03 * config.totalHeight);
+	config.titleTextSize = Math.round(0.018 * config.totalHeight);
 	console.log(config);
-	console.log("Total Resolution: " + totalWidth + "x" + totalHeight);
 });
 
 var itemCount = 0;//num windows 
 var items = [];//windows
 
-//var itemTest = {type: "canvas2d", id: "item_test", src: "scripts/clock.js", left: 0, top: 0, width: 400, height: 300, aspectRatio: 1.333333, initFunction: "myClock1 = new clock('item_test_canvas2d'); myClock1.draw();"};
-//items.push(itemTest);
 
 sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
 	var i;
@@ -99,34 +97,69 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		socket.emit('addNewElement', items[i]);  //tell window manager that just connected what is on-screen
 	}
 	
-	socket.on('addNewWebElement', function(elem_data) { //call this when window manager receives a new element to add
-		if(elem_data.type == "img"){ 
-			gm(elem_data.src).size(function(err, size) {
-				if(!err){
-					var aspect = size.width / size.height;
-					var now = new Date();
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
-					items.push(newItem);  //store item in list 
-					sio.sockets.emit('addNewElement', newItem); //emit an addNewElement, will be caught by index.html and windowManager.html
-					itemCount++;
-					console.log(this.source);
-				}
-				else{
-					console.log("Error: " + err);
-				}
+// <<<<<<< HEAD
+// 	socket.on('addNewWebElement', function(elem_data) { //call this when window manager receives a new element to add
+// 		if(elem_data.type == "img"){ 
+// 			gm(elem_data.src).size(function(err, size) {
+// 				if(!err){
+// 					var aspect = size.width / size.height;
+// 					var now = new Date();
+// 					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
+// 					items.push(newItem);  //store item in list 
+// 					sio.sockets.emit('addNewElement', newItem); //emit an addNewElement, will be caught by index.html and windowManager.html
+// 					itemCount++;
+// 					console.log(this.source);
+// 				}
+// 				else{
+// 					console.log("Error: " + err);
+// 				}
+// =======
+	socket.on('addNewWebElement', function(elem_data) {
+		if(elem_data.type == "img"){
+			var fileName = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+			var tmpFile = fs.createWriteStream("tmp/" + fileName);
+			request(elem_data.src).pipe(tmpFile);
+			
+			tmpFile.on('finish', function() {
+				gm("tmp/" + fileName).size(function(err, size) {
+					if(!err){
+						var itemId = "item"+itemCount.toString();
+						var title = fileName;
+						var aspect = size.width / size.height;
+						var now = new Date();
+						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "");
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						console.log(elem_data.src);
+						
+						// delete tmp file
+						fs.unlink("tmp/" + fileName, function(err) {
+							if(err) console.log(err);
+						});
+					}
+					else{
+						console.log("Error: " + err);
+					}
+				});
+				
 			});
+			
 		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
+				console.log(info.title);
 				for(i=0; i<info.formats.length; i++){
 					if(info.formats[i].container == "mp4"){
+						var itemId = "item"+itemCount.toString();
+						var title = info.title;
 						var aspect = 16/9;
 						var now = new Date();
 						var resolutionY = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
 						var resolutionX = resolutionY * aspect;
 						var poster = info.iurlmaxres;
 						if(poster == null) poster = info.iurlsd;
-						var newItem = {type: "video", id: "item"+itemCount.toString(), src: info.formats[i].url, left: 0, top: 0, width: resolutionX, height: resolutionY, aspectRatio: aspect, date: now, resrc: "", extra: poster};
+						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 						itemCount++;
@@ -159,7 +192,14 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		selectOffsetX = select_data.eventOffsetX;
 		selectOffsetY = select_data.eventOffsetY; 
 		
-		sio.sockets.emit('itemSelected', selectedMoveItem.id);
+		moveItemToFront(selectedMoveItem.id);
+		
+		var itemIds = [];
+		for(var i=0; i<items.length; i++){
+			itemIds.push(items[i].id);
+		}
+		
+		sio.sockets.emit('updateItemOrder', itemIds);
 	});
 	
 	socket.on('releaseSelectedElement', function() {
@@ -178,15 +218,23 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 	socket.on('selectScrollElementById', function(elemId) {
 		selectedScrollItem = findItemById(elemId);
 		selectedMoveItem = null;
-		sio.sockets.emit('itemSelected', selectedScrollItem.id);
+		
+		moveItemToFront(selectedScrollItem.id);
+		
+		var itemIds = [];
+		for(var i=0; i<items.length; i++){
+			itemIds.push(items[i].id);
+		}
+		
+		sio.sockets.emit('updateItemOrder', itemIds);
 	});
 	
 	socket.on('scrollSelectedElement', function(scale) {
 		if(selectedScrollItem == null) return;
 		var iWidth = selectedScrollItem.width * scale;
-		var iHeight = iWidth / selectedScrollItem.aspectRatio;
-		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspectRatio; }
-		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspectRatio; }
+		var iHeight = iWidth / selectedScrollItem.aspect;
+		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspect; }
+		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspect; }
 		var iCenterX = selectedScrollItem.left + (selectedScrollItem.width/2);
 		var iCenterY = selectedScrollItem.top + (selectedScrollItem.height/2);
 		selectedScrollItem.left = iCenterX - (iWidth/2);
@@ -211,9 +259,11 @@ app.post('/upload', function(request, response) {
 		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
 			gm(localPath).size(function(err, size) {
 				if(!err){
+					var itemId = "item"+itemCount.toString();
+					var title = request.files[f].name;
 					var aspect = size.width / size.height;
 					var now = new Date();
-					var newItem = {type: "img", id: "item"+itemCount.toString(), src: this.source, left: 0, top: 0, width: size.width, height: size.height, aspectRatio: aspect, date: now, resrc: "", extra: ""};
+					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -273,10 +323,11 @@ app.post('/upload', function(request, response) {
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
-						var className = instructions.main_script.substring(0, instructions.main_script.length-3);
+						var title = parentDir;
+						var objName = instructions.main_script.substring(0, instructions.main_script.length-3);
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
-						var newItem = {type: "canvas", id: itemId, src: zipPath+"/"+instructions.main_script, left: 0, top: 0, width: instructions.width, height: instructions.height, aspectRatio: aspect, date: now, resrc: zipPath+"/", extra: className};
+						var newItem = new item("canvas", title, itemId, zipPath+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipPath+"/", objName);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -296,8 +347,6 @@ app.post('/upload', function(request, response) {
 					if(err) console.log(err);
 				});
 			});
-			
-			//zipfile.pipe(unzip.Parse());
 		}
 		else{
 			console.log("Unknown type: " + request.files[f].type);
@@ -721,3 +770,37 @@ function findItemByPosition(x, y){
         return "0";
     return potentialItems[0].id; //must check Z as well...  
 }
+
+function moveItemToFront(id) {
+	var i;
+	var selectedIndex;
+	var selectedItem;
+	
+	for(i=0; i<items.length; i++){
+		if(items[i].id == id){
+			selectedIndex = i;
+			selectedItem = items[selectedIndex];
+			break;
+		}
+	}
+	for(i=selectedIndex; i<items.length-1; i++){
+		items[i] = items[i+1];
+	}
+	items[items.length-1] = selectedItem;
+}
+
+function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
+	this.type = type;
+	this.title = title;
+	this.id = id;
+	this.src = src;
+	this.left = left;
+	this.top = top;
+	this.width = width;
+	this.height = height;
+	this.aspect = aspect;
+	this.date = date;
+	this.resrc = resrc;
+	this.extra = extra;
+}
+

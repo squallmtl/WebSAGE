@@ -8,11 +8,10 @@
 	
 p {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
-	font-size: 12px;
 }
 
 body {
-	background-image: url('images/background.jpg');
+	background-image: url('images/background2.jpg');
 	background-size: 100%;
 }
 
@@ -27,7 +26,13 @@ body {
 
 .windowItem {
 	position:absolute;
-	border: solid 2px #afb7ed;
+	border: solid 1px #000000;
+}
+.windowTitle {
+	position:absolute;
+	background-color: #666666;
+	border: solid 1px #000000;
+	overflow: hidden;
 }
 
 .sageItem {
