@@ -248,8 +248,13 @@ app.post('/upload', function(request, response) {
 			
 			// unzip file
 			var zipfile = fs.createReadStream(localPath).pipe(unzip.Parse());
+			var contents = [];
 			zipfile.on('entry', function(entry) {
-				if(entry.path.substring(0, parentDir.length) == parentDir) {
+				if(contents.indexOf(entry.path) >= 0){
+					entry.autodrain(entry.path);
+				}
+				else if(entry.path.substring(0, parentDir.length) == parentDir) {
+					contents.push(entry.path);
 					if(entry.type == "Directory"){
 						var exist = fs.existsSync(__dirname + "/uploads/" + entry.path);
 						if(!exist) {
