@@ -3,16 +3,18 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var path = require('path');
-var unzip = require('unzip');
+var decompresszip = require('decompress-zip');
 var gm = require('gm');
 var ytdl = require('ytdl');
 
 var app = express();
 var hport = 9090;
 
+var uploadsFolder = __dirname + "/uploads";
+
 app.configure(function(){
 	app.use(express.methodOverride());
-	app.use(express.bodyParser({uploadDir:__dirname + '/uploads'}));
+	app.use(express.bodyParser({uploadDir: uploadsFolder}));
 	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
@@ -218,6 +220,7 @@ sio.sockets.on('connection', function(socket) {
 
 app.post('/upload', function(request, response) {
 	var i;
+	var uploads
 	for(var f in request.files){
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
@@ -244,43 +247,13 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[f].type == "application/zip"){
-			var parentDir = request.files[f].name.substring(0, request.files[f].name.length-4);
+			var zipFolder = localPath.substring(0, localPath.length-4);
+			var zipName = request.files[f].name.substring(0, request.files[f].name.length-4);
 			
-			// unzip file
-			var zipfile = fs.createReadStream(localPath).pipe(unzip.Parse());
-			var contents = [];
-			zipfile.on('entry', function(entry) {
-				if(contents.indexOf(entry.path) >= 0){
-					entry.autodrain(entry.path);
-				}
-				else if(entry.path.substring(0, parentDir.length) == parentDir) {
-					contents.push(entry.path);
-					if(entry.type == "Directory"){
-						var exist = fs.existsSync(__dirname + "/uploads/" + entry.path);
-						if(!exist) {
-							fs.mkdir(__dirname + "/uploads/" + entry.path, function(err) {
-								if(err) console.log(err);
-							});
-						}
-					}
-					else if(entry.type == "File"){
-						var output = fs.createWriteStream(__dirname + "/uploads/" + entry.path);
-						output.on('finish', function() {
-							console.log("finished writing: " + entry.path);
-						});
-						entry.pipe(output);
-					}
-				}
-				else {
-					entry.autodrain();
-				}
-			});
-			
-			// once all files/folders have been extracted
-			zipfile.on('close', function() {
+			var unzipper = new decompresszip(localPath);
+			unzipper.on('extract', function (log) {
 				// read instructions for how to handle
-				var zipPath = localPath.substring(0, localPath.length-4);
-				var instuctionsFile = zipPath + "/instructions.json";
+				var instuctionsFile = zipFolder + "/instructions.json";
 				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 					if(err){
 						console.log('Error: ' + err);
@@ -291,18 +264,19 @@ app.post('/upload', function(request, response) {
 					// add resource scripts to clients
 					for(i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							sio.sockets.emit('addScript', zipPath+"/"+instructions.resources[i].src);
+							sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
 						}
 					}
 					
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
-						var title = parentDir;
+						var title = zipName;
 						var objName = instructions.main_script.substring(0, instructions.main_script.length-3);
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
-						var newItem = new item("canvas", title, itemId, zipPath+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipPath+"/", objName);
+						var appExtra = [instructions.type, objName];
+						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -321,6 +295,12 @@ app.post('/upload', function(request, response) {
 				fs.unlink(localPath, function(err) {
 					if(err) console.log(err);
 				});
+			});
+			unzipper.extract({
+				path: uploadsFolder,
+				filter: function (file) {
+					return file.type !== "SymbolicLink";
+				}
 			});
 		}
 		else{
