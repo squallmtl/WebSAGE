@@ -73,8 +73,9 @@
 			var urlType = "";
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
+			if(ext.length > 3) ext = ext.substring(0,3);
 			if(youtube >= 0) urlType = "youtube";
-			else if(ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "bmp") urlType = "img";
+			else if(ext == "jpg" || ext == "png" || ext == "bmp") urlType = "img";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
@@ -86,7 +87,7 @@
 
 </head>
 
-<body onload="init()">
+<body onload="init()" onresize="winMgr.resize()">
 	<div id="wrapper">
 		<div id="window">
 			<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>

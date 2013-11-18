@@ -5,6 +5,7 @@ function windowManager(id, sock) {
 	this.nRows = 0;
 	this.nCols = 0;
 	this.aspectRatio = 1.0;
+	this.resolution = [];
 	this.scale = 1.0;
 	this.titleBarHeight = 0;
 	this.items = [];
@@ -76,16 +77,10 @@ function windowManager(id, sock) {
 		this.ctx.stroke();
 	};
 	
-	this.resize = function() {
-		alert("resize");
-	};
-	
 	this.mousePress = function(event) {
 		var rect = this.element.getBoundingClientRect();
 		var mouseX = event.clientX - rect.left;
 		var mouseY = event.clientY - rect.top;
-		console.log(event.clientX + ", " + mouseX);
-		console.log(event.clientY + ", " + mouseY);
 		var globalX = mouseX / this.scale;
 		var globalY = mouseY / this.scale;
 		for(i=this.items.length-1; i>=0; i--){
@@ -142,8 +137,6 @@ function windowManager(id, sock) {
 		var rect = this.element.getBoundingClientRect();
 		var mouseX = event.clientX - rect.left;
 		var mouseY = event.clientY - rect.top;
-		console.log(event.clientX + ", " + mouseX);
-		console.log(event.clientY + ", " + mouseY);
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
@@ -175,15 +168,27 @@ function windowManager(id, sock) {
 		var widthPercent = this.element.style.width;
 		var widthPx = (widthPercent.substring(0, widthPercent.length-1)/100) * this.element.parentNode.clientWidth;
 		
-		this.ctx.canvas.width = widthPx;
-		this.ctx.canvas.height = widthPx / this.aspectRatio;
+		this.element.width = widthPx;
+		this.element.height = widthPx / this.aspectRatio;
 		
-		this.scale = this.ctx.canvas.width / (config.resolution.width*this.nCols);
+		this.resolution = [(config.resolution.width*this.nCols), (config.resolution.height*this.nRows)];
+		this.scale = this.element.width / this.resolution[0];
 		
 		this.titleBarHeight = Math.round(0.03 * (config.resolution.height * config.layout.rows));
 		
 		this.draw();
 	};
+	
+	this.resize = function() {
+		var widthPercent = this.element.style.width;
+		var widthPx = (widthPercent.substring(0, widthPercent.length-1)/100) * this.element.parentNode.clientWidth;
+		
+		this.element.width = widthPx;
+		this.element.height = widthPx / this.aspectRatio;
+		
+		this.scale = this.element.width / this.resolution[0];
+		this.draw();
+	}
 	
 	this.updateItemOrder = function(idList) {
 		var i;

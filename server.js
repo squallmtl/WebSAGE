@@ -111,24 +111,41 @@ sio.sockets.on('connection', function(socket) {
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
 				console.log(info.title);
+				var mp4Idx = -1;
+				var mp4Resolution = 0;
+				var webmIdx = -1;
+				var webmResolution = 0;
 				for(i=0; i<info.formats.length; i++){
 					if(info.formats[i].container == "mp4"){
-						var itemId = "item"+itemCount.toString();
-						var title = info.title;
-						var aspect = 16/9;
-						var now = new Date();
-						var resolutionY = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
-						var resolutionX = resolutionY * aspect;
-						var poster = info.iurlmaxres;
-						if(poster == null) poster = info.iurlsd;
-						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster);
-						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
-						itemCount++;
-						
-						break;
+						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
+						if(res > mp4Resolution){
+							mp4Idx = i;
+							mp4Resolution = res;
+						}
+					}
+					else if(info.formats[i].container == "webm"){
+						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
+						if(res > webmResolution){
+							webmIdx = i;
+							webmResolution = res;
+						}
 					}
 				}
+				console.log(mp4Idx + ": " + mp4Resolution);
+				console.log(webmIdx + ": " + webmResolution);
+				
+				var itemId = "item"+itemCount.toString();
+				var title = info.title;
+				var aspect = 16/9;
+				var now = new Date();
+				var resolutionY = Math.max(mp4Resolution, webmResolution);
+				var resolutionX = resolutionY * aspect;
+				var poster = info.iurlmaxres;
+				if(poster == null) poster = info.iurlsd;
+				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
+				items.push(newItem);
+				sio.sockets.emit('addNewElement', newItem);
+				itemCount++;
 			});
 		}
 	});

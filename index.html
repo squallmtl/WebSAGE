@@ -129,10 +129,15 @@
 				vid.controls = true;
 				vid.poster = elem_data.extra;
 				
-				var source = document.createElement("source");
-				source.src = elem_data.src;
-				source.type = "video/mp4";
-				vid.appendChild(source);
+				var source1 = document.createElement("source");
+				source1.src = elem_data.src;
+				source1.type = "video/mp4";
+				vid.appendChild(source1);
+				
+				var source2 = document.createElement("source");
+				source2.src = elem_data.resrc;
+				source2.type = "video/webm";
+				vid.appendChild(source2);
 				
 				windowItem.appendChild(vid);
 			}
