@@ -272,7 +272,7 @@ app.post('/upload', function(request, response) {
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
 						var title = zipName;
-						var objName = instructions.main_script.substring(0, instructions.main_script.length-3);
+						objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
 						var appExtra = [instructions.type, objName];

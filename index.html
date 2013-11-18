@@ -100,14 +100,14 @@
 			else if(elem_data.type == "canvas"){
 				console.log(elem_data.extra);
 				if(elem_data.extra[0] == "direct"){
-					var canvas2d = document.createElement("canvas");
-					canvas2d.id = elem_data.id + "_canvas"
-					canvas2d.className = "sageItem";
-					canvas2d.aspectRatio = elem_data.aspectRatio;
-					canvas2d.width = elem_data.width;
-					canvas2d.height = elem_data.height;
+					var canvas = document.createElement("canvas");
+					canvas.id = elem_data.id + "_canvas"
+					canvas.className = "sageItem";
+					canvas.aspectRatio = elem_data.aspectRatio;
+					canvas.width = elem_data.width;
+					canvas.height = elem_data.height;
 				
-					windowItem.appendChild(canvas2d);
+					windowItem.appendChild(canvas);
 				
 					var canvasJS = document.createElement('script')
 					canvasJS.type = "text/javascript";
@@ -115,14 +115,25 @@
 					document.head.appendChild(canvasJS);
 				
 					canvasJS.addEventListener('load', function(event) {
-						var canvas = new window[elem_data.extra[1]];
-						canvas.init(elem_data.id + "_canvas", date, elem_data.resrc);
-						canvas.draw(date);
-						canvasItems[elem_data.id + "_canvas"] = canvas;
+						var canvasObj = new window[elem_data.extra[1]];
+						canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
+						canvasObj.draw(date);
+						canvasItems[elem_data.id + "_canvas"] = canvasObj;
 					}, false);
   				}
   				else if(elem_data.extra[0] == "div"){
-  					
+  					var something = null;
+  				}
+  				else if(elem_data.extra[0] == "pde"){
+  					var canvas = document.createElement("canvas");
+					canvas.id = elem_data.id + "_canvas"
+					canvas.className = "sageItem";
+					canvas.aspectRatio = elem_data.aspectRatio;
+					canvas.width = elem_data.width;
+					canvas.height = elem_data.height;
+					Processing.loadSketchFromSources(canvas, [elem_data.src]);
+					
+					windowItem.appendChild(canvas);
   				}
 			}
 			else if(elem_data.type == "video"){
