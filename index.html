@@ -268,8 +268,8 @@
         socket.on('createPointer', function(pointerData){
             var main = document.getElementById("main");
 
-            var pointerImage = document.getElementById( pointerData.id );
-            pointerImage = document.createElement("canvas"); //create canvas element
+//             var pointerImage = document.getElementById( pointerData.id );
+            var pointerImage = document.createElement("canvas"); //create canvas element
             pointerImage.id = pointerData.id; 
             pointerImage.className = "pointerItem";
             pointerImage.aspectRatio = 36/48;//pointerData.aspectRatio;
@@ -277,6 +277,7 @@
             pointerImage.height = 48;//pointerData.height;
             pointerImage.style.left = (-100-offsetX).toString() + "px";
             pointerImage.style.top = (-100-offsetY).toString() + "px";
+            pointerImage.style.zIndex = "10000"; 
 
             main.appendChild(pointerImage); 
 

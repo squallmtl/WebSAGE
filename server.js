@@ -172,7 +172,8 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		else if(elem_data.type = "site" ){
             var aspect = 16/9;
 			var now = new Date();
-            var newItem ={type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
+            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", "" ); 
+            //{type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 			itemCount++;
@@ -305,6 +306,7 @@ app.post('/upload', function(request, response) {
 			zipfile.on('close', function() {
 				// read instructions for how to handle
 				var zipPath = localPath.substring(0, localPath.length-4);
+				console.log("reading instructions");
 				var instuctionsFile = zipPath + "/instructions.json";
 				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 					if(err){
@@ -358,22 +360,22 @@ app.post('/upload', function(request, response) {
 
 var clickingMode = 0;
 
-//MOVE ITEM TO FRONT
-function moveItemToFront(elemId) {
-
-    console.log("elemID to front:  " + elemId );
-    var i;
-    for(i=0; i<this.items.length; i++){
-        if(this.items[i].id == elemId){
-            tmp = this.items[i];
-            this.items.splice(i, 0);
-            this.items.push(tmp);
-            break;
-        }
-    }
-    sio.sockets.emit('itemSelected',elemId );
-
-};
+// //MOVE ITEM TO FRONT
+// function moveItemToFront(elemId) {
+// 
+//     console.log("elemID to front:  " + elemId );
+//     var i;
+//     for(i=0; i<this.items.length; i++){
+//         if(this.items[i].id == elemId){
+//             tmp = this.items[i];
+//             this.items.splice(i, 0);
+//             this.items.push(tmp);
+//             break;
+//         }
+//     }
+//     sio.sockets.emit('itemSelected',elemId );
+// 
+// };
 
 var selectedScrollItem; 
 var selectedMoveItem;
@@ -392,7 +394,7 @@ function handleSagePointerClick(x, y){
     }
 }
 
-function moveItemToFront(x, y) {
+function moveItemToFront2(x, y) {
     console.log("x " + x + " y " + y );
     potentialItems = []; 
     idx = [] ;
@@ -425,6 +427,37 @@ function moveItemToFront(x, y) {
     selectedMoveItem = potentialItems[0]; 
 };
 
+function moveItemToFront(x,y){
+	var i;
+	var selectedIndex;
+	var selectedItem;
+	
+	for(i=0; i<items.length; i++){
+		var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) { 
+			selectedIndex = i;
+			selectedItem = items[selectedIndex];
+			break;
+		}
+	}
+	for(i=selectedIndex; i<items.length-1; i++){
+		items[i] = items[i+1];
+	}
+	items[items.length-1] = selectedItem;
+	
+	
+	var itemIds = [];
+    for(var i=0; i<items.length; i++){
+        itemIds.push(items[i].id);
+    }
+		
+    sio.sockets.emit('updateItemOrder', itemIds);
+
+}
+
 function handleSagePointerZoom(zoom, x, y){
     console.log("x " + x + " y " + y + " zoom " + zoom );
     idx = [] ;
@@ -443,10 +476,10 @@ function handleSagePointerZoom(zoom, x, y){
 	    
     zoom = 1.0 - zoom*.01; 
     var iWidth = selectedScrollItem.width * zoom;
-    var iHeight = iWidth / selectedScrollItem.aspectRatio;
+    var iHeight = iWidth / selectedScrollItem.aspect;
     console.log( "w: " + iWidth + " h:" + iHeight );
-    if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspectRatio; }
-    if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspectRatio; }
+    if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspect; }
+    if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspect; }
     var iCenterX = selectedScrollItem.left + (selectedScrollItem.width/2);
     var iCenterY = selectedScrollItem.top + (selectedScrollItem.height/2);
     selectedScrollItem.left = iCenterX - (iWidth/2);
@@ -459,7 +492,7 @@ function handleSagePointerZoom(zoom, x, y){
 }
 
 function handleSagePointerDrag(x, y){
-    console.log( "x = " + x + " y = " + y);
+    console.log( "x = " + x + " y = " + y + "items[0].left" + items[0].left);
     idx = [] ;
     for(var i=0; i<items.length; i++){
         var l = items[i].left;
@@ -576,8 +609,8 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 console.log("pointer event! type: " + e.type  );
                                 //console.log("ServiceTypePointer> source ", e.sourceId);
                                 if (e.type == 3) { // update
-                                        if( e.sourceId in ptrs )
-                                            return;
+//                                         if( e.sourceId in ptrs )
+//                                             return;
                                         colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
                                         if (offset < msg.length) {
                                                 if (e.extraDataType == 4 && e.extraDataItems > 0) {
@@ -591,26 +624,30 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                         }
                                 }
                                 else if (e.type == 4) { // move
-                                        //console.log("\t move ", e.posx, e.posy);
+                                        console.log("\t move ", e.posx, e.posy);
                                         if (e.sourceId in ptrs) {
                                            sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
                                            
                                            if( ptrs[e.sourceId].mouse[0] == 1 )
-                                                handleSagePointerDrag( e.posx * totalWidth, e.posy*totalHeight );
+                                           {
+                                                console.log("Drag");
+                                                handleSagePointerDrag( e.posx * config.totalWidth, e.posy*config.totalHeight );
+                                            }
                                         }
-                                        else{
-                                              colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
-                                                if (offset < msg.length) {
-                                                    if (e.extraDataType == 4 && e.extraDataItems > 0) {
-                                                            console.log("create pointer"); 
-                                                            e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
-                                                            ptrinfo = e.extraString.split(" ");
-                                                            offset += e.extraDataItems;
-                                                            ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0]};
-                                                            sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
-                                                    }
-                                            }  
-                                        }
+//                                         else{
+//                                             console.log("need to create pointer");
+//                                               colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
+//                                                 if (offset < msg.length) {
+//                                                    if (e.extraDataType == 4 && e.extraDataItems > 0) {
+//                                                             console.log("create pointer"); 
+//                                                             e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
+//                                                             ptrinfo = e.extraString.split(" ");
+//                                                             offset += e.extraDataItems;
+//                                                             ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0]};
+//                                                             sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
+//                                                     }
+//                                             }  
+//                                         }
                                         
                                 }
                                 else if (e.type == 15) { // zoom
@@ -630,7 +667,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                                 offset += 4
                                                                 zoom = e.extraInt; 
                                                                 
-                                                                handleSagePointerZoom( zoom, e.posx*totalWidth, e.posy*totalHeight); 
+                                                                handleSagePointerZoom( zoom, e.posx*config.totalWidth, e.posy*config.totalHeight); 
                                                         }
                                                 }
                                         }
@@ -652,7 +689,10 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                 }
 
                                                 if( ptrs[e.sourceId].mouse[0] == 1 )
-                                                    handleSagePointerClick( e.posx * totalWidth, e.posy*totalHeight );
+                                                {
+                                                    console.log("Click");
+                                                    handleSagePointerClick( e.posx * config.totalWidth, e.posy*config.totalHeight );
+                                                }
                                         }
                                 }
                                 else if (e.type == 6) { // button up
