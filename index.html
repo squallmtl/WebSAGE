@@ -4,6 +4,8 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -97,44 +99,51 @@
 				
 				windowItem.appendChild(img);
 			}
-			else if(elem_data.type == "canvas"){
-				console.log(elem_data.extra);
-				if(elem_data.extra[0] == "direct"){
-					var canvas = document.createElement("canvas");
-					canvas.id = elem_data.id + "_canvas"
-					canvas.className = "sageItem";
-					canvas.aspectRatio = elem_data.aspectRatio;
-					canvas.width = elem_data.width;
-					canvas.height = elem_data.height;
+			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
+				var canvas = document.createElement("canvas");
+				canvas.id = elem_data.id + "_canvas"
+				canvas.className = "sageItem";
+				canvas.aspectRatio = elem_data.aspectRatio;
+				canvas.width = elem_data.width;
+				canvas.height = elem_data.height;
+			
+				windowItem.appendChild(canvas);
+			
+				var canvasJS = document.createElement('script')
+				canvasJS.type = "text/javascript";
+				canvasJS.src = elem_data.src;
+				document.head.appendChild(canvasJS);
+			
+				canvasJS.addEventListener('load', function(event) {
+					var canvasObj = new window[elem_data.extra];
+					canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
+					canvasObj.draw(date);
+					canvasItems[elem_data.id + "_canvas"] = canvasObj;
+				}, false);
+			}
+			else if(elem_data.type == "kinetic"){
+				var kinetic = document.createElement("div");
+				kinetic.id = elem_data.id + "_kinetic"
+				kinetic.className = "sageItem";
+				kinetic.aspectRatio = elem_data.aspectRatio;
+				kinetic.width = elem_data.width;
+				kinetic.height = elem_data.height;
+			
+				windowItem.appendChild(kinetic);
 				
-					windowItem.appendChild(canvas);
+				var kineticJS = document.createElement('script')
+				kineticJS.type = "text/javascript";
+				kineticJS.src = elem_data.src;
+				document.head.appendChild(kineticJS);
 				
-					var canvasJS = document.createElement('script')
-					canvasJS.type = "text/javascript";
-					canvasJS.src = elem_data.src;
-					document.head.appendChild(canvasJS);
-				
-					canvasJS.addEventListener('load', function(event) {
-						var canvasObj = new window[elem_data.extra[1]];
-						canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
-						canvasObj.draw(date);
-						canvasItems[elem_data.id + "_canvas"] = canvasObj;
-					}, false);
-  				}
-  				else if(elem_data.extra[0] == "div"){
-  					var something = null;
-  				}
-  				else if(elem_data.extra[0] == "pde"){
-  					var canvas = document.createElement("canvas");
-					canvas.id = elem_data.id + "_canvas"
-					canvas.className = "sageItem";
-					canvas.aspectRatio = elem_data.aspectRatio;
-					canvas.width = elem_data.width;
-					canvas.height = elem_data.height;
-					Processing.loadSketchFromSources(canvas, [elem_data.src]);
-					
-					windowItem.appendChild(canvas);
-  				}
+				kineticJS.addEventListener('load', function(event) {
+					var kineticObj = new window[elem_data.extra];
+					kineticObj.init(elem_data.id + "_kinetic", date, elem_data.resrc);
+					kineticObj.draw();
+					canvasItems[elem_data.id + "_kinetic"] = kineticObj;
+					console.log(kineticObj);
+					console.log(canvasItems[elem_data.id + "_kinetic"]);
+				}, false);
 			}
 			else if(elem_data.type == "video"){
 				var vid = document.createElement("video");
@@ -220,8 +229,12 @@
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			if(child[0].tagName.toLowerCase() == "canvas"){
+			//console.log("id: " + child[0].id);
+			if(animate_data.type == "canvas" || animate_data.type == "webgl"){
 				canvasItems[child[0].id].draw(date);
+			}
+			else if(animate_data.type == "kinetic"){
+				canvasItems[child[0].id].updateTime(date);
 			}
 		});
 	}

@@ -272,11 +272,10 @@ app.post('/upload', function(request, response) {
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
 						var title = zipName;
-						objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
+						var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
-						var appExtra = [instructions.type, objName];
-						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra);
+						var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -285,7 +284,7 @@ app.post('/upload', function(request, response) {
 						if(instructions.animation == "timer"){
 							setInterval(function() {
 								var now = new Date();
-								sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+								sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
 							}, instructions.interval);
 						}
 					}, 1000);
