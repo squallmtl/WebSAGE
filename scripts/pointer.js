@@ -2,7 +2,9 @@ function pointer(){
 	this.element = null;
 	this.ctx = null;
 	this.label = "";
-	this.color = "rgba(255, 255, 255, 1.0)";
+	this.givenColor = "rgba(255, 255, 255, 1.0)";
+	this.otherModeColor = "rgba(0.0, 0.0, 0.0, 1.0)";
+	this.drawMode; 
 	
 	this.pointerOffset = null;
 	
@@ -11,17 +13,23 @@ function pointer(){
 		this.ctx = this.element.getContext("2d");
 		
 		this.label = label;
-		this.color = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)"; 
+		this.givenColor = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)"; 
 		
 		this.pointerOffset = [0.0, 0.0];
+		this.drawMode = 0; 
 	}
 	
 	this.setColor = function(color){
-	    this.color = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)"; 
+	    this.givenColor = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)"; 
 	}
 	
 	this.setLabel = function(label){
 	    this.label = label;
+	}
+	
+	this.changeMode = function(mode){
+	    this.drawMode = mode;
+	    console.log("draw mode = " + this.drawMode);
 	}
 	
 	this.draw = function() {
@@ -35,8 +43,14 @@ function pointer(){
 		
 		// pointer
 		this.ctx.lineWidth = (3.0/100.0) * minDim;
-		this.ctx.fillStyle = this.color; //"rgba(164, 76, 199, 1.0)";
-		this.ctx.strokeStyle = "rgba(0, 0, 0, 1.0)";
+		if( this.drawMode == 0 ){
+            this.ctx.fillStyle = this.givenColor; //"rgba(164, 76, 199, 1.0)";
+            this.ctx.strokeStyle = "rgba(0, 0, 0, 1.0)";
+        }
+        else if(this.drawMode == 1){
+            this.ctx.fillStyle = this.otherModeColor; //"rgba(164, 76, 199, 1.0)";
+            this.ctx.strokeStyle = this.givenColor;
+        }
 		this.ctx.lineJoin = "round";
 		this.ctx.beginPath();
 		this.ctx.moveTo(0.025384*minDim, 0.934002*minDim);

@@ -10,24 +10,32 @@ void setup()
   fill(255);
   
   PFont fontA = loadFont("courier");
-  textFont(fontA, 14);  
+  textFont(fontA, 14); 
+  
+  readyRedraw = true;  
 }
 
 void draw(){
-    if( pointerPressed ){
-        mousePressed();
-        pointerPressed = false;
-    }
-    background(125.0);
-    if( drawRed )
-        fill( 255.0, 0.0, 0.0);
-    else
-        fill( 0.0, 0.0, 255.0 );
-    rect(0, 0, 700, 700);
+
+    if(readyRedraw)
+    {
+        if( pointerPressed ){
+            mousePressed();
+            pointerPressed = false;
+        }
+
+        background(125.0);
+        if( drawRed )
+            fill( 255.0, 0.0, 0.0);
+        else
+            fill( 0.0, 0.0, 255.0 );
+        rect(0, 0, 700, 700);
     
-    fill(255.0);
-    text("Hello Web! " + pointerX + " " + pointerY ,20,20);    
-    text("Click Here", 750, 20);
+        fill(255.0);
+        text("Hello Web! " + pointerX + " " + pointerY ,20,20);    
+        text("Click Here", 750, 20);
+        readyRedraw = false; 
+    }
 }
 
 void mousePressed()
@@ -46,6 +54,14 @@ void setMouseToPointer()
 }
 
 <!-- 
+void setMouseToPointer(double pointerX, double pointerY) 
+{
+    mouseX = pointerX;
+    mouseY = pointerY;
+}
+ -->
+
+<!-- 
 void pointerPressed(ptrX, ptrY)
 {
     mouseX = 800; //ptrX;
@@ -62,19 +78,49 @@ void pointerPressed(ptrX, ptrY)
 var pointerX = 0;
 var pointerY = 0; 
 var pointerPressed = false; 
+var readyRedraw = false; 
 window.onmessage = function(e){
     if (e.data.indexOf( 'pointerClick') != -1) {
         var tokens = e.data.split(' ');
         pointerX = tokens[2];
         pointerY = tokens[4]; 
-        alert('PointerClick! ' + pointerX + " " + pointerY);
-        pointerPressed = true;         
+        pointerPressed = true;     
+        readyRedraw = true;     
     }
+    if (e.data.indexOf( 'pointerMove') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+    
     
 };
 </script>
 
 
+
+
+
+
+// var pointerX = 0;
+// var pointerY = 0; 
+// var pointerPressed = false; 
+// var readyRedraw = false; 
+// window.onmessage = function(e){
+//     var processingInstance = Processing.getInstanceById('mycanvas');
+//     if (e.data.indexOf( 'pointerClick') != -1) {
+//         var tokens = e.data.split(' ');
+//         pointerX = tokens[2];
+//         pointerY = tokens[4]; 
+//         pointerPressed = true;
+//         processingInstance.setMouseToPointer(pointerX, pointerY); 
+//         processingInstance.mousePressed();
+//         readyRedraw = true;
+//     }
+    
+    
+//};
 <!-- 
 
 <script type="application/javascript">

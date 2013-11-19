@@ -323,10 +323,13 @@
               });
           
               socket.on('changeMode', function(mode){
-                if( mode == 1 )
-                    ptr.setColor( [0, 0, 0, 1] );
-                else if( mode == 0 )
-                    ptr.setColor( pointerData.color ); 
+                console.log("changeMode");
+                if( mode == 1 ){
+                    ptr.changeMode(1);
+                }
+                else if( mode == 0 ){
+                    ptr.changeMode(0);
+                }
                 ptr.draw();
               });
           });
