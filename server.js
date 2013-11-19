@@ -3,16 +3,18 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var path = require('path');
-var unzip = require('unzip');
+var decompresszip = require('decompress-zip');
 var gm = require('gm');
 var ytdl = require('ytdl');
 
 var app = express();
 var hport = 9090;
 
+var uploadsFolder = __dirname + "/uploads";
+
 app.configure(function(){
 	app.use(express.methodOverride());
-	app.use(express.bodyParser({uploadDir:__dirname + '/uploads'}));
+	app.use(express.bodyParser({uploadDir: uploadsFolder}));
 	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
@@ -280,6 +282,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 
 app.post('/upload', function(request, response) {
 	var i;
+	var uploads
 	for(var f in request.files){
 		var uploadPath = path.dirname(request.files[f].path);
 		var finalPath = path.join(uploadPath, request.files[f].name);
@@ -306,44 +309,18 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[f].type == "application/zip"){
-			var parentDir = request.files[f].name.substring(0, request.files[f].name.length-4);
+			var zipFolder = localPath.substring(0, localPath.length-4);
+			var zipName = request.files[f].name.substring(0, request.files[f].name.length-4);
 			
-			// unzip file
-			var zipfile = fs.createReadStream(localPath).pipe(unzip.Parse());
-			var contents = [];
-			zipfile.on('entry', function(entry) {
-				if(contents.indexOf(entry.path) >= 0){
-					entry.autodrain(entry.path);
-				}
-				else if(entry.path.substring(0, parentDir.length) == parentDir) {
-					contents.push(entry.path);
-					if(entry.type == "Directory"){
-						var exist = fs.existsSync(__dirname + "/uploads/" + entry.path);
-						if(!exist) {
-							fs.mkdir(__dirname + "/uploads/" + entry.path, function(err) {
-								if(err) console.log(err);
-							});
-						}
-					}
-					else if(entry.type == "File"){
-						var output = fs.createWriteStream(__dirname + "/uploads/" + entry.path);
-						output.on('finish', function() {
-							console.log("finished writing: " + entry.path);
-						});
-						entry.pipe(output);
-					}
-				}
-				else {
-					entry.autodrain();
-				}
-			});
-			
-			// once all files/folders have been extracted
-			zipfile.on('close', function() {
+			var unzipper = new decompresszip(localPath);
+			unzipper.on('extract', function (log) {
 				// read instructions for how to handle
 				var zipPath = localPath.substring(0, localPath.length-4);
 				console.log("reading instructions");
-				var instuctionsFile = zipPath + "/instructions.json";
+// 				var instuctionsFile = zipPath + "/instructions.json";
+// =======
+				var instuctionsFile = zipFolder + "/instructions.json";
+
 				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 					if(err){
 						console.log('Error: ' + err);
@@ -354,18 +331,19 @@ app.post('/upload', function(request, response) {
 					// add resource scripts to clients
 					for(i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							sio.sockets.emit('addScript', zipPath+"/"+instructions.resources[i].src);
+							sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
 						}
 					}
 					
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
-						var title = parentDir;
-						var objName = instructions.main_script.substring(0, instructions.main_script.length-3);
+						var title = zipName;
+						objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
-						var newItem = new item("canvas", title, itemId, zipPath+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipPath+"/", objName);
+						var appExtra = [instructions.type, objName];
+						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -384,6 +362,12 @@ app.post('/upload', function(request, response) {
 				fs.unlink(localPath, function(err) {
 					if(err) console.log(err);
 				});
+			});
+			unzipper.extract({
+				path: uploadsFolder,
+				filter: function (file) {
+					return file.type !== "SymbolicLink";
+				}
 			});
 		}
 		else{
@@ -419,56 +403,65 @@ var selectOffsetX;
 var selectOffsetY;  
 
 //this will be invoked on every sage pointer click 
-function handleSagePointerClick(x, y){
-    moveItemToFront(x, y);  //move item to front and return the item
-    selectedScrollItem = null;
+function handleSagePointerClick(x, y, ptrId, mode){
+    if( mode == 0 ){//if manipulate windows mode
+        var overAnItem = moveItemToFront(x, y);  //move item to front and return the item
+        if( !overAnItem )
+            ptrs[ptrId].mode = 1; 
+        selectedScrollItem = null;
     
-    if( selectedMoveItem != null ){
-        //determine distance btw event and offset 
-        selectOffsetX = selectedMoveItem.left - x; 
-        selectOffsetY = selectedMoveItem.top - y; 
+        if( selectedMoveItem != null ){
+            //determine distance btw event and offset 
+            selectOffsetX = selectedMoveItem.left - x; 
+            selectOffsetY = selectedMoveItem.top - y; 
+        }
+    }
+    else if( mode == 1 ){ //else click inside windows mode
+        clickInsideWindow(x, y, ptrId); 
     }
 }
 
-function moveItemToFront2(x, y) {
-    console.log("x " + x + " y " + y );
-    potentialItems = []; 
-    idx = [] ;
-    for(var i=0; i<items.length; i++){
-        var l = items[i].left;
-        var w = items[i].width;
-        var t = items[i].top;
-        var h = items[i].height; 
-		if(l < x && l+w > x && t < y && t+h > y) {   
-		    potentialItems.push( items[i] ) ;
-		    idx.push( i ); 
-        } 
-	}
-	if( potentialItems.length == 0 ){
-        console.log("change mode");
-        clickMode = 1; 
-        sio.sockets.emit("changeMode", clickMode);   
-        return;      
-    }
-    
-    if( clickMode == 1 ){
-        clickMode = 0; 
-        sio.sockets.emit("changeMode", clickMode);   
-    }
-    
-    console.log("item: " + potentialItems[0].id );
-    items.splice(idx[0], 0);
-    items.push( potentialItems[0] ); 
-    sio.sockets.emit('itemSelected', potentialItems[0].id );
-    selectedMoveItem = potentialItems[0]; 
-};
+// function moveItemToFront2(x, y) {
+//     console.log("x " + x + " y " + y );
+//     potentialItems = []; 
+//     idx = [] ;
+//     for(var i=0; i<items.length; i++){
+//         var l = items[i].left;
+//         var w = items[i].width;
+//         var t = items[i].top;
+//         var h = items[i].height; 
+// 		if(l < x && l+w > x && t < y && t+h > y) {   
+// 		    potentialItems.push( items[i] ) ;
+// 		    idx.push( i ); 
+//         } 
+// 	}
+// 	if( potentialItems.length == 0 ){
+//         console.log("change mode");
+//         clickMode = 1; 
+//         sio.sockets.emit("changeMode", clickMode);   
+//         return;      
+//     }
+//     
+//     if( clickMode == 1 ){
+//         clickMode = 0; 
+//         sio.sockets.emit("changeMode", clickMode); 
+//     }
+//     
+//     console.log("item: " + potentialItems[0].id );
+//     items.splice(idx[0], 0);
+//     items.push( potentialItems[0] ); 
+//     sio.sockets.emit('itemSelected', potentialItems[0].id );
+//     selectedMoveItem = potentialItems[0]; 
+// };
 
 function moveItemToFront(x,y){
 	var i;
 	var selectedIndex;
 	var selectedItem;
 	
-	for(i=0; i<items.length; i++){
+	var overAnItem = false;
+	
+	for(i=items.length-1; i >= 0; i--){
 		var l = items[i].left;
         var w = items[i].width;
         var t = items[i].top;
@@ -476,6 +469,7 @@ function moveItemToFront(x,y){
 		if(l < x && l+w > x && t < y && t+h > y) { 
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];
+			overAnItem = true; 
 			break;
 		}
 	}
@@ -492,6 +486,25 @@ function moveItemToFront(x,y){
 		
     sio.sockets.emit('updateItemOrder', itemIds);
 
+    return overAnItem; //need to know so that ptr has correct mode
+}
+
+function clickInsideWindow(x, y, pID){
+
+    for(i=items.length-1; i >= 0; i--){
+		var l = items[i].left;
+        var w = items[i].width;
+        var t = items[i].top;
+        var h = items[i].height; 
+		if(l < x && l+w > x && t < y && t+h > y) { 
+			selectedIndex = i;
+			selectedItem = items[selectedIndex];
+			break;
+		}
+	}
+	
+    sio.sockets.emit( 'processClick', {elemId: itemId, date: now, x: x, y: y, ptrId: pID } ); 
+		
 }
 
 function handleSagePointerZoom(zoom, x, y){
@@ -654,7 +667,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                         e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
                                                         ptrinfo = e.extraString.split(" ");
                                                         offset += e.extraDataItems;
-                                                        ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0]};
+                                                        ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0], mode:0};
                                                         sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
                                                 }
                                         }
@@ -727,7 +740,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                 if( ptrs[e.sourceId].mouse[0] == 1 )
                                                 {
                                                     console.log("Click");
-                                                    handleSagePointerClick( e.posx * config.totalWidth, e.posy*config.totalHeight );
+                                                    handleSagePointerClick( e.posx * config.totalWidth, e.posy*config.totalHeight, e.sourceId );
                                                 }
                                         }
                                 }
