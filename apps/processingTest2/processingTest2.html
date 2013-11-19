@@ -1,0 +1,38 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+Boolean drawRed = false;
+Boolean drawBlue = true;  
+
+void setup()
+{
+  size(1400,700);
+  background(125.0);
+  fill(255);
+  
+  PFont fontA = loadFont("courier");
+  textFont(fontA, 14);  
+}
+
+void draw(){
+    background(125.0);
+    if( drawRed )
+        fill( 255.0, 0.0, 0.0);
+    else
+        fill( 0.0, 0.0, 255.0 );
+    rect(0, 0, 700, 700);
+    
+    fill(255.0);
+    text("Hello Web! " + mouseX + " " + mouseY ,20,20);    
+    text("Click Here", 750, 20);
+}
+
+void mousePressed()
+{
+    if( mouseX > 700 ){
+        drawRed = !drawRed;
+        drawBlue = !drawBlue; 
+    } 
+}
+
+</script>
+<canvas id="mycanvas"></canvas>
