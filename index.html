@@ -219,9 +219,9 @@
 			if(child[0].id.substring(child[0].id.length - 6) == "canvas"){
 				canvasItems[child[0].id].draw(date);
 			}
-			///
-			/// ADD KINETIC
-			///
+			if(child[0].id.substring(child[0].id.length - 7) == "kinetic"){
+				canvasItems[child[0].id].resize(date);
+			}
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
@@ -229,12 +229,8 @@
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			//console.log("id: " + child[0].id);
-			if(animate_data.type == "canvas" || animate_data.type == "webgl"){
+			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kinetic"){
 				canvasItems[child[0].id].draw(date);
-			}
-			else if(animate_data.type == "kinetic"){
-				canvasItems[child[0].id].updateTime(date);
 			}
 		});
 	}
