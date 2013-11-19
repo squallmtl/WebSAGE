@@ -4,6 +4,7 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/videoControls.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
@@ -171,8 +172,9 @@
 				vid.aspectRatio = elem_data.aspectRatio;
 				vid.width = elem_data.width;
 				vid.height = elem_data.height;
-				vid.controls = true;
-				vid.poster = elem_data.extra;
+				vid.controls = false;
+				vid.style.backgroundColor = "#333333";
+				if(elem_data.extra != null) vid.poster = elem_data.extra;
 				
 				var source1 = document.createElement("source");
 				source1.src = elem_data.src;
@@ -185,6 +187,23 @@
 				vid.appendChild(source2);
 				
 				windowItem.appendChild(vid);
+				
+				// video controls
+				var vidctrl = document.createElement("canvas");
+				vidctrl.id = elem_data.id + "_controls";
+				vidctrl.className = "windowControls";
+				vidctrl.width = elem_data.width;
+				vidctrl.height = titleBarHeight;
+				vidctrl.style.left = (elem_data.left-offsetX).toString() + "px";
+				vidctrl.style.top = (elem_data.top+elem_data.height+titleBarHeight-offsetY).toString() + "px";
+				
+				console.log(vidctrl.style.left + " " + vidctrl.style.top);
+			
+				main.appendChild(vidctrl);
+				
+				var vidctrlObj = new videoControls();
+				vidctrlObj.init(elem_data.id + "_controls");
+				vidctrlObj.draw();
 			}
 			
 			itemCount += 2;
@@ -217,6 +236,12 @@
 			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
+			
+			var selectedElemControls = document.getElementById(position_data.elemId + "_controls");
+			if(selectedElemControls != null){
+				selectedElemControls.style.left = eLeft.toString() + "px";
+				selectedElemControls.style.top = (eTop+position_data.elemHeight+titleBarHeight).toString() + "px";
+			}
 		});
 		
 		socket.on('setItemPositionAndSize', function(position_data) {
@@ -233,6 +258,12 @@
 			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
+			
+			var selectedElemControls = document.getElementById(position_data.elemId + "_controls");
+			if(selectedElemControls != null){
+				selectedElemControls.style.left = eLeft.toString() + "px";
+				selectedElemControls.style.top = (eTop+position_data.elemHeight+titleBarHeight).toString() + "px";
+			}
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
 			child[0].width = Math.round(position_data.elemWidth);

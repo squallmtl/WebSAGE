@@ -184,7 +184,7 @@ sio.sockets.on('connection', function(socket) {
 		selectedMoveItem.left = move_data.eventX + selectOffsetX;
 		selectedMoveItem.top = move_data.eventY + selectOffsetY;
 		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
+		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, elemWidth: selectedMoveItem.width, elemHeight: selectedMoveItem.height, date: now});
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
