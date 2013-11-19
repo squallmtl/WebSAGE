@@ -139,10 +139,7 @@
 				kineticJS.addEventListener('load', function(event) {
 					var kineticObj = new window[elem_data.extra];
 					kineticObj.init(elem_data.id + "_kinetic", date, elem_data.resrc);
-					kineticObj.draw();
 					canvasItems[elem_data.id + "_kinetic"] = kineticObj;
-					console.log(kineticObj);
-					console.log(canvasItems[elem_data.id + "_kinetic"]);
 				}, false);
 			}
 			else if(elem_data.type == "video"){
@@ -219,9 +216,12 @@
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
 			
-			if(child[0].tagName.toLowerCase() == "canvas"){
-				canvasItems[child[0].id].draw(date)
+			if(child[0].id.substring(child[0].id.length - 6) == "canvas"){
+				canvasItems[child[0].id].draw(date);
 			}
+			///
+			/// ADD KINETIC
+			///
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
