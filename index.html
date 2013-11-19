@@ -6,6 +6,7 @@
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
+<script type="text/javascript" src="scripts/three.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -142,6 +143,27 @@
 					canvasItems[elem_data.id + "_kinetic"] = kineticObj;
 				}, false);
 			}
+			else if(elem_data.type == "threejs"){
+				var threejs = document.createElement("div");
+				threejs.id = elem_data.id + "_threejs"
+				threejs.className = "sageItem";
+				threejs.aspectRatio = elem_data.aspectRatio;
+				threejs.width = elem_data.width;
+				threejs.height = elem_data.height;
+			
+				windowItem.appendChild(threejs);
+				
+				var threejsJS = document.createElement('script')
+				threejsJS.type = "text/javascript";
+				threejsJS.src = elem_data.src;
+				document.head.appendChild(threejsJS);
+				
+				threejsJS.addEventListener('load', function(event) {
+					var threejsObj = new window[elem_data.extra];
+					threejsObj.init(elem_data.id + "_threejs", date, elem_data.resrc);
+					canvasItems[elem_data.id + "_threejs"] = threejsObj;
+				}, false);
+			}
 			else if(elem_data.type == "video"){
 				var vid = document.createElement("video");
 				vid.id = elem_data.id + "_video";
@@ -222,6 +244,9 @@
 			if(child[0].id.substring(child[0].id.length - 7) == "kinetic"){
 				canvasItems[child[0].id].resize(date);
 			}
+			if(child[0].id.substring(child[0].id.length - 7) == "threejs"){
+				canvasItems[child[0].id].resize(date);
+			}
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
@@ -229,7 +254,7 @@
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kinetic"){
+			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kinetic" || animate_data.type == "threejs"){
 				canvasItems[child[0].id].draw(date);
 			}
 		});
