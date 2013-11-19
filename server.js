@@ -490,20 +490,26 @@ function moveItemToFront(x,y){
 }
 
 function clickInsideWindow(x, y, pID){
+    console.log("click in window " + x + " " + y +  " " + items.length);
+    var now = new Date();
 
+	var selectedIndex;
+	var selectedItem;
     for(i=items.length-1; i >= 0; i--){
 		var l = items[i].left;
         var w = items[i].width;
         var t = items[i].top;
         var h = items[i].height; 
+        console.log("l = " + l + " l+w " + (l+w) + " t " + t + " t+h " + (t+h) );
 		if(l < x && l+w > x && t < y && t+h > y) { 
+		    console.log("true");
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];
 			break;
 		}
 	}
-	
-    sio.sockets.emit( 'processClick', {elemId: itemId, date: now, x: x, y: y, ptrId: pID } ); 
+    console.log(selectedIndex + " " + selectedItem.id);
+    sio.sockets.emit( 'processClick', {elemId: selectedItem.id, date: now, x: x, y: y, ptrId: pID } ); 
 		
 }
 
@@ -892,4 +898,47 @@ function item(type, title, id, src, left, top, width, height, aspect, date, resr
 	this.resrc = resrc;
 	this.extra = extra;
 }
+
+
+var keypress = require('keypress');
+
+// make `process.stdin` begin emitting "keypress" events
+keypress(process.stdin);
+
+// listen for the "keypress" event
+process.stdin.on('keypress', function (ch, key) {
+  console.log('got "keypress"', key);
+  if (key && key.ctrl && key.name == 'c') {
+    //process.stdin.pause();
+    process.exit(code =0);
+  }
+  
+  if( key.name == 'a' ){
+        clickInsideWindow( 900, 400, "0" );
+  }
+  
+});
+
+process.stdin.setRawMode(true);
+process.stdin.resume();
+
+// event.type must be keypress
+// 
+// function getChar(event) {
+// 
+//   if (event.which == null) {
+// 
+//         return String.fromCharCode(event.keyCode) // IE
+// 
+//   } else if (event.which!=0 && event.charCode!=0) {
+// 
+//         return String.fromCharCode(event.which)   // the rest
+// 
+//   } else {
+// 
+//         return null // special key
+// 
+//   }
+// 
+// }
 

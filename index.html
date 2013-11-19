@@ -335,10 +335,70 @@
             var x = ptr_data.x;
             var y = ptr_data.y;
             var ptrId = ptr_data.ptrId; 
-            var elemId = ptr_data.ptrId; 
+            var elemId = ptr_data.elemId; 
             
             
-            console.log( "x = " + x + " y = " + y + " ptrId = " + ptrId + " elemId = " + elemId );    
+            console.log( "x = " + x + " y = " + y + " ptrId = " + ptrId + " elemId = " + elemId ); 
+            
+            var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
+            console.log(selectedElement);
+
+            selectedElement.contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');   
+            
+//             var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
+//              console.log(selectedElement);
+// //             var inside = iframeRef( document.getElementById(elemId+"_site") );
+// //             console.log(inside);
+//             var e = document.createEvent('MouseEvents'); 
+//             e.initMouseEvent('click', false, false, false,
+//             0, 800, 0, 800, 0, //x-offsetX, y-offsetY, x-offsetX, y-offsetY,
+//             false, false,false, false, 0, selectedElement ); 
+            
+//             MouseEvent {dataTransfer: null, toElement: p, fromElement: null, y: 19, x: 481…}
+// altKey: false
+// bubbles: true
+// button: 0
+// cancelBubble: false
+// cancelable: true
+// charCode: 0
+// clientX: 481
+// clientY: 19
+// clipboardData: undefined
+// ctrlKey: false
+// currentTarget: null
+// dataTransfer: null
+// defaultPrevented: false
+// detail: 1
+// eventPhase: 0
+// fromElement: null
+// keyCode: 0
+// layerX: 481
+// layerY: 19
+// metaKey: false
+// offsetX: 475
+// offsetY: 18
+// pageX: 481
+// pageY: 19
+// relatedTarget: null
+// returnValue: true
+// screenX: 549
+// screenY: 196
+// shiftKey: false
+// srcElement: p
+// target: p
+// timeStamp: 1384845340520
+// toElement: p
+// type: "click"
+// view: Window
+// webkitMovementX: 0
+// webkitMovementY: 0
+// which: 1
+// x: 481
+// y: 19
+            selectedElement.dispatchEvent(e);
+//             
+//             console.log(e);
+//             selectedElement.
           
           }); 
         
@@ -363,6 +423,15 @@
 // //             selectedElem.
 //           });
         //-------------------------  END POINTER -------------------------//
+	}
+	
+	function iframeRef( frameRef ) {
+        return frameRef.contentWindow ? frameRef.contentWindow.document : frameRef.contentDocument
+    }
+
+
+    function mousePress(event) {
+		console.log(event);
 	}
 
 	/*

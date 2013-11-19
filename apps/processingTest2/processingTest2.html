@@ -14,6 +14,10 @@ void setup()
 }
 
 void draw(){
+    if( pointerPressed ){
+        mousePressed();
+        pointerPressed = false;
+    }
     background(125.0);
     if( drawRed )
         fill( 255.0, 0.0, 0.0);
@@ -22,17 +26,64 @@ void draw(){
     rect(0, 0, 700, 700);
     
     fill(255.0);
-    text("Hello Web! " + mouseX + " " + mouseY ,20,20);    
+    text("Hello Web! " + pointerX + " " + pointerY ,20,20);    
     text("Click Here", 750, 20);
 }
 
 void mousePressed()
 {
+    setMouseToPointer(); 
     if( mouseX > 700 ){
         drawRed = !drawRed;
         drawBlue = !drawBlue; 
     } 
 }
 
+void setMouseToPointer() 
+{
+    mouseX = pointerX;
+    mouseY = pointerY;
+}
+
+<!-- 
+void pointerPressed(ptrX, ptrY)
+{
+    mouseX = 800; //ptrX;
+    mouseY = ptrY; 
+    mousePressed();
+}
+ -->
+
+
 </script>
 <canvas id="mycanvas"></canvas>
+
+<script type="application/javascript">
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+window.onmessage = function(e){
+    if (e.data.indexOf( 'pointerClick') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        alert('PointerClick! ' + pointerX + " " + pointerY);
+        pointerPressed = true;         
+    }
+    
+};
+</script>
+
+
+<!-- 
+
+<script type="application/javascript">
+        var myX = -1;
+        var myY = -1;
+        var ptrClick = function (x, y) {
+           x = myX;
+           y = myY;
+        };
+</script>
+ -->
+
