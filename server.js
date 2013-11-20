@@ -85,7 +85,8 @@ sio.sockets.on('connection', function(socket) {
 			var tmpFile = fs.createWriteStream("tmp/" + fileName);
 			request(elem_data.src).pipe(tmpFile);
 			
-			tmpFile.on('finish', function() {
+			tmpFile.on('close', function() {
+				console.log("finished");
 				gm("tmp/" + fileName).size(function(err, size) {
 					if(!err){
 						var itemId = "item"+itemCount.toString();
@@ -109,7 +110,6 @@ sio.sockets.on('connection', function(socket) {
 				});
 				
 			});
-			
 		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
