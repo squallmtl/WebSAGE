@@ -9,6 +9,23 @@ function windowManager(id, sock) {
 	this.scale = 1.0;
 	this.titleBarHeight = 0;
 	this.items = [];
+	this.mouseX = 0;
+	this.mouseY = 0;
+	
+	this.canvasImg = new Image();
+	this.canvasImg.src = "images/canvas.png";
+	this.imageImg = new Image();
+	this.imageImg.src = "images/image.png";
+	this.kineticjsImg = new Image();
+	this.kineticjsImg.src = "images/kineticjs.png";
+	this.threejsImg = new Image();
+	this.threejsImg.src = "images/threejs.png";
+	this.videoImg = new Image();
+	this.videoImg.src = "images/video.png";
+	this.webglImg = new Image();
+	this.webglImg.src = "images/webgl.png";
+	this.youtubeImg = new Image();
+	this.youtubeImg.src = "images/youtube.png";
 	
 	var widthPercent = this.element.style.width;
 	var widthPx = parseFloat(widthPercent.substring(0, widthPercent.length-1)/100) * this.element.parentNode.clientWidth;
@@ -41,6 +58,19 @@ function windowManager(id, sock) {
 			
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
+			
+			// item icon
+			var size = 0.8*Math.min(eWidth, eHeight);
+			var x = eLeft + (eWidth/2) - (size/2);
+			var y = eTop + (eHeight/2) - (size/2);
+			if(this.items[i].type == "canvas") this.ctx.drawImage(this.canvasImg, x, y, size, size);
+			else if(this.items[i].type == "img") this.ctx.drawImage(this.imageImg, x, y, size, size);
+			else if(this.items[i].type == "kineticjs") this.ctx.drawImage(this.kineticjsImg, x, y, size, size);
+			else if(this.items[i].type == "threejs") this.ctx.drawImage(this.threejsImg, x, y, size, size);
+			else if(this.items[i].type == "video") this.ctx.drawImage(this.videoImg, x, y, size, size);
+			else if(this.items[i].type == "webgl") this.ctx.drawImage(this.webglImg, x, y, size, size);
+			else if(this.items[i].type == "youtube") this.ctx.drawImage(this.youtubeImg, x, y, size, size);
+			
 			
 			// title bar
 			this.ctx.fillStyle = "rgba(102, 102, 102, 1.0)";
@@ -79,17 +109,17 @@ function windowManager(id, sock) {
 	
 	this.mousePress = function(event) {
 		var rect = this.element.getBoundingClientRect();
-		var mouseX = event.clientX - rect.left;
-		var mouseY = event.clientY - rect.top;
-		var globalX = mouseX / this.scale;
-		var globalY = mouseY / this.scale;
+		this.mouseX = event.clientX - rect.left;
+		this.mouseY = event.clientY - rect.top;
+		var globalX = this.mouseX / this.scale;
+		var globalY = this.mouseY / this.scale;
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = (this.items[i].height+this.titleBarHeight) * this.scale;
 			
-			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
 				var selectOffsetX = this.items[i].left - globalX;
 				var selectOffsetY = this.items[i].top - globalY;
 				
@@ -101,10 +131,10 @@ function windowManager(id, sock) {
 	
 	this.mouseMove = function(event) {
 		var rect = this.element.getBoundingClientRect();
-		var mouseX = event.clientX - rect.left;
-		var mouseY = event.clientY - rect.top;
-		var globalX = mouseX / this.scale;
-		var globalY = mouseY / this.scale;
+		this.mouseX = event.clientX - rect.left;
+		this.mouseY = event.clientY - rect.top;
+		var globalX = this.mouseX / this.scale;
+		var globalY = this.mouseY / this.scale;
 		this.socket.emit('moveSelectedElement', {eventX: globalX, eventY: globalY});
 	};
 	
@@ -114,15 +144,15 @@ function windowManager(id, sock) {
 	
 	this.mouseScroll = function(event) {
 		var rect = this.element.getBoundingClientRect();
-		var mouseX = event.clientX - rect.left;
-		var mouseY = event.clientY - rect.top;
+		this.mouseX = event.clientX - rect.left;
+		this.mouseY = event.clientY - rect.top;
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
-			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
 				this.socket.emit('selectScrollElementById', this.items[i].id);
 				break;
 			}
@@ -135,15 +165,15 @@ function windowManager(id, sock) {
 	
 	this.mouseScrollFF = function(event) {
 		var rect = this.element.getBoundingClientRect();
-		var mouseX = event.clientX - rect.left;
-		var mouseY = event.clientY - rect.top;
+		this.mouseX = event.clientX - rect.left;
+		this.mouseY = event.clientY - rect.top;
 		for(i=this.items.length-1; i>=0; i--){
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = this.items[i].top * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
-			if(mouseX >= eLeft && mouseX <= (eLeft+eWidth) && mouseY >= eTop && mouseY <= (eTop+eHeight)){
+			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
 				this.socket.emit('selectScrollElementById', this.items[i].id);
 				break;
 			}
@@ -153,6 +183,20 @@ function windowManager(id, sock) {
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
 		this.socket.emit('scrollSelectedElement', scale);
+	};
+	
+	this.keyPress = function(event) {
+		for(i=this.items.length-1; i>=0; i--){
+			var eLeft = this.items[i].left * this.scale;
+			var eTop = this.items[i].top * this.scale;
+			var eWidth = this.items[i].width * this.scale;
+			var eHeight = (this.items[i].height+this.titleBarHeight) * this.scale;
+			
+			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
+				this.socket.emit('keypressElementById', {elemId: this.items[i].id, keyCode: event.keyCode});
+				break;
+			}
+		}
 	};
 	
 	this.addNewElement = function(elem_data) {
@@ -250,4 +294,5 @@ function windowManager(id, sock) {
 	this.element.addEventListener('mouseup', this.mouseRelease.bind(this), false);
 	this.element.addEventListener('mousewheel', this.mouseScroll.bind(this), false);
 	this.element.addEventListener('DOMMouseScroll', this.mouseScrollFF.bind(this), false);
+	window.addEventListener('keydown', this.keyPress.bind(this), false);
 }

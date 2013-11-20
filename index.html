@@ -123,25 +123,25 @@
 					canvasItems[elem_data.id + "_canvas"] = canvasObj;
 				}, false);
 			}
-			else if(elem_data.type == "kinetic"){
-				var kinetic = document.createElement("div");
-				kinetic.id = elem_data.id + "_kinetic"
-				kinetic.className = "sageItem";
-				kinetic.aspectRatio = elem_data.aspectRatio;
-				kinetic.width = elem_data.width;
-				kinetic.height = elem_data.height;
+			else if(elem_data.type == "kineticjs"){
+				var kineticjs = document.createElement("div");
+				kineticjs.id = elem_data.id + "_kineticjs"
+				kineticjs.className = "sageItem";
+				kineticjs.aspectRatio = elem_data.aspectRatio;
+				kineticjs.width = elem_data.width;
+				kineticjs.height = elem_data.height;
 			
-				windowItem.appendChild(kinetic);
+				windowItem.appendChild(kineticjs);
 				
-				var kineticJS = document.createElement('script')
-				kineticJS.type = "text/javascript";
-				kineticJS.src = elem_data.src;
-				document.head.appendChild(kineticJS);
+				var kineticjsJS = document.createElement('script')
+				kineticjsJS.type = "text/javascript";
+				kineticjsJS.src = elem_data.src;
+				document.head.appendChild(kineticjsJS);
 				
-				kineticJS.addEventListener('load', function(event) {
-					var kineticObj = new window[elem_data.extra];
-					kineticObj.init(elem_data.id + "_kinetic", date, elem_data.resrc);
-					canvasItems[elem_data.id + "_kinetic"] = kineticObj;
+				kineticjsJS.addEventListener('load', function(event) {
+					var kineticjsObj = new window[elem_data.extra];
+					kineticjsObj.init(elem_data.id + "_kineticjs", date, elem_data.resrc);
+					canvasItems[elem_data.id + "_kineticjs"] = kineticjsObj;
 				}, false);
 			}
 			else if(elem_data.type == "threejs"){
@@ -165,7 +165,7 @@
 					canvasItems[elem_data.id + "_threejs"] = threejsObj;
 				}, false);
 			}
-			else if(elem_data.type == "video"){
+			else if(elem_data.type == "video" || elem_data.type == "youtube"){
 				var vid = document.createElement("video");
 				vid.id = elem_data.id + "_video";
 				vid.className = "sageItem";
@@ -176,34 +176,25 @@
 				vid.style.backgroundColor = "#333333";
 				if(elem_data.extra != null) vid.poster = elem_data.extra;
 				
-				var source1 = document.createElement("source");
-				source1.src = elem_data.src;
-				source1.type = "video/mp4";
-				vid.appendChild(source1);
+				vid.addEventListener('canplay', function() {
+					console.log("video can now play"); // Video is loaded and can be played
+				}, false);
 				
-				var source2 = document.createElement("source");
-				source2.src = elem_data.resrc;
-				source2.type = "video/webm";
-				vid.appendChild(source2);
+				if(elem_data.src != null){
+					var source1 = document.createElement("source");
+					source1.src = elem_data.src + "?" + clientID.toString();
+					source1.type = "video/mp4";
+					vid.appendChild(source1);
+				}
+				
+				if(elem_data.resrc != null){
+					var source2 = document.createElement("source");
+					source2.src = elem_data.resrc + "?" + clientID.toString();
+					source2.type = "video/webm";
+					vid.appendChild(source2);
+				}
 				
 				windowItem.appendChild(vid);
-				
-				// video controls
-				var vidctrl = document.createElement("canvas");
-				vidctrl.id = elem_data.id + "_controls";
-				vidctrl.className = "windowControls";
-				vidctrl.width = elem_data.width;
-				vidctrl.height = titleBarHeight;
-				vidctrl.style.left = (elem_data.left-offsetX).toString() + "px";
-				vidctrl.style.top = (elem_data.top+elem_data.height+titleBarHeight-offsetY).toString() + "px";
-				
-				console.log(vidctrl.style.left + " " + vidctrl.style.top);
-			
-				main.appendChild(vidctrl);
-				
-				var vidctrlObj = new videoControls();
-				vidctrlObj.init(elem_data.id + "_controls");
-				vidctrlObj.draw();
 			}
 			
 			itemCount += 2;
@@ -236,12 +227,6 @@
 			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
-			
-			var selectedElemControls = document.getElementById(position_data.elemId + "_controls");
-			if(selectedElemControls != null){
-				selectedElemControls.style.left = eLeft.toString() + "px";
-				selectedElemControls.style.top = (eTop+position_data.elemHeight+titleBarHeight).toString() + "px";
-			}
 		});
 		
 		socket.on('setItemPositionAndSize', function(position_data) {
@@ -259,12 +244,6 @@
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 			
-			var selectedElemControls = document.getElementById(position_data.elemId + "_controls");
-			if(selectedElemControls != null){
-				selectedElemControls.style.left = eLeft.toString() + "px";
-				selectedElemControls.style.top = (eTop+position_data.elemHeight+titleBarHeight).toString() + "px";
-			}
-			
 			var child = selectedElem.getElementsByClassName("sageItem");
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
@@ -272,7 +251,7 @@
 			if(child[0].id.substring(child[0].id.length - 6) == "canvas"){
 				canvasItems[child[0].id].draw(date);
 			}
-			if(child[0].id.substring(child[0].id.length - 7) == "kinetic"){
+			if(child[0].id.substring(child[0].id.length - 7) == "kineticjs"){
 				canvasItems[child[0].id].resize(date);
 			}
 			if(child[0].id.substring(child[0].id.length - 7) == "threejs"){
@@ -280,12 +259,19 @@
 			}
 		});
 		
+		socket.on('playPauseVideo', function(elemId) {
+			var videoElem = document.getElementById(elemId + "_video");
+			console.log(videoElem);
+			if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
+			else{ videoElem.pause(); console.log("pause"); }
+		});
+		
 		socket.on('animateCanvas', function(animate_data) {
 			var date = new Date(animate_data.date);
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kinetic" || animate_data.type == "threejs"){
+			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kineticjs" || animate_data.type == "threejs"){
 				canvasItems[child[0].id].draw(date);
 			}
 		});

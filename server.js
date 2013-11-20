@@ -5,6 +5,7 @@ var fs = require('fs');
 var path = require('path');
 var decompresszip = require('decompress-zip');
 var gm = require('gm');
+var ffprobe = require('node-ffprobe');
 var ytdl = require('ytdl');
 
 var app = express();
@@ -14,7 +15,7 @@ var uploadsFolder = __dirname + "/uploads";
 
 app.configure(function(){
 	app.use(express.methodOverride());
-	app.use(express.bodyParser({uploadDir: uploadsFolder}));
+	app.use(express.bodyParser({uploadDir: uploadsFolder, limit: '250mb'}));
 	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
@@ -144,7 +145,7 @@ sio.sockets.on('connection', function(socket) {
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
 				if(poster == null) poster = info.iurlsd;
-				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
+				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -216,6 +217,26 @@ sio.sockets.on('connection', function(socket) {
 		var now = new Date();
 		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
 	});
+	
+	socket.on('keypressElementById', function(keypress_data) {
+		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
+		
+		}
+		else if(keypress_data.keyCode == "32"){ // spacebar
+			var keypressItem = findItemById(keypress_data.elemId);
+			moveItemToFront(keypressItem.id);
+		
+			var itemIds = [];
+			for(var i=0; i<items.length; i++){
+				itemIds.push(items[i].id);
+			}
+			
+			if(keypressItem.type == "video" || keypressItem.type == "youtube"){
+				sio.sockets.emit('updateItemOrder', itemIds);
+				sio.sockets.emit('playPauseVideo', keypressItem.id);
+			}
+		}
+	});
 });
 
 app.post('/upload', function(request, response) {
@@ -240,6 +261,29 @@ app.post('/upload', function(request, response) {
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
+				}
+				else{
+					console.log("Error: " + err);
+				}
+			});
+		}
+		else if(request.files[f].type == "video/mp4"){
+			ffprobe(localPath, function(err, data){
+				if(!err){
+					for(i=0; i<data.streams.length; i++){
+						if(data.streams[i].codec_type == "video"){
+							var itemId = "item"+itemCount.toString();
+							var title = data.filename;
+							var aspect = data.streams[i].width / data.streams[i].height;
+							var now = new Date();
+							var newItem = new item("video", title, itemId, data.file, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+							items.push(newItem);
+							sio.sockets.emit('addNewElement', newItem);
+							itemCount++;
+							
+							break;
+						}
+					}
 				}
 				else{
 					console.log("Error: " + err);
