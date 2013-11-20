@@ -111,40 +111,16 @@
 				windowItem.appendChild(img);
 			}
 			else if(elem_data.type == "site"){
-// 			    var border = 10; 
-//                 var sageItm = document.createElement("div");
-// //                 sageItm.id = elem_data.id + "sageItm"; 
-// //                 sageItm.addEventListener('mousedown', mousePress, false);
-// //                 sageItm.addEventListener('mousewheel', scrollSelect, false);
-// 				sageItm.className = "sageItem";
-// 				sageItm.aspectRatio = ( elem_data.width + border )/(elem_data.height + border);
-// 				sageItm.width = elem_data.width+border;
-// 				sageItm.height = elem_data.height+border;
-// 				sageItm.src = elem_data.src;
-// 				sageItm.draggable = false;
-// 				
-// 				windowItem.appendChild(sageItm);
-			
+
+                			
                 var ifrm = document.createElement("IFRAME"); 
-//                 ifrm.className = "siteItem";
 				ifrm.id = elem_data.id + "_site"
                 ifrm.className = "sageItem";
                 ifrm.src = elem_data.src; 
                 ifrm.width =  elem_data.width;
                 ifrm.height = elem_data.height;
-//                 ifrm.style.border = "border: solid " + border + "px #afb7ed"; //does not work... 
                 windowItem.appendChild(ifrm); 
 
-//                 sageItm.appendChild(ifrm); 
-                
-//                 socket.on('pointerClick', function(x, y) {
-//                     var event = document.createEvent("MouseEvents"); 
-//                     event.type = "click";
-//                     event.x = x;
-//                     event.y = y; 
-//                     
-//                     ifrm.fireEvent('onclick', event ) ; 
-//                 });
 			}
 			else if(elem_data.type == "canvas"){
 				console.log(elem_data.extra);
@@ -320,6 +296,7 @@
 
                 selectedElem.style.left = eLeft.toString() + "px";
                 selectedElem.style.top = eTop.toString() + "px";
+                
               });
           
               socket.on('changeMode', function(mode){
@@ -343,10 +320,44 @@
             
             console.log( "x = " + x + " y = " + y + " ptrId = " + ptrId + " elemId = " + elemId ); 
             
-            var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
-            console.log(selectedElement);
+            var selectedWindow = document.getElementById(ptr_data.elemId);
+			var child = selectedWindow.getElementsByClassName("sageItem");
+			//if(child[0].tagName.toLowerCase() == "site"){
+                console.log(child[0]);
+                child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
 
-            selectedElement.contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');   
+                var oEvent = document.createEvent('MouseEvents');
+                oEvent.initMouseEvent(
+                    'click'          // event type
+                    ,true           // can bubble?
+                    ,true          // cancelable?
+                    ,window      // the event's abstract view (should always be window)
+                    ,0              // mouse click count (or event "detail")
+                    ,x        // event's screen x coordinate
+                    ,y          // event's screen y coordinate
+                    ,x           // event's client x coordinate
+                    ,y           // event's client y coordinate
+                    ,false         // whether or not CTRL was pressed during event
+                    ,false         // whether or not ALT was pressed during event
+                    ,false         // whether or not SHIFT was pressed during event
+                    ,false         // whether or not the meta key was pressed during event
+                    ,1             // indicates which button (if any) caused the mouse event (1 = primary button)
+                    ,null          // relatedTarget (only applicable for mouseover/mouseout events)
+                );
+
+
+                child[0].dispatchEvent( oEvent );
+
+			//}
+            
+            
+//             var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
+//             console.log(selectedElement);
+// 
+//             selectedElement.contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
+//             selectedElement.dispatchEvent(e);
+          
+          });  
             
 //             var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
 //              console.log(selectedElement);
@@ -398,12 +409,7 @@
 // which: 1
 // x: 481
 // y: 19
-            selectedElement.dispatchEvent(e);
-//             
-//             console.log(e);
-//             selectedElement.
-          
-          }); 
+
         
 
        //  //Single pointer only

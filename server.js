@@ -43,8 +43,8 @@ sio.configure('development', function () {
 var initDate = new Date();
 
 var fs = require('fs');
-var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
+//var file = 'config/desktop-cfg.json';
+var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
 
 var config;
@@ -507,6 +507,7 @@ function clickInsideWindow(x, y, pID){
 }
 
 function handleSagePointerZoom(zoom, x, y, mode){
+    console.log("Zoom");
     if( mode == 0 ){
         console.log("x " + x + " y " + y + " zoom " + zoom );
         idx = [] ;
@@ -520,6 +521,7 @@ function handleSagePointerZoom(zoom, x, y, mode){
             } 
         }
     
+        console.log("selectedScrollItem = " + selectedScrollItem);
         if(selectedScrollItem == null )
             return;
         
@@ -536,23 +538,27 @@ function handleSagePointerZoom(zoom, x, y, mode){
         selectedScrollItem.width = iWidth;
         selectedScrollItem.height = iHeight;
         var now = new Date();
+        console.log("emit resize: " + selectedScrollItem.id + " " + selectedScrollItem.left + " " + selectedScrollItem.top); 
         sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
     }
 }
 
 function handleSagePointerDrag(x, y, mode){
+    console.log("in handleSagePointerDrag " + mode);    
     if( mode == 0 ){
-        console.log( "x = " + x + " y = " + y + "items[0].left" + items[0].left);
         idx = [] ;
-        for(var i=0; i<items.length; i++){
+        for(var i=items.length-1; i >=0; i--){
             var l = items[i].left;
             var w = items[i].width;
             var t = items[i].top;
             var h = items[i].height; 
             if(l < x && l+w > x && t < y && t+h > y) { 
                 selectedMoveItem = items[i];    //not checking for z!
+                selectOffsetX = l - x; 
+                selectOffsetY = t - y;
             } 
         }
+        console.log("found: " + selectedMoveItem);    
 
         if(selectedMoveItem == null) 
             return;
@@ -681,7 +687,8 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                         console.log("\t move ", e.posx, e.posy);
                                         if (e.sourceId in ptrs) {
                                            sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
-                                           
+                                           ptrs[e.sourceId].position = [e.posx, e.posy];
+
                                            if( ptrs[e.sourceId].mouse[0] == 1 )
                                            {
                                                 console.log("Drag");
@@ -706,9 +713,10 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
-//                                         console.log("\t zoom ");
                                         if (e.sourceId in ptrs) {
-                                                ptrs[e.sourceId].position = [e.posx, e.posy];
+                                                console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
+
+                                                //ptrs[e.sourceId].position = [e.posx, e.posy];
                                                 ptrs[e.sourceId].zoom = 1;
                                                 zoom = 1; 
                                                 if (offset < msg.length) {
@@ -721,7 +729,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                                                 offset += 4
                                                                 zoom = e.extraInt; 
                                                                 
-                                                                handleSagePointerZoom( zoom, e.posx*config.totalWidth, e.posy*config.totalHeight, ptrs[e.sourceId].mode); 
+                                                                handleSagePointerZoom( zoom, ptrs[e.sourceId].position[0]*config.totalWidth, ptrs[e.sourceId].position[1]*config.totalHeight, ptrs[e.sourceId].mode); 
                                                         }
                                                 }
                                         }
@@ -770,32 +778,32 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
 //                                         sio.sockets.emit('pointer',  ptrs[e.sourceId] );
                         }
 
-                        if (e.type == 3) {
-                                if (e.serviceType == 1) {  // ServiceTypeMocap
-                                        var RAD_TO_DEGREE = 180.0/Math.PI;
-                                        var pfmt = sprint("\tp: x %6.2fm | y %6.2fm | z %6.2fm\n",
-                                                                e.posx, e.posy, e.posz); // in meters
-                                        var rfmt = sprint("\tr: p(x) %4.0f | y(y) %4.0f | r(z) %4.0f\n", // degrees
-                                                                RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll);
-
-                                        if (e.sourceId == 0) {
-                                                //console.log("head> ", pfmt+rfmt);
-                                                sio.sockets.emit('head', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-                                                                                                rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-                                        }
-                                        if (e.sourceId == 1) {
-                                                //console.log("wand> ", pfmt+rfmt);
-                                                sio.sockets.emit('wand', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-                                                                                                rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-                                        }
-                                        if (e.sourceId == 2) {
-                                                //console.log("wand2> ", pfmt+rfmt);
-                                                sio.sockets.emit('wand2', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-                                                                                                rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-                                        }
-                                        emit++;
-                                }
-                        }
+                        // if (e.type == 3) {
+//                                 if (e.serviceType == 1) {  // ServiceTypeMocap
+//                                         var RAD_TO_DEGREE = 180.0/Math.PI;
+//                                         var pfmt = sprint("\tp: x %6.2fm | y %6.2fm | z %6.2fm\n",
+//                                                                 e.posx, e.posy, e.posz); // in meters
+//                                         var rfmt = sprint("\tr: p(x) %4.0f | y(y) %4.0f | r(z) %4.0f\n", // degrees
+//                                                                 RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll);
+// 
+//                                         if (e.sourceId == 0) {
+//                                                 //console.log("head> ", pfmt+rfmt);
+//                                                 sio.sockets.emit('head', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
+//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
+//                                         }
+//                                         if (e.sourceId == 1) {
+//                                                 //console.log("wand> ", pfmt+rfmt);
+//                                                 sio.sockets.emit('wand', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
+//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
+//                                         }
+//                                         if (e.sourceId == 2) {
+//                                                 //console.log("wand2> ", pfmt+rfmt);
+//                                                 sio.sockets.emit('wand2', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
+//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
+//                                         }
+//                                         emit++;
+//                                 }
+//                         }
                         if (emit>2) { dstart = Date.now(); emit = 0; }
                 }
         });
