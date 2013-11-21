@@ -204,6 +204,26 @@ function windowManager(id, sock) {
 		this.draw();
 	};
 	
+	this.deleteElement = function(elemId) {
+		var i;
+		var selectedIndex;
+		var selectedItem;
+	
+		for(i=0; i<this.items.length; i++){
+			if(this.items[i].id == elemId){
+				selectedIndex = i;
+				selectedItem = this.items[selectedIndex];
+				break;
+			}
+		}
+		for(i=selectedIndex; i<this.items.length-1; i++){
+			this.items[i] = this.items[i+1];
+		}
+		this.items[this.items.length-1] = selectedItem;
+		this.items.pop();
+		this.draw();
+	};
+	
 	this.initDisplayConfig = function(config) {
 		this.nRows = config.layout.rows;
 		this.nCols = config.layout.columns;
@@ -249,19 +269,6 @@ function windowManager(id, sock) {
 		
 		this.draw();
 	}
-	
-	this.moveItemToFront = function(elemId) {
-		var i;
-		for(i=0; i<this.items.length; i++){
-			if(this.items[i].id == elemId){
-				tmp = this.items[i];
-				this.items.splice(i, 0);
-				this.items.push(tmp);
-				break;
-			}
-		}
-		this.draw();
-	};
 	
 	this.setItemPosition = function(position_data) {
 		var i;

@@ -165,14 +165,8 @@ sio.sockets.on('connection', function(socket) {
 		selectOffsetX = select_data.eventOffsetX;
 		selectOffsetY = select_data.eventOffsetY;
 		
-		moveItemToFront(selectedMoveItem.id);
-		
-		var itemIds = [];
-		for(var i=0; i<items.length; i++){
-			itemIds.push(items[i].id);
-		}
-		
-		sio.sockets.emit('updateItemOrder', itemIds);
+		var newOrder = moveItemToFront(selectedMoveItem.id);
+		sio.sockets.emit('updateItemOrder', newOrder);
 	});
 	
 	socket.on('releaseSelectedElement', function() {
@@ -192,14 +186,8 @@ sio.sockets.on('connection', function(socket) {
 		selectedScrollItem = findItemById(elemId);
 		selectedMoveItem = null;
 		
-		moveItemToFront(selectedScrollItem.id);
-		
-		var itemIds = [];
-		for(var i=0; i<items.length; i++){
-			itemIds.push(items[i].id);
-		}
-		
-		sio.sockets.emit('updateItemOrder', itemIds);
+		var newOrder = moveItemToFront(selectedScrollItem.id);
+		sio.sockets.emit('updateItemOrder', newOrder);
 	});
 	
 	socket.on('scrollSelectedElement', function(scale) {
@@ -220,19 +208,14 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('keypressElementById', function(keypress_data) {
 		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
-		
+			removeItemById(keypress_data.elemId);
+			sio.sockets.emit('deleteElement', keypress_data.elemId);
 		}
 		else if(keypress_data.keyCode == "32"){ // spacebar
 			var keypressItem = findItemById(keypress_data.elemId);
-			moveItemToFront(keypressItem.id);
-		
-			var itemIds = [];
-			for(var i=0; i<items.length; i++){
-				itemIds.push(items[i].id);
-			}
-			
+			var newOrder = moveItemToFront(keypressItem.id);
 			if(keypressItem.type == "video" || keypressItem.type == "youtube"){
-				sio.sockets.emit('updateItemOrder', itemIds);
+				sio.sockets.emit('updateItemOrder', newOrder);
 				sio.sockets.emit('playPauseVideo', keypressItem.id);
 			}
 		}
@@ -369,10 +352,16 @@ function findItemById(id) {
 	}
 }
 
+function removeItemById(id) {
+	moveItemToFront(id);
+	items.pop();
+}
+
 function moveItemToFront(id) {
 	var i;
 	var selectedIndex;
 	var selectedItem;
+	var itemIds = [];
 	
 	for(i=0; i<items.length; i++){
 		if(items[i].id == id){
@@ -380,11 +369,16 @@ function moveItemToFront(id) {
 			selectedItem = items[selectedIndex];
 			break;
 		}
+		itemIds.push(items[i].id);
 	}
 	for(i=selectedIndex; i<items.length-1; i++){
 		items[i] = items[i+1];
+		itemIds.push(items[i].id);
 	}
 	items[items.length-1] = selectedItem;
+	itemIds.push(id);
+	
+	return itemIds;
 }
 
 function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {

@@ -200,6 +200,14 @@
 			itemCount += 2;
 		});
 		
+		socket.on('deleteElement', function(elemId) {
+			var deleteElemTitle = document.getElementById(elemId + "_title");
+			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
+			
+			var deleteElem = document.getElementById(elemId);
+			deleteElem.parentNode.removeChild(deleteElem);
+		});
+		
 		socket.on('updateItemOrder', function(idList) {
 			var i;
 			var zval = 0;

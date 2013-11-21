@@ -35,6 +35,10 @@
 			winMgr.addNewElement(elem_data);
 		});
 		
+		socket.on('deleteElement', function(elemId) {
+			winMgr.deleteElement(elemId);
+		});
+		
 		socket.on('updateItemOrder', function(idList) {
 			winMgr.updateItemOrder(idList);
 		});
