@@ -43,9 +43,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -134,8 +134,8 @@ sio.sockets.on('connection', function(socket) {
 						}
 					}
 				}
-				console.log(mp4Idx + ": " + mp4Resolution);
-				console.log(webmIdx + ": " + webmResolution);
+				console.log("mp4 resolution:  " + mp4Resolution);
+				console.log("webm resolution: " + webmResolution);
 				
 				var itemId = "item"+itemCount.toString();
 				var title = info.title;
@@ -144,6 +144,7 @@ sio.sockets.on('connection', function(socket) {
 				var resolutionY = Math.max(mp4Resolution, webmResolution);
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
+				if(poster == null) poster = info.iurl;
 				if(poster == null) poster = info.iurlsd;
 				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
 				items.push(newItem);
