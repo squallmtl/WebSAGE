@@ -1,0 +1,147 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+void setup()
+{
+  size(1400,700);
+  background(0.0);
+  fill(150.0);
+  
+   PFont fontA = loadFont("courier");
+  textFont(fontA, 14); 
+  
+  readyRedraw = true;  
+}
+
+void draw(){
+    if( pointerPressed ){
+        mousePressed();
+        pointerPressed = false;
+    }
+
+    
+    if(readyRedraw)
+    {
+        background(0.0);
+
+        fill(125);
+        ellipseMode(CENTER);
+        ellipse( pointerX, pointerY, 200, 200 ); 
+        
+        fill(0, 255, 0);
+        textAlign(CENTER, CENTER);
+        textSize( 12 );
+        text( "x= " + pointerX + " y= " + pointerY, pointerX, pointerY);
+        readyRedraw = false;
+        
+        text("HI THERE", pointerX, pointerY );
+
+        
+    }
+    
+}
+
+void mousePressed()
+{
+    setMouseToPointer(); 
+    readyRedraw = true;
+    sendMsg("pointer event at x= " + mouseX + " y= " + mouseY);
+}
+
+void setMouseToPointer() 
+{
+    mouseX = pointerX;
+    mouseY = pointerY;
+}
+
+    
+
+</script>
+<canvas id="mycanvas"></canvas>
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+var readyRedraw = false; 
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true;     
+        readyRedraw = true;     
+    }
+    if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("pointerEventRecorded", msg);
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
+</script>
+
+
+
+
+
+
+// var pointerX = 0;
+// var pointerY = 0; 
+// var pointerPressed = false; 
+// var readyRedraw = false; 
+// window.onmessage = function(e){
+//     var processingInstance = Processing.getInstanceById('mycanvas');
+//     if (e.data.indexOf( 'pointerClick') != -1) {
+//         var tokens = e.data.split(' ');
+//         pointerX = tokens[2];
+//         pointerY = tokens[4]; 
+//         pointerPressed = true;
+//         processingInstance.setMouseToPointer(pointerX, pointerY); 
+//         processingInstance.mousePressed();
+//         readyRedraw = true;
+//     }
+    
+    
+//};
+<!-- 
+
+<script type="application/javascript">
+        var myX = -1;
+        var myY = -1;
+        var ptrClick = function (x, y) {
+           x = myX;
+           y = myY;
+        };
+</script>
+ -->
+

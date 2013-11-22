@@ -390,8 +390,8 @@
           });
           
           socket.on('processClick', function(ptr_data){
-            var x = ptr_data.x;
-            var y = ptr_data.y;
+            var x = ptr_data.x ;//- offsetX;
+            var y = ptr_data.y ;// -offsetY;
             var ptrId = ptr_data.ptrId; 
             var elemId = ptr_data.elemId; 
             
@@ -401,30 +401,30 @@
             var selectedWindow = document.getElementById(ptr_data.elemId);
 			var child = selectedWindow.getElementsByClassName("sageItem");
 			//if(child[0].tagName.toLowerCase() == "site"){
-                console.log(child[0]);
-                child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
+            console.log(child[0]);
+            child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
 
-                var oEvent = document.createEvent('MouseEvents');
-                oEvent.initMouseEvent(
-                    'click'          // event type
-                    ,true           // can bubble?
-                    ,true          // cancelable?
-                    ,window      // the event's abstract view (should always be window)
-                    ,0              // mouse click count (or event "detail")
-                    ,x        // event's screen x coordinate
-                    ,y          // event's screen y coordinate
-                    ,x           // event's client x coordinate
-                    ,y           // event's client y coordinate
-                    ,false         // whether or not CTRL was pressed during event
-                    ,false         // whether or not ALT was pressed during event
-                    ,false         // whether or not SHIFT was pressed during event
-                    ,false         // whether or not the meta key was pressed during event
-                    ,1             // indicates which button (if any) caused the mouse event (1 = primary button)
-                    ,null          // relatedTarget (only applicable for mouseover/mouseout events)
-                );
-
-
-                child[0].dispatchEvent( oEvent );
+//                 var oEvent = document.createEvent('MouseEvents');
+//                 oEvent.initMouseEvent(
+//                     'click'          // event type
+//                     ,true           // can bubble?
+//                     ,true          // cancelable?
+//                     ,window      // the event's abstract view (should always be window)
+//                     ,0              // mouse click count (or event "detail")
+//                     ,x        // event's screen x coordinate
+//                     ,y          // event's screen y coordinate
+//                     ,x           // event's client x coordinate
+//                     ,y           // event's client y coordinate
+//                     ,false         // whether or not CTRL was pressed during event
+//                     ,false         // whether or not ALT was pressed during event
+//                     ,false         // whether or not SHIFT was pressed during event
+//                     ,false         // whether or not the meta key was pressed during event
+//                     ,1             // indicates which button (if any) caused the mouse event (1 = primary button)
+//                     ,null          // relatedTarget (only applicable for mouseover/mouseout events)
+//                 );
+// 
+// 
+//                 child[0].dispatchEvent( oEvent );
 
 			//}
             

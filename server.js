@@ -276,23 +276,8 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 
 	socket.on('pointerEventRecorded', function(msg){
 	    console.log("got it: " + msg);
-	
-// =======
-// 	socket.on('keypressElementById', function(keypress_data) {
-// 		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
-// 			removeItemById(keypress_data.elemId);
-// 			sio.sockets.emit('deleteElement', keypress_data.elemId);
-// 		}
-// 		else if(keypress_data.keyCode == "32"){ // spacebar
-// 			var keypressItem = findItemById(keypress_data.elemId);
-// 			var newOrder = moveItemToFront(keypressItem.id);
-// 			if(keypressItem.type == "video" || keypressItem.type == "youtube"){
-// 				sio.sockets.emit('updateItemOrder', newOrder);
-// 				sio.sockets.emit('playPauseVideo', keypressItem.id);
-// 			}
-// 		}
-// >>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
-// 	});
+	});
+
 });
 
 app.post('/upload', function(request, response) {
@@ -514,7 +499,7 @@ function handleSagePointerClick(x, y, ptrId, mode){
 
     if( mode == 0 ){//if manipulate windows mode
         var overAnItem = false;
-        overAnItem = moveItemToFront(x, y);  //move item to front and return the item
+        overAnItem = moveItemToFrontByPos( x, y);  //move item to front and return the item
         console.log("over an item = " + overAnItem);
         if( !overAnItem ){
             ptrs[ptrId].mode = 1; 
@@ -539,12 +524,55 @@ function handleSagePointerClick(x, y, ptrId, mode){
     }
 }
 
-function moveItemToFront(x,y){
+// function moveItemToFront(x,y){
+//  	var i;
+//  	var selectedIndex;
+//  	var selectedItem;
+//  	
+//  	var found = false;
+// 	
+// 	for(i=items.length-1; i >= 0; i--){
+// 		var l = items[i].left;
+//         var w = items[i].width;
+//         var t = items[i].top;
+//         var h = items[i].height; 
+// 		if(l < x && l+w > x && t < y && t+h > y) { 
+// 			selectedIndex = i;
+// 			selectedItem = items[selectedIndex];
+// 			found = true; 
+// 			break;
+// 		}
+// 	}
+// 	
+// 	if( selectedItem == null )
+// 	    return false;
+// 	
+// 	for(i=selectedIndex; i<items.length-1; i++){
+// 		items[i] = items[i+1];
+// 	}
+// 	items[items.length-1] = selectedItem;
+// 	
+//     console.log("inside move item to front.  found? " + found);
+// 
+// 	var itemIds = [];
+//     for(var i=0; i<items.length; i++){
+//         itemIds.push(items[i].id);
+//     }
+// 		
+//     sio.sockets.emit('updateItemOrder', itemIds);
+// 
+//     return found; //need to know so that ptr has correct mode
+// }
+
+
+function moveItemToFrontByPos(x,y){
  	var i;
  	var selectedIndex;
  	var selectedItem;
  	
  	var found = false;
+ 	
+ 	console.log("searching for item in front");
 	
 	for(i=items.length-1; i >= 0; i--){
 		var l = items[i].left;
@@ -690,6 +718,42 @@ function initiateSagePointerDrag(x, y ){
         }
         //initDrag = false;
 }
+
+// function handleSagePointerDrag(x, y, mode){
+//     console.log("in handleSagePointerDrag " + mode);    
+//     //initDrag = true;
+//     if( mode == 0 ){
+//         if( initDrag ){
+//             idx = [] ;
+//             for(var i=items.length-1; i >=0; i--){
+//                 var l = items[i].left;
+//                 var w = items[i].width;
+//                 var t = items[i].top;
+//                 var h = items[i].height; 
+//                 if(l < x && l+w > x && t < y && t+h > y) { 
+//                     selectedMoveItem = items[i];    //not checking for z!
+//                     selectOffsetX = l - x; 
+//                     selectOffsetY = t - y;
+//                     break;
+//                 } 
+//             }
+//             initDrag = false;
+//         }
+//         console.log("found: " + selectedMoveItem);    
+// 
+//         if(selectedMoveItem == null){ 
+//             initDrag = true;
+//             return;
+//         }
+// 
+//         selectedMoveItem.left = x + selectOffsetX;
+//         selectedMoveItem.top = y + selectOffsetY;
+//         var now = new Date();
+//         sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
+//     }
+// }
+
+
 
 function handleSagePointerDrag(x, y, mode){
     console.log("in handleSagePointerDrag " + mode);    
