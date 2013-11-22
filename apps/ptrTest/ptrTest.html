@@ -25,7 +25,7 @@ void draw(){
         background(0.0);
 
 
-        fill(125);
+        fill(colorToDraw);
         ellipseMode(CENTER);
         ellipse( mouseX, mouseY, 200, 200 ); 
 
@@ -75,6 +75,7 @@ var pointerY = 0;
 var pointerPressed = false; 
 var readyRedraw = false; 
 
+var colorToDraw = 125; 
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -102,6 +103,8 @@ function receiveMessage(event)
 function sendMsg(msg){
     
     socket.emit("pointerEventRecorded", msg);
+    
+    colorToDraw = 255; 
     //window.parent.postMessage('sendingMsg: ' + msg, '*');  
 //     
 //         pointerX = 800;
