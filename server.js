@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+var file = 'config/thor-cfg.json';
+//var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -660,7 +660,7 @@ function clickInsideWindow(x, y, pID){
 	    return found; 
 	    
     console.log(selectedIndex + " " + selectedItem.id);
-    sio.sockets.emit( 'processClick', {elemId: selectedItem.id, date: now, x: x, y: y, ptrId: pID } ); 
+    sio.sockets.emit( 'processClick', {elemId: selectedItem.id, date: now, x: x, y: y, ptrId: pID, left: selectedItem.left, top: selectedItem.top, titleHeight: config.titleBarHeight } ); 
     return found;
 		
 }

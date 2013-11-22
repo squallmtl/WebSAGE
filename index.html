@@ -390,8 +390,8 @@
           });
           
           socket.on('processClick', function(ptr_data){
-            var x = ptr_data.x ;//- offsetX;
-            var y = ptr_data.y ;// -offsetY;
+            var x = ptr_data.x ;
+            var y = ptr_data.y;
             var ptrId = ptr_data.ptrId; 
             var elemId = ptr_data.elemId; 
             
@@ -400,6 +400,19 @@
             
             var selectedWindow = document.getElementById(ptr_data.elemId);
 			var child = selectedWindow.getElementsByClassName("sageItem");
+			
+//                         var selectedElemTitle = document.getElementById(position_data.elemId + "_title");
+//             selectedElemTitle.style.left = eLeft.toString() + "px";
+//             selectedElemTitle.style.top = eTop.toString() + "px";
+//         
+//             var selectedElem = document.getElementById(position_data.elemId);
+//             selectedElem.style.left = eLeft.toString() + "px";
+//             selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
+			
+			//convert coordinates
+			x = x - ptr_data.left; 
+			y = y - ptr_data.top - ptr_data.titleHeight;
+			
 			//if(child[0].tagName.toLowerCase() == "site"){
             console.log(child[0]);
             child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  

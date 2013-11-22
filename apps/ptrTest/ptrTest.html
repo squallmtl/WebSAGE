@@ -24,17 +24,19 @@ void draw(){
     {
         background(0.0);
 
+
         fill(125);
         ellipseMode(CENTER);
         ellipse( pointerX, pointerY, 200, 200 ); 
+
         
         fill(0, 255, 0);
-        textAlign(CENTER, CENTER);
-        textSize( 12 );
+        //textAlign(CENTER, CENTER);
+        //textSize( 12 );
         text( "x= " + pointerX + " y= " + pointerY, pointerX, pointerY);
         readyRedraw = false;
         
-        text("HI THERE", pointerX, pointerY );
+        text("Pointer Location: " + pointerX + " " + pointerY , 700, 350 );
 
         
     }
