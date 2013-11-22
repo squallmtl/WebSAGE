@@ -5,7 +5,10 @@
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
+<script type="text/javascript" src="scripts/videoControls.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
+<script type="text/javascript" src="scripts/three.min.js"></script>
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -30,7 +33,7 @@
 	//document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
-		//document.body.style.cursor = 'none'; // page needs to have mouse in focus to initiate 
+		document.body.style.cursor = 'none'; // page needs to have mouse in focus to initiate 
 	
 		url = window.location.origin;
 		socket = io.connect(url);
@@ -123,64 +126,105 @@
 //                 console.log("source:" + elem_data.src);
 
 			}
-			else if(elem_data.type == "canvas"){
-				console.log(elem_data.extra);
-				if(elem_data.extra[0] == "direct"){
-					var canvas = document.createElement("canvas");
-					canvas.id = elem_data.id + "_canvas"
-					canvas.className = "sageItem";
-					canvas.aspectRatio = elem_data.aspectRatio;
-					canvas.width = elem_data.width;
-					canvas.height = elem_data.height;
-				
-					windowItem.appendChild(canvas);
-				
-					var canvasJS = document.createElement('script')
-					canvasJS.type = "text/javascript";
-					canvasJS.src = elem_data.src;
-					document.head.appendChild(canvasJS);
-				
-					canvasJS.addEventListener('load', function(event) {
-						var canvasObj = new window[elem_data.extra[1]];
-						canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
-						canvasObj.draw(date);
-						canvasItems[elem_data.id + "_canvas"] = canvasObj;
-					}, false);
-  				}
-  				else if(elem_data.extra[0] == "div"){
-  					var something = null;
-  				}
-  				else if(elem_data.extra[0] == "pde"){
-  					var canvas = document.createElement("canvas");
-					canvas.id = elem_data.id + "_canvas"
-					canvas.className = "sageItem";
-					canvas.aspectRatio = elem_data.aspectRatio;
-					canvas.width = elem_data.width;
-					canvas.height = elem_data.height;
-					Processing.loadSketchFromSources(canvas, [elem_data.src]);
-					
-					windowItem.appendChild(canvas);
-  				}
+			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
+				var canvas = document.createElement("canvas");
+				canvas.id = elem_data.id + "_canvas"
+				canvas.className = "sageItem";
+				canvas.aspectRatio = elem_data.aspectRatio;
+				canvas.width = elem_data.width;
+				canvas.height = elem_data.height;
+			
+				windowItem.appendChild(canvas);
+			
+				var canvasJS = document.createElement('script')
+				canvasJS.type = "text/javascript";
+				canvasJS.src = elem_data.src;
+				document.head.appendChild(canvasJS);
+			
+				canvasJS.addEventListener('load', function(event) {
+					var canvasObj = new window[elem_data.extra];
+					canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
+					canvasObj.draw(date);
+					canvasItems[elem_data.id + "_canvas"] = canvasObj;
+				}, false);
 			}
-			else if(elem_data.type == "video"){
+			else if(elem_data.type == "kineticjs"){
+				var kineticjs = document.createElement("div");
+				kineticjs.id = elem_data.id + "_kineticjs"
+				kineticjs.className = "sageItem";
+				kineticjs.aspectRatio = elem_data.aspectRatio;
+				kineticjs.width = elem_data.width;
+				kineticjs.height = elem_data.height;
+			
+				windowItem.appendChild(kineticjs);
+// >>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
+// 				
+// 				var kineticjsJS = document.createElement('script')
+// 				kineticjsJS.type = "text/javascript";
+// 				kineticjsJS.src = elem_data.src;
+// 				document.head.appendChild(kineticjsJS);
+// 				
+// 				kineticjsJS.addEventListener('load', function(event) {
+// 					var kineticjsObj = new window[elem_data.extra];
+// 					kineticjsObj.init(elem_data.id + "_kineticjs", date, elem_data.resrc);
+// 					canvasItems[elem_data.id + "_kineticjs"] = kineticjsObj;
+// 				}, false);
+			}
+			else if(elem_data.type == "threejs"){
+				var threejs = document.createElement("div");
+				threejs.id = elem_data.id + "_threejs"
+				threejs.className = "sageItem";
+				threejs.aspectRatio = elem_data.aspectRatio;
+				threejs.width = elem_data.width;
+				threejs.height = elem_data.height;
+			
+				windowItem.appendChild(threejs);
+				
+				var threejsJS = document.createElement('script')
+				threejsJS.type = "text/javascript";
+				threejsJS.src = elem_data.src;
+				document.head.appendChild(threejsJS);
+				
+				threejsJS.addEventListener('load', function(event) {
+					var threejsObj = new window[elem_data.extra];
+					threejsObj.init(elem_data.id + "_threejs", date, elem_data.resrc);
+					canvasItems[elem_data.id + "_threejs"] = threejsObj;
+				}, false);
+			}
+			else if(elem_data.type == "video" || elem_data.type == "youtube"){
 				var vid = document.createElement("video");
 				vid.id = elem_data.id + "_video";
 				vid.className = "sageItem";
 				vid.aspectRatio = elem_data.aspectRatio;
 				vid.width = elem_data.width;
 				vid.height = elem_data.height;
-				vid.controls = true;
-				vid.poster = elem_data.extra;
+				vid.controls = false;
+				vid.style.backgroundColor = "#333333";
+				if(elem_data.extra != null) vid.poster = elem_data.extra;
 				
-				var source1 = document.createElement("source");
-				source1.src = elem_data.src;
-				source1.type = "video/mp4";
-				vid.appendChild(source1);
+				vid.addEventListener('canplay', function() {
+					console.log("video can now play"); // Video is loaded and can be played
+				}, false);
 				
-				var source2 = document.createElement("source");
-				source2.src = elem_data.resrc;
-				source2.type = "video/webm";
-				vid.appendChild(source2);
+				console.log(elem_data.src);
+				
+				if(elem_data.src != null){
+					var source1 = document.createElement("source");
+					var param = elem_data.src.indexOf('?');
+					if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
+					else source1.src = elem_data.src + "?clientID=" + clientID.toString();
+					source1.type = "video/mp4";
+					vid.appendChild(source1);
+				}
+				
+				if(elem_data.resrc != null){
+					var source2 = document.createElement("source");
+					var param = elem_data.resrc.indexOf('?');
+					if(param >= 0) source2.src = elem_data.resrc + "&clientID=" + clientID.toString();
+					else source2.src = elem_data.resrc + "?clientID=" + clientID.toString();
+					source2.type = "video/webm";
+					vid.appendChild(source2);
+				}
 				
 				windowItem.appendChild(vid);
 			}
@@ -200,6 +244,14 @@
 			itemCount += 2;
 		});
 
+		
+		socket.on('deleteElement', function(elemId) {
+			var deleteElemTitle = document.getElementById(elemId + "_title");
+			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
+			
+			var deleteElem = document.getElementById(elemId);
+			deleteElem.parentNode.removeChild(deleteElem);
+		});
 		
 		socket.on('updateItemOrder', function(idList) {
 			var i;
@@ -249,8 +301,8 @@
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
 			
-			if(child[0].tagName.toLowerCase() == "canvas"){
-				canvasItems[child[0].id].draw(date)
+			if(child[0].id.substring(child[0].id.length - 6) == "canvas"){
+				canvasItems[child[0].id].draw(date);
 			}
 			if( child[0].tagName.toLowerCase() == "iframe"){ //resize an iframe
 			    console.log("side resized");
@@ -258,6 +310,19 @@
                 e.initEvent('resize', true, false);
                 child[0].dispatchEvent(e);
 			}
+			if(child[0].id.substring(child[0].id.length - 7) == "kineticjs"){
+				canvasItems[child[0].id].resize(date);
+			}
+			if(child[0].id.substring(child[0].id.length - 7) == "threejs"){
+				canvasItems[child[0].id].resize(date);
+			}
+		});
+		
+		socket.on('playPauseVideo', function(elemId) {
+			var videoElem = document.getElementById(elemId + "_video");
+			console.log(videoElem);
+			if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
+			else{ videoElem.pause(); console.log("pause"); }
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
@@ -265,7 +330,7 @@
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			if(child[0].tagName.toLowerCase() == "canvas"){
+			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kineticjs" || animate_data.type == "threejs"){
 				canvasItems[child[0].id].draw(date);
 			}
 		});

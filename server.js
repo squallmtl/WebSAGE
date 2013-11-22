@@ -5,6 +5,7 @@ var fs = require('fs');
 var path = require('path');
 var decompresszip = require('decompress-zip');
 var gm = require('gm');
+var ffprobe = require('node-ffprobe');
 var ytdl = require('ytdl');
 
 var app = express();
@@ -14,7 +15,7 @@ var uploadsFolder = __dirname + "/uploads";
 
 app.configure(function(){
 	app.use(express.methodOverride());
-	app.use(express.bodyParser({uploadDir: uploadsFolder}));
+	app.use(express.bodyParser({uploadDir: uploadsFolder, limit: '250mb'}));
 	app.use(express.multipart());
 	app.use(express.static(__dirname + '/'));
 	app.use(app.router);
@@ -42,10 +43,11 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
+
 var fs = require('fs');
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -124,7 +126,8 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 			var tmpFile = fs.createWriteStream("tmp/" + fileName);
 			request(elem_data.src).pipe(tmpFile);
 			
-			tmpFile.on('finish', function() {
+			tmpFile.on('close', function() {
+				console.log("finished");
 				gm("tmp/" + fileName).size(function(err, size) {
 					if(!err){
 						var itemId = "item"+itemCount.toString();
@@ -148,7 +151,6 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 				});
 				
 			});
-			
 		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
@@ -187,8 +189,8 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 						}
 					}
 				}
-				console.log(mp4Idx + ": " + mp4Resolution);
-				console.log(webmIdx + ": " + webmResolution);
+				console.log("mp4 resolution:  " + mp4Resolution);
+				console.log("webm resolution: " + webmResolution);
 				
 				var itemId = "item"+itemCount.toString();
 				var title = info.title;
@@ -197,8 +199,10 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 				var resolutionY = Math.max(mp4Resolution, webmResolution);
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
+				if(poster == null) poster = info.iurl;
 				if(poster == null) poster = info.iurlsd;
-				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
+// 				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
+				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -228,14 +232,8 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		selectOffsetX = select_data.eventOffsetX;
 		selectOffsetY = select_data.eventOffsetY; 
 		
-		moveItemToFront(selectedMoveItem.id);
-		
-		var itemIds = [];
-		for(var i=0; i<items.length; i++){
-			itemIds.push(items[i].id);
-		}
-		
-		sio.sockets.emit('updateItemOrder', itemIds);
+		var newOrder = moveItemToFront(selectedMoveItem.id);
+		sio.sockets.emit('updateItemOrder', newOrder);
 	});
 	
 	socket.on('releaseSelectedElement', function() {
@@ -248,21 +246,15 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		selectedMoveItem.left = move_data.eventX + selectOffsetX;
 		selectedMoveItem.top = move_data.eventY + selectOffsetY;
 		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, date: now});
+		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, elemWidth: selectedMoveItem.width, elemHeight: selectedMoveItem.height, date: now});
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
 		selectedScrollItem = findItemById(elemId);
 		selectedMoveItem = null;
 		
-		moveItemToFront(selectedScrollItem.id);
-		
-		var itemIds = [];
-		for(var i=0; i<items.length; i++){
-			itemIds.push(items[i].id);
-		}
-		
-		sio.sockets.emit('updateItemOrder', itemIds);
+		var newOrder = moveItemToFront(selectedScrollItem.id);
+		sio.sockets.emit('updateItemOrder', newOrder);
 	});
 	
 	socket.on('scrollSelectedElement', function(scale) {
@@ -281,10 +273,26 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
 	});
 	
+
 	socket.on('pointerEventRecorded', function(msg){
 	    console.log("got it: " + msg);
 	
-	});
+// =======
+// 	socket.on('keypressElementById', function(keypress_data) {
+// 		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
+// 			removeItemById(keypress_data.elemId);
+// 			sio.sockets.emit('deleteElement', keypress_data.elemId);
+// 		}
+// 		else if(keypress_data.keyCode == "32"){ // spacebar
+// 			var keypressItem = findItemById(keypress_data.elemId);
+// 			var newOrder = moveItemToFront(keypressItem.id);
+// 			if(keypressItem.type == "video" || keypressItem.type == "youtube"){
+// 				sio.sockets.emit('updateItemOrder', newOrder);
+// 				sio.sockets.emit('playPauseVideo', keypressItem.id);
+// 			}
+// 		}
+// >>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
+// 	});
 });
 
 app.post('/upload', function(request, response) {
@@ -302,13 +310,36 @@ app.post('/upload', function(request, response) {
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var itemId = "item"+itemCount.toString();
-					var title = request.files[f].name;
+					var title = path.basename(this.source);
 					var aspect = size.width / size.height;
 					var now = new Date();
 					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "", {});
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
+				}
+				else{
+					console.log("Error: " + err);
+				}
+			});
+		}
+		else if(request.files[f].type == "video/mp4"){
+			ffprobe(localPath, function(err, data){
+				if(!err){
+					for(i=0; i<data.streams.length; i++){
+						if(data.streams[i].codec_type == "video"){
+							var itemId = "item"+itemCount.toString();
+							var title = data.filename;
+							var aspect = data.streams[i].width / data.streams[i].height;
+							var now = new Date();
+							var newItem = new item("video", title, itemId, data.file, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+							items.push(newItem);
+							sio.sockets.emit('addNewElement', newItem);
+							itemCount++;
+							
+							break;
+						}
+					}
 				}
 				else{
 					console.log("Error: " + err);
@@ -346,11 +377,15 @@ app.post('/upload', function(request, response) {
 					setTimeout(function() {
 						var itemId = "item"+itemCount.toString();
 						var title = zipName;
-						objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
+						var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
-						var appExtra = [instructions.type, objName];
-						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra, {});
+// <<<<<<< HEAD
+// 						var appExtra = [instructions.type, objName];
+// 						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra, {});
+// =======
+						var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName, {});
+//>>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -359,7 +394,7 @@ app.post('/upload', function(request, response) {
 						if(instructions.animation == "timer"){
 							setInterval(function() {
 								var now = new Date();
-								sio.sockets.emit('animateCanvas', {elemId: itemId, date: now});
+								sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
 							}, instructions.interval);
 						}
 					}, 1000);
@@ -543,6 +578,33 @@ function moveItemToFront(x,y){
 
     return found; //need to know so that ptr has correct mode
 }
+
+
+function moveItemToFront(id) {
+        var i;
+        var selectedIndex;
+        var selectedItem;
+        var itemIds = [];
+        
+        for(i=0; i<items.length; i++){
+                if(items[i].id == id){
+                        selectedIndex = i;
+                        selectedItem = items[selectedIndex];
+                        break;
+                }
+                itemIds.push(items[i].id);
+        }
+        for(i=selectedIndex; i<items.length-1; i++){
+                items[i] = items[i+1];
+                itemIds.push(items[i].id);
+        }
+        items[items.length-1] = selectedItem;
+        itemIds.push(id);
+        
+        return itemIds;
+}
+
+
 
 function clickInsideWindow(x, y, pID){
     console.log("click in window " + x + " " + y +  " " + items.length);

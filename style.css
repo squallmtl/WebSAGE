@@ -28,7 +28,15 @@ body {
 	position:absolute;
 	border: solid 1px #000000;
 }
+
 .windowTitle {
+	position:absolute;
+	background-color: #666666;
+	border: solid 1px #000000;
+	overflow: hidden;
+}
+
+.windowControls {
 	position:absolute;
 	background-color: #666666;
 	border: solid 1px #000000;
