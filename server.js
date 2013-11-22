@@ -131,7 +131,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 						var title = fileName;
 						var aspect = size.width / size.height;
 						var now = new Date();
-						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "");
+						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "", { } );
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -167,7 +167,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 						var resolutionX = resolutionY * aspect;
 						var poster = info.iurlmaxres;
 						if(poster == null) poster = info.iurlsd;
-						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster);
+						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster, { });
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 						itemCount++;
@@ -198,7 +198,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
 				if(poster == null) poster = info.iurlsd;
-				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
+				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -207,7 +207,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		else if(elem_data.type = "site" ){
             var aspect = 16/9;
 			var now = new Date();
-            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", "" ); 
+            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", "", {} ); 
             //{type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
@@ -305,7 +305,7 @@ app.post('/upload', function(request, response) {
 					var title = request.files[f].name;
 					var aspect = size.width / size.height;
 					var now = new Date();
-					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
+					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "", {});
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -350,7 +350,7 @@ app.post('/upload', function(request, response) {
 						var now = new Date();
 						var aspect = instructions.width / instructions.height;
 						var appExtra = [instructions.type, objName];
-						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra);
+						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra, {});
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -382,15 +382,42 @@ app.post('/upload', function(request, response) {
             if( request.files[f].name.indexOf("metadata") != -1 ){
                 console.log("metadata " + this.source);
                 
-                //read metadata file
-                
+                var outputStr; 
+                fs.readFile("uploads/"+request.files[f].name, 'utf8', function(err, outputStr) {
+                    if(err){
+                        console.log('Error: ' + err);
+                        return;
+                    }
+                    console.log(outputStr);
+                    
+                    //var[] cat;
+
+                    var tokens = outputStr.split('\n');
+                    for(var i = 0; i < tokens.size(); i++){
+                        if( tokens[i].charAt(0) == '#' ){
+                            //store category names
+                            
+                        }
+                        else{ //store data
+                            var subTokens = tokens[i].split(":");
+                            var label = subTokens[0]; 
+                            var values = subTokens[1].split(",");
+                            for(var j =0; j < values.size(); j++){
+                                addMetadata( label, "key"+j, values[j] );
+                            } 
+                            
+                        }
+                            
+                    }
+                });
+
                 
                 var itemId = "item"+itemCount.toString();
                 var title = request.files[f].name;
                 var aspect = 1;
                 var now = new Date();
                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "");
+                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "", {});
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
@@ -585,10 +612,9 @@ function handleSagePointerZoom(zoom, x, y, mode){
     }
 }
 
-function handleSagePointerDrag(x, y, mode){
-    console.log("in handleSagePointerDrag " + mode);    
-    if( mode == 0 ){
-        idx = [] ;
+var initDrag = true; 
+function initiateSagePointerDrag(x, y ){
+        //idx = [] ;
         for(var i=items.length-1; i >=0; i--){
             var l = items[i].left;
             var w = items[i].width;
@@ -600,10 +626,35 @@ function handleSagePointerDrag(x, y, mode){
                 selectOffsetY = t - y;
             } 
         }
+        //initDrag = false;
+}
+
+function handleSagePointerDrag(x, y, mode){
+    console.log("in handleSagePointerDrag " + mode);    
+    //initDrag = true;
+    if( mode == 0 ){
+        if( initDrag ){
+            idx = [] ;
+            for(var i=items.length-1; i >=0; i--){
+                var l = items[i].left;
+                var w = items[i].width;
+                var t = items[i].top;
+                var h = items[i].height; 
+                if(l < x && l+w > x && t < y && t+h > y) { 
+                    selectedMoveItem = items[i];    //not checking for z!
+                    selectOffsetX = l - x; 
+                    selectOffsetY = t - y;
+                    break;
+                } 
+            }
+            initDrag = false;
+        }
         console.log("found: " + selectedMoveItem);    
 
-        if(selectedMoveItem == null) 
+        if(selectedMoveItem == null){ 
+            initDrag = true;
             return;
+        }
 
         selectedMoveItem.left = x + selectOffsetX;
         selectedMoveItem.top = y + selectOffsetY;
@@ -614,6 +665,7 @@ function handleSagePointerDrag(x, y, mode){
 
 function releaseSelectedMoveItem(){
     selectedMoveItem = null;
+    initDrag = true;
 }
 
 function releaseSelectedZoomItem(){
@@ -679,7 +731,67 @@ function tileAll(){
 }
 
 
+function sortBySrcName() {
+    console.log("sorting by width");
+    items.sort( function(item1, item2){ 
+    
+        return item1.width - item2.width ; 
+    });
+//     var itemIds = [];
+//     for(var i=0; i<items.length; i++){
+//         itemIds.push(items[i].id);
+//     }
+// 		
+//     sio.sockets.emit('updateItemOrder', itemIds); 
+    
+    tileAll();
+    
+//     var points = [40,100,1,5,25,10];
+// points.sort(function(a,b){return a-b});
+}
 
+function sortByWidth(){
+    console.log("sorting by width");
+    items.sort( function(item1, item2){ 
+    
+        return item1.width - item2.width ; 
+    });
+
+    tileAll();
+}
+
+function sortByHeight(){
+    console.log("sorting by height");
+    items.sort( function(item1, item2){ 
+    
+        return item2.height - item1.height; 
+    });
+
+    tileAll();
+}
+
+function sortBySize(){
+    console.log("sorting by size");
+    items.sort( function(item1, item2){ 
+    
+        return item2.height*item2.width - item1.height*item1.width; 
+    });
+
+    tileAll();
+}
+
+function sortBySrcName(){
+    console.log("sorting by src namr");
+    items.sort( function(item1, item2){ 
+        if( item1.src < item2.src )
+            return 1;
+        if( item1.src > item2.src )
+            return -1;
+        return 0; 
+    });
+
+    tileAll();
+}
 
 // ---------------------------------------------
 // DATA FROM OMICRONJS
@@ -994,7 +1106,7 @@ function findItemByPosition(x, y){
 // 	items[items.length-1] = selectedItem;
 // }
 
-function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
+function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra, metadata) {
 	this.type = type;
 	this.title = title;
 	this.id = id;
@@ -1007,6 +1119,18 @@ function item(type, title, id, src, left, top, width, height, aspect, date, resr
 	this.date = date;
 	this.resrc = resrc;
 	this.extra = extra;
+	this.metadata = metadata; 
+}
+
+function addMetadata( src, key, value ){
+    for(var i = 0; i < items.size(); i++){
+        if( src == items[i].src )
+        {
+            var id = items[i].id; 
+            items[i].metadata[key] = value;  
+            console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + metadata[key] );
+        }
+    }
 }
 
 //-----------------------KEY PRESS CONTROL -----------------------
@@ -1022,10 +1146,10 @@ process.stdin.on('keypress', function (ch, key) {
     process.exit(code =0);
   }
   
-  if( key.name == '1' ){
+  if( key.name == 'a' ){
         tileAll(); 
   }
-  if( key.name == '2' ){
+  if( key.name == 's' ){
         sortBySrcName();
         tileAll(); 
   }
@@ -1043,23 +1167,5 @@ process.stdin.on('keypress', function (ch, key) {
 process.stdin.setRawMode(true);
 process.stdin.resume();
 
-// event.type must be keypress
-// 
-// function getChar(event) {
-// 
-//   if (event.which == null) {
-// 
-//         return String.fromCharCode(event.keyCode) // IEfsc
-// 
-//   } else if (event.which!=0 && event.charCode!=0) {
-// 
-//         return String.fromCharCode(event.which)   // the rest
-// 
-//   } else {
-// 
-//         return null // special key
-// 
-//   }
-// 
-// }
+
 
