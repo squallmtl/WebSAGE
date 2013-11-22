@@ -120,6 +120,7 @@
                 ifrm.width =  elem_data.width;
                 ifrm.height = elem_data.height;
                 windowItem.appendChild(ifrm); 
+//                 console.log("source:" + elem_data.src);
 
 			}
 			else if(elem_data.type == "canvas"){
@@ -182,6 +183,18 @@
 				vid.appendChild(source2);
 				
 				windowItem.appendChild(vid);
+			}
+			else if(elem_data.type == "metadata"){	
+                var ifrm = document.createElement("IFRAME"); 
+				ifrm.id = elem_data.id + "_site";
+                ifrm.className = "sageItem";
+                ifrm.src = "http://localhost:9090/apps/metadataDisplay/metadataDisplay.html"; 
+                ifrm.width =  elem_data.width;
+                ifrm.height = elem_data.height;
+                //ifrm.filename = elem_data.src;
+                windowItem.appendChild(ifrm); 
+                
+//                 ifrm.contentWindow.postMessage('metadataLoad ' + elem_data.src, '*');  
 			}
 			
 			itemCount += 2;
@@ -435,7 +448,7 @@
 	}
 	
 	function iframeRef( frameRef ) {
-        return frameRef.contentWindow ? frameRef.contentWindow.document : frameRef.contentDocument
+        return frameRef.contentWindow ? frameRef.contentWindow.document : frameRef.contentDocument  //I don't think I am using this... 
     }
 
 
@@ -503,6 +516,41 @@
 		results = regex.exec(location.search);
 		return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 	}
+	
+// 	window.onmessage = function(e){
+// 	    console.log("message received: " + e);
+//         
+//     };
+
+
+///------------LISTEN FOR EVENTS FROM CHILD IFRAMES-----------------
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+//     if (event.data.indexOf( 'pointerClick') != -1) {
+//         var tokens = event.data.split(' ');
+//         pointerX = tokens[2];
+//         pointerY = tokens[4]; 
+//         pointerPressed = true;     
+//         readyRedraw = true;     
+//     }
+//     if (event.data.indexOf( 'pointerMove') != -1) {
+//         var tokens = event.data.split(' ');
+//         pointerX = tokens[2];
+//         pointerY = tokens[4]; 
+//         readyRedraw = true;     
+//     } 
+ 	    console.log("message received: " + event.data);
+ 	    
+ 	    //ONCE RECEIVED:  communicate these events back to the server
+ 	    //socket.emit('pointerEventRecorded'); 
+ 	    
+
+}
+
+
 </script>
 
 <link rel="stylesheet" type="text/css" href="style.css" media="screen" />

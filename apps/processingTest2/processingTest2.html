@@ -2,6 +2,7 @@
 <script type="text/processing" data-processing-target="mycanvas">
 Boolean drawRed = false;
 Boolean drawBlue = true;  
+int count = 0;
 
 void setup()
 {
@@ -34,8 +35,10 @@ void draw(){
         fill(255.0);
         text("Hello Web! " + pointerX + " " + pointerY ,20,20);    
         text("Click Here", 750, 20);
-        readyRedraw = false; 
+        readyRedraw = false;
+        
     }
+    
 }
 
 void mousePressed()
@@ -45,6 +48,7 @@ void mousePressed()
         drawRed = !drawRed;
         drawBlue = !drawBlue; 
     } 
+    sendMsg("pointer event at x= " + mouseX + " y= " + mouseY);
 }
 
 void setMouseToPointer() 
@@ -69,33 +73,60 @@ void pointerPressed(ptrX, ptrY)
     mousePressed();
 }
  -->
-
+    
 
 </script>
 <canvas id="mycanvas"></canvas>
-
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
 <script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
 var pointerX = 0;
 var pointerY = 0; 
 var pointerPressed = false; 
 var readyRedraw = false; 
-window.onmessage = function(e){
-    if (e.data.indexOf( 'pointerClick') != -1) {
-        var tokens = e.data.split(' ');
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
         pointerX = tokens[2];
         pointerY = tokens[4]; 
         pointerPressed = true;     
         readyRedraw = true;     
     }
-    if (e.data.indexOf( 'pointerMove') != -1) {
-        var tokens = e.data.split(' ');
+    if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
         pointerX = tokens[2];
         pointerY = tokens[4]; 
         readyRedraw = true;     
     } 
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
     
-    
-};
+    socket.emit("pointerEventRecorded", msg);
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
 </script>
 
 

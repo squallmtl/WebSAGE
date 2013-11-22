@@ -43,8 +43,8 @@ sio.configure('development', function () {
 var initDate = new Date();
 
 var fs = require('fs');
-//var file = 'config/desktop-cfg.json';
-var file = 'config/thor-cfg.json';
+var file = 'config/desktop-cfg.json';
+//var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
 
 var config;
@@ -63,6 +63,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 
 var itemCount = 0;//num windows 
 var items = [];//windows
+
+var metadata;
 
 
 sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
@@ -278,6 +280,11 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		var now = new Date();
 		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
 	});
+	
+	socket.on('pointerEventRecorded', function(msg){
+	    console.log("got it: " + msg);
+	
+	});
 });
 
 app.post('/upload', function(request, response) {
@@ -369,6 +376,41 @@ app.post('/upload', function(request, response) {
 					return file.type !== "SymbolicLink";
 				}
 			});
+		}
+		else if( request.files[f].type == "application/octet-stream"){
+            console.log("processing: " + request.files[f].name);
+            if( request.files[f].name.indexOf("metadata") != -1 ){
+                console.log("metadata " + this.source);
+                
+                //read metadata file
+                
+                
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 1;
+                var now = new Date();
+                console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
+                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;
+            }
+// 		    gm(localPath).size(function(err, size) {
+// 				if(!err){
+// 					var itemId = "item"+itemCount.toString();
+// 					var title = request.files[f].name;
+// 					//var aspect = size.width / size.height;
+// 					//var now = new Date();
+// 					//var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
+// 					//items.push(newItem);
+// 					//sio.sockets.emit('addNewElement', newItem);
+// 					itemCount++;
+// 					console.log("just received: " + title );
+// 				}
+// 				else{
+// 					console.log("Error: " + err);
+// 				}
+//             });
 		}
 		else{
 			console.log("Unknown type: " + request.files[f].type);
@@ -577,6 +619,67 @@ function releaseSelectedMoveItem(){
 function releaseSelectedZoomItem(){
     selectedZoomItem = null;
 }
+
+// ---------------------------------------------
+//--MANGAGE VIS PLACEMENT
+// ---------------------------------------------
+
+
+function tileAll(){
+    var width = config.totalWidth;
+    var height = config.totalHeight; 
+    var numItems = items.length;
+    
+    var numCols = Math.round( Math.sqrt( numItems * width/height ));
+    var numRows = Math.round( numItems / numCols );
+    console.log("tile all.  rows: " + numRows + " cols: " + numCols);
+    
+    var colWidth = width/numCols; 
+    var rowHeight = height/numRows; 
+    
+    var gapW = colWidth*.025;
+    var gapH = rowHeight*.025; 
+    
+    var maxItemWidth = colWidth - 2*gapW;
+    var maxItemHeight = rowHeight - 2*gapH - config.titleBarHeight; 
+    
+    var row = 0;
+    var col = 0; 
+    for(var i=items.length-1; i >=0; i--){
+            var x = col*colWidth;
+            var y = row*rowHeight;
+            
+            //initial postion
+            items[i].left = x + gapW;
+            items[i].top = y + gapH; 
+                        
+            //resize
+            if( items[i].width > items[i].height + config.titleBarHeight ){
+                items[i].width = maxItemWidth; 
+                items[i].height = items[i].width/items[i].aspect; 
+            }
+            else{
+                items[i].height = maxItemHeight;
+                items[i].width = items[i].height*items[i].aspect; 
+            }
+    
+            //shift to center
+            items[i].left = items[i].left + colWidth/2 - items[i].width/2 - gapW;
+            items[i].top = items[i].top + rowHeight/2 - items[i].height/2 - gapH;
+
+            var now = new Date();
+            sio.sockets.emit('setItemPositionAndSize', {elemId: items[i].id, elemLeft: items[i].left, elemTop: items[i].top, elemWidth: items[i].width, elemHeight: items[i].height, date: now});
+
+            col++;
+            if( col >= numCols ){
+                col = 0;
+                row++; 
+            }
+     }
+}
+
+
+
 
 // ---------------------------------------------
 // DATA FROM OMICRONJS
@@ -906,12 +1009,11 @@ function item(type, title, id, src, left, top, width, height, aspect, date, resr
 	this.extra = extra;
 }
 
-
+//-----------------------KEY PRESS CONTROL -----------------------
 var keypress = require('keypress');
 
 // make `process.stdin` begin emitting "keypress" events
 keypress(process.stdin);
-
 // listen for the "keypress" event
 process.stdin.on('keypress', function (ch, key) {
   console.log('got "keypress"', key);
@@ -920,9 +1022,15 @@ process.stdin.on('keypress', function (ch, key) {
     process.exit(code =0);
   }
   
-  if( key.name == 'a' ){
-        clickInsideWindow( 900, 400, "0" );
+  if( key.name == '1' ){
+        tileAll(); 
   }
+  if( key.name == '2' ){
+        sortBySrcName();
+        tileAll(); 
+  }
+  
+  
 //   if( key.name == 'm' ){
 //       sio.sockets.emit("changeMode", 0); 
 //   }
