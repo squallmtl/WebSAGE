@@ -70,6 +70,16 @@
 			}
 			xhr = new XMLHttpRequest();
 			xhr.open("POST", "/upload", true);
+			xhr.upload.addEventListener('progress', function(event) {
+				var fileDropText = document.getElementById("fileDropText");
+				var pc = parseInt((event.loaded / event.total) * 100);
+				fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
+				if(pc == 100){
+					setTimeout(function() {
+						fileDropText.innerHTML = "Drag files here to upload";
+					}, 500);
+				}
+			}, false);
 			xhr.send(formdata);
 		}
 		else if(url != null || text != null){
@@ -97,7 +107,7 @@
 			<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>
 		</div>
 		<div id="fileDrop">
-			<p>Drag files here to upload</p>
+			<p id="fileDropText">Drag files here to upload</p>
 		</div>
 	</div>
 </body>

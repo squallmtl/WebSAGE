@@ -43,9 +43,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -238,7 +238,7 @@ app.post('/upload', function(request, response) {
 			gm(localPath).size(function(err, size) {
 				if(!err){
 					var itemId = "item"+itemCount.toString();
-					var title = request.files[f].name;
+					var title = path.basename(this.source);
 					var aspect = size.width / size.height;
 					var now = new Date();
 					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
