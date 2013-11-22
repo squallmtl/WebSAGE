@@ -27,16 +27,16 @@ void draw(){
 
         fill(125);
         ellipseMode(CENTER);
-        ellipse( pointerX, pointerY, 200, 200 ); 
+        ellipse( mouseX, mouseY, 200, 200 ); 
 
         
         fill(0, 255, 0);
         //textAlign(CENTER, CENTER);
         //textSize( 12 );
-        text( "x= " + pointerX + " y= " + pointerY, pointerX, pointerY);
+        text( "x= " + mouseX + " y= " + mouseY, mouseX, mouseY);
         readyRedraw = false;
         
-        text("Pointer Location: " + pointerX + " " + pointerY , 700, 350 );
+        text("Pointer Location: " + mouseX + " " + mouseY , 700, 350 );
 
         
     }
