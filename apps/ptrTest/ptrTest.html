@@ -11,6 +11,7 @@ void setup()
   textFont(fontA, 14); 
   
   readyRedraw = true;  
+
 }
 
 void draw(){
@@ -33,11 +34,11 @@ void draw(){
         fill(0, 255, 0);
         //textAlign(CENTER, CENTER);
         //textSize( 12 );
-        text( "x= " + mouseX + " y= " + mouseY, mouseX, mouseY);
+        text( "x= " + mouseX + " y= " + mouseY , mouseX, mouseY);
         readyRedraw = false;
         
         text("Pointer Location: " + mouseX + " " + mouseY , 700, 350 );
-
+        text(extraText, 700, 450 );
         
     }
     
@@ -65,7 +66,7 @@ void setMouseToPointer()
 var url;
 var socket;
 
-url = window.location.origin;
+url = "10.0.8.100:9090";//"window.location.origin;  //"http://iridium:9090";//
 socket = io.connect(url);
 console.log("Connected to server: ", url);
 
@@ -77,6 +78,8 @@ var readyRedraw = false;
 
 var colorToDraw = 125; 
 
+var extraText = ""; 
+
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
 {
@@ -87,7 +90,9 @@ function receiveMessage(event)
         pointerX = tokens[2];
         pointerY = tokens[4]; 
         pointerPressed = true;     
-        readyRedraw = true;     
+        readyRedraw = true;   
+        
+        extraText = "connected to server: " + url; 
     }
     if (event.data.indexOf( 'pointerMove') != -1) {
         var tokens = event.data.split(' ');

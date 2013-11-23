@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+//var file = 'config/thor-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -275,7 +275,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 	
 
 	socket.on('pointerEventRecorded', function(msg){
-	    console.log("got it: " + msg);
+	    console.log("in server, got it: " + msg);
 	});
 
 });
