@@ -45,9 +45,9 @@ var initDate = new Date();
 
 
 var fs = require('fs');
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-// var file = 'config/iridium-cfg.json';
+ var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -210,9 +210,9 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 			});
 		}
 		else if(elem_data.type = "site" ){
-            var aspect = 16/9;
+            var aspect = 1;
 			var now = new Date();
-            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", ""); 
+            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 800, 800, aspect, now, "", ""); 
             //{type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
@@ -275,7 +275,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 	});
 	
 
-	socket.on('pointerEventRecorded', function(msg){
+	socket.on('eventInWindowRecorded', function(msg){
 	    console.log("in server, got it: " + msg);
 	});
 

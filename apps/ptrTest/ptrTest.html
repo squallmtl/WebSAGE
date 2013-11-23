@@ -66,7 +66,9 @@ void setMouseToPointer()
 var url;
 var socket;
 
-url = "10.0.8.100:9090";//"window.location.origin;  //"http://iridium:9090";//
+url = window.location.origin;  //"http://iridium:9090";//
+if( url.indexOf("iridium") >= 0 )
+    url = "10.0.8.100:9090";
 socket = io.connect(url);
 console.log("Connected to server: ", url);
 

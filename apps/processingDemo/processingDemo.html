@@ -1,0 +1,244 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+
+//****YOUR GLOBAL VARIABLES HERE****
+float[] data; 
+String[] ids;
+PVector[] coords; 
+color[] colors; 
+
+int selectedIdx;  
+
+void setup(){
+    sageBeforeSetup();
+    
+    //****YOUR SETUP CODE HERE****
+    size( 800, 800 );  //to do... this will not match iframe size... should recieve initial size somehow
+    
+    background(0.0);
+  
+    readData(); 
+  
+    selectedIdx = -1; 
+      
+    sageAfterSetup();
+}
+
+void draw(){
+
+    sageBeforeDraw();
+    
+    if( goRedraw ){
+    
+        //****YOUR DRAW CODE HERE****
+        background(0.0);
+    
+        for(int i = 0; i < coords.length; i++){
+            fill(colors[i]);
+            if( i == selectedIdx )
+                fill(255.0, 255.0, 0.0);
+            ellipseMode(CENTER);
+            ellipse( coords[i].x, coords[i].y, 100, 100);
+            fill(0);
+            textAlign(CENTER, CENTER);
+            text( ids[i], coords[i].x, coords[i].y );
+        }
+    }
+    
+    sageAfterDraw();
+}
+
+//************* YOUR FUNCTIONS HERE ********************//
+
+void readData(){
+  data = new float[20]; 
+  for(int i =0 ; i < data.length; i++){
+    data[i] = random( random(0,10), random(60,100) );
+  }
+  
+  ids = new String[20]; 
+  for(int i =0 ; i < ids.length; i++){
+    ids[i] = "id"+i; 
+  }
+  
+  coords = new PVector[20]; 
+  for(int i =0 ; i < coords.length; i++){
+    if( i % 3 == 0 )
+        coords[i] = new PVector(  i*15+i*i, i*13 - i*i+height/2);  //random(0, width), random(0, height) ); 
+    else if( i % 2 == 0 )
+        coords[i] = new PVector(  i*11-i*i, i*17 - i*i + height/3);  //random(0, width), random(0, height) ); 
+    else
+        coords[i] = new PVector(  i*19+i*i, i*15 - i*i + height/5);  //random(0, width), random(0, height) ); 
+
+  }  
+  
+  colors = new color[20];
+  for(int i =0 ; i < colors.length; i++){
+    colors[i] = color( i*5, i*7, i*13 ); //random(0, 255), random(0,255), random(0, 255) ); 
+  }  
+  
+}
+
+
+//************* END YOUR FUNCTIONS HERE ********************//
+
+//************* MODIFY THESE FUNCTIONS TO PLAY ALONG WITH SAGE ********************//
+
+void mousePressed(){
+
+    //****your mouse pressed handler here
+    for(int i = 0; i < coords.length; i++){
+        if( coords[i].x-50 < mouseX && coords[i].x+50 > mouseX
+            && coords[i].y-50 < mouseY && coords[i].y+50 > mouseY ){
+              selectedIdx = i;
+
+              emitSelectionEvents( selectedIdx );  //added so that others can respond to this event
+        }
+    }  
+    
+}
+
+void mouseDrag(){
+    //your mouse drag handler here
+}
+
+void resizeSketch(int newWidth, int newHeight){
+    size( newWidth, newHeight ); 
+    
+    //adjust sketch to new size....
+    
+}
+
+void acceptSelectionEvents( String selectedId ){
+  for(int i = 0; i < ids.length; i++){
+    if( s.compareTo(ids[i]) == 0 )
+      selectedIdx = i; 
+  }
+}
+
+
+//let sage know that an item has been selected 
+void emitSelectionEvents( int selectedId ){
+    sengMsg("selected " + selectedIdx );
+    
+}
+
+//*************  NO NEED TO MODIFY THE FOLLOWING METHODS *************//
+void sageBeforeSetup(){
+
+}
+
+void sageAfterSetup(){
+    goRedraw = true;
+}
+
+void sageBeforeDraw(){
+    if( setMouseToPointer ){
+        mouseX = pointerX;
+        mouseY = pointerY;
+        setMouseToPointer = false;
+
+    }
+    if( handlePointerPress ){
+        //assume mouse already set to pointer, bc of flag... 
+        mousePressed(); //call yourself
+        
+        //for debugging:
+        sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
+        
+        handlePointerPress = false; 
+    }
+}
+
+void sageAfterDraw(){
+    //sendMsg( "drawDone");   
+    goRedraw = false; 
+}
+
+
+
+//Sage Vis developers note:
+//  to add:
+//  Boolean pointerOver(xMin, xMan, yMin, yMax): look though all pointers and return true if a pointer is over
+
+
+</script>
+<canvas id="mycanvas"></canvas>
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//to do:  make this array of pointer objects... 
+var pointerX = 0;
+var pointerY = 0; 
+var handlePointerPress = false; 
+var pointerPressed = false; 
+var goRedraw = false; 
+var setMouseToPointer = false; 
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+    if( event.data.indexOf('dataSend') != -1 ){
+        var tokens = event.data.split(' ');
+        
+    }
+    if( event.data.indexOf( 'pointerCreated') != -1 ){
+        //create pointer object
+        
+    }
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true; 
+        handlePointerPress = true;     
+        goRedraw = true;   
+        setMouseToPointer = true;
+    }
+    else if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        goRedraw = true;     
+        setMouseToPointer = true;
+        if( pointerPressed ){
+            //pointer drag
+        }
+    } 
+    else if( event.data.indexOf( 'pointerReleased') != -1 ){
+        pointerPressed = false; 
+    }
+    else if( event.data.indexOf( 'pointerScrolled' ) != -1){
+        //handle scroll events
+    }
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", msg);
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
+</script>
+
