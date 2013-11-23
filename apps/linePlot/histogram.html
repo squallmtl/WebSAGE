@@ -1,0 +1,166 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+int windowWidth = 1080;
+int windowHeight = 768; 
+
+float[] data = {230.0, 40.0, 100.0, 130.0, 234.0, 129.0, 234.0, 700.0, 400.0, 500.0};
+color[] colors = {#FC7878, #F25D8A, #F25DDF, #CF5DF2, #AC5DF2, #825DF2, #5D6AF2, #5DA1F2, #5DE2F2, #5DF2D5};
+String[] labels = {"Theft", "Robbery", "Burglery", "Assault", "Drugs", "Dist The Peace", "Homicide", "Auto", "Prostitution", "Sexual Assault"}; 
+Boolean[] drawDifferently;
+Chart c; 
+
+void setup(){
+  size( windowWidth, windowHeight );
+  readData("data.txt");
+  c = new Chart( data, colors, labels ); 
+  
+  for(int i = 0; i < data.length; i++){
+    drawDifferently = false; 
+  }
+
+}
+
+void readData(String filename){    
+    String[] rows = loadStrings(filename);
+//    String[] columns = split(rows[0], ',');
+    int rowCount = 0;
+      // start reading at row 1, because the first row was only the column headers
+    for (int i = 0; i < rows.length; i++) {
+      if (trim(rows[i]).length() == 0) {
+        continue; // skip empty rows
+      }
+      if (rows[i].startsWith("#")) {
+        continue;  // skip comment lines
+      }
+
+      // split the row on the commas
+      String[] pieces = split(rows[i], ',');
+//
+      
+      // copy data into the table starting at pieces[1]
+      data[rowCount] = parseFloat(pieces[1]); //parseFloat(subset(pieces, 1));
+      labels[rowCount] = pieces[0];
+      
+      print(data[rowCount] + " " + labels[rowCount]);
+
+      // increment the number of valid rows found so far
+      rowCount++;      
+    }
+}
+
+
+void draw(){
+  background(0);
+  
+  c.drawChart();
+ 
+}
+
+
+public class Chart{
+  
+  float[] values; 
+  float maxValue = 0; 
+  
+  Chart(float[] values , color[] colors, String[] labels){
+    this.values = values;
+    textAlign(CENTER);
+
+    for(int i = 0; i <values.length; i++)
+    {
+      if( values[i] > maxValue)
+        maxValue = values[i]; 
+
+    }
+  }
+  
+  void drawChart(){
+    rectMode(CORNERS);
+    float startX = 100; 
+    float endX = width-10;
+    
+    float gap = (endX-startX)*.005; 
+    float div = (endX-startX-gap*(values.length+2))/values.length; 
+    if( div > (endX-startX)*.1 )
+      div = (endX-startX)*.1;
+    if( gap > div )
+      gap = div*.1;
+    float runningX = startX+gap; 
+    for(int i =0; i < values.length; i++)
+    {
+    
+        if( !drawDifferently[1] )
+            fill(colors[i]);
+        else{
+            fill(#FFE45D);
+        }
+        noStroke();
+        float y2 = map( values[i], 0, maxValue, height-110, 10 );
+        rect( runningX, height-100, runningX+(div), y2); 
+        fill(255.0);
+        stroke(255.0);
+        pushMatrix(); 
+        translate( runningX+div/2,height-55);//-1* ((int)runningX+(int)div/2), -1*(int)height-55); 
+        rotate(radians(360.0-45.0)); 
+        text(labels[i], 0, 0); //runningX+div/2, height-55 );
+        popMatrix();
+        
+        if( mouseX > runningX && mouseX < runningX+div+gap){
+            text(data[i], runningX+div/2, y2-15);
+        }
+
+        
+        runningX = runningX + div + gap;
+        
+    }
+    
+  }
+  
+  void mousePressed(){
+    mousePress = true;
+<!-- 
+     for(int i =0; i < values.length; i++)
+    {
+    
+        if( mouseX > runningX && mouseX < runningX+div+gap){
+            drawDifferently[i] = !drawDifferently[i];
+        }
+        
+    }
+ -->
+  }
+  
+}
+
+
+
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+<script type="application/javascript">
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+var readyRedraw = false; 
+window.onmessage = function(e){
+    if (e.data.indexOf( 'pointerClick') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true;     
+        readyRedraw = true;     
+    }
+    if (e.data.indexOf( 'pointerMove') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+    
+    
+};
+
+
+</script>

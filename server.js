@@ -45,9 +45,9 @@ var initDate = new Date();
 
 
 var fs = require('fs');
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+// var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -66,7 +66,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 var itemCount = 0;//num windows 
 var items = [];//windows
 
-var metadata;
+//metadataCategories
+var metadataCategories = new Array(); 
 
 
 sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
@@ -134,7 +135,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 						var title = fileName;
 						var aspect = size.width / size.height;
 						var now = new Date();
-						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "", { } );
+						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "" );
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
@@ -169,7 +170,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 						var resolutionX = resolutionY * aspect;
 						var poster = info.iurlmaxres;
 						if(poster == null) poster = info.iurlsd;
-						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster, { });
+						var newItem = new item("video", title, itemId, info.formats[i].url, 0, 0, resolutionX, resolutionY, aspect, now, "", poster);
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
 						itemCount++;
@@ -202,7 +203,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 				if(poster == null) poster = info.iurl;
 				if(poster == null) poster = info.iurlsd;
 // 				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
-				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
+				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -211,7 +212,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		else if(elem_data.type = "site" ){
             var aspect = 16/9;
 			var now = new Date();
-            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", "", {} ); 
+            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 1920, 1080, aspect, now, "", ""); 
             //{type: "site", id: "item"+itemCount.toString(), src: elem_data.src, left: 0, top: 0, width: 1920, height: 1080, aspectRatio: aspect, date: now, resrc: "", extra: "" }
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
@@ -298,7 +299,7 @@ app.post('/upload', function(request, response) {
 					var title = path.basename(this.source);
 					var aspect = size.width / size.height;
 					var now = new Date();
-					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "", {});
+					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
@@ -369,7 +370,7 @@ app.post('/upload', function(request, response) {
 // 						var appExtra = [instructions.type, objName];
 // 						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra, {});
 // =======
-						var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName, {});
+						var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
 //>>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
 						items.push(newItem);
 						sio.sockets.emit('addNewElement', newItem);
@@ -408,22 +409,26 @@ app.post('/upload', function(request, response) {
                         console.log('Error: ' + err);
                         return;
                     }
-                    console.log(outputStr);
+                    console.log("result = " + outputStr);
                     
-                    //var[] cat;
-
-                    var tokens = outputStr.split('\n');
-                    for(var i = 0; i < tokens.size(); i++){
+                    var tokens = outputStr.split('!');
+                    console.log(tokens.length);
+                    for(var i = 0; i < tokens.length; i++){
                         if( tokens[i].charAt(0) == '#' ){
                             //store category names
+                            var subTokens = tokens[i].split(":"); 
+                            var values = subTokens[1].split(",");
                             
+                            for(var j =0; j < values.length; j++){
+                                metadataCategories[j] = values[j]; 
+                            }
                         }
                         else{ //store data
                             var subTokens = tokens[i].split(":");
                             var label = subTokens[0]; 
                             var values = subTokens[1].split(",");
-                            for(var j =0; j < values.size(); j++){
-                                addMetadata( label, "key"+j, values[j] );
+                            for(var j =0; j < values.length; j++){
+                                addMetadata( label.trim(), metadataCategories[j], values[j] );
                             } 
                             
                         }
@@ -437,7 +442,7 @@ app.post('/upload', function(request, response) {
                 var aspect = 1;
                 var now = new Date();
                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "", {});
+                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
@@ -891,7 +896,7 @@ function sortByHeight(){
     items.sort( function(item1, item2){ 
     
         return item2.height - item1.height; 
-    });
+    }); 
 
     tileAll();
 }
@@ -917,6 +922,72 @@ function sortBySrcName(){
     });
 
     tileAll();
+}
+
+function sortByMetadata(idx){
+    console.log("sorting by metadata");
+    items.sort( function(item1, item2){ 
+        console.log("comparing: " + item1.metadata[ metadataCategories[idx] ]  + " to  " + item2.metadata[ metadataCategories[idx] ] ); 
+        if( item1.metadata[ metadataCategories[idx] ] < item2.metadata[ metadataCategories[idx] ]  )
+            return 1;
+        if( item1.metadata[ metadataCategories[idx] ] > item2.metadata[ metadataCategories[idx] ] )
+            return -1;
+        return 0; 
+    });
+
+    tileAll();
+}
+
+function plotByMetadata(xIdx,yIdx){
+    var maxX = -999999999999999;
+    var maxY = -999999999999999;
+    
+    for(var i = 0; i < items.length; i ++)
+    {
+        var xVal = items[i].metadata[ metadataCategories[xIdx] ];
+        var yVal = items[i].metadata[ metadataCategories[yIdx] ];
+        if( xVal > maxX )
+        {
+            maxX = xVal;
+        }
+        else if( yVal > maxY )
+        {
+            maxY = yVal;   
+        }
+    
+    }
+    
+    for(var i = 0; i < items.length; i ++)
+    {
+//         //resize
+//         if( items[i].width > items[i].height + config.titleBarHeight ){
+//             items[i].width = config.totalWidth*(2/items.length);
+//             items[i].height = items[i].width/items[i].aspect; 
+//         }
+//         else{
+            items[i].height = config.totalHeight*(2/items.length);
+            items[i].width = items[i].height*items[i].aspect; 
+       // }
+        
+        //position
+        var newX = map( items[i].metadata[ metadataCategories[xIdx] ] , 0, maxX, 0, config.totalWidth ); 
+        var newY = map( items[i].metadata[ metadataCategories[yIdx] ] , 0, maxY, config.totalHeight, 0 ); 
+        
+        console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
+        
+        items[i].left = newX;
+        items[i].top = newY; 
+        
+        var now = new Date();
+        sio.sockets.emit('setItemPositionAndSize', {elemId: items[i].id, elemLeft: items[i].left, elemTop: items[i].top, elemWidth: items[i].width, elemHeight: items[i].height, date: now});
+
+    }
+    
+    
+}
+
+function map( val, minVal, maxVal, minCoord, maxCoord ){
+    return (val - minVal) / (maxVal - minVal) * (maxCoord - minCoord ) + minCoord;    
 }
 
 // ---------------------------------------------
@@ -1232,7 +1303,7 @@ function findItemByPosition(x, y){
 // 	items[items.length-1] = selectedItem;
 // }
 
-function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra, metadata) {
+function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
 	this.type = type;
 	this.title = title;
 	this.id = id;
@@ -1245,16 +1316,17 @@ function item(type, title, id, src, left, top, width, height, aspect, date, resr
 	this.date = date;
 	this.resrc = resrc;
 	this.extra = extra;
-	this.metadata = metadata; 
+	this.metadata = new Array(); 
 }
 
 function addMetadata( src, key, value ){
-    for(var i = 0; i < items.size(); i++){
-        if( src == items[i].src )
+    console.log("src = " + src + " key = " + key + " value = " + value );
+    for(var i = 0; i < items.length; i++){
+        if( "uploads/"+src == items[i].src )
         {
             var id = items[i].id; 
-            items[i].metadata[key] = value;  
-            console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + metadata[key] );
+            items[i].metadata[key] = parseInt(value);  
+            console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + items[i].metadata[key] );
         }
     }
 }
@@ -1277,9 +1349,13 @@ process.stdin.on('keypress', function (ch, key) {
   }
   if( key.name == 's' ){
         sortBySrcName();
-        tileAll(); 
   }
-  
+  if( key.name == 'd' ){
+    sortByMetadata(0);
+  }
+  if( key.name == 'f' ){
+    plotByMetadata(1, 2);
+  }
   
 //   if( key.name == 'm' ){
 //       sio.sockets.emit("changeMode", 0); 

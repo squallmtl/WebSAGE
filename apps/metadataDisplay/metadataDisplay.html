@@ -1,0 +1,69 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+int windowWidth = 400;
+int windowHeight = 400;
+
+String[] metadata; 
+String toDisplay = "loading..."; 
+
+void setup()
+{
+  size(windowWidth, windowHeight);
+  
+  
+}
+
+void draw(){
+    //if( readyNewData )
+    loadData(); 
+    background(0); 
+    fill(random(0,255));
+
+    text(toDisplay, 20, 20);
+    
+    fill(255, 0, 0);
+<!--     rect(pointerX, pointerY, 50, 50);  -->
+}
+
+void loadData()
+{
+    toDisplay = metadata; 
+    readyNewData = false; 
+}
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+<script type="application/javascript">
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+var readyRedraw = false; 
+var metadata = ""; 
+var readyNewData = false;
+window.onmessage = function(e){
+    if (e.data.indexOf( 'pointerClick') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true;     
+        readyRedraw = true;     
+    }
+    if (e.data.indexOf( 'pointerMove') != -1) {
+        var tokens = e.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+    if( e.data.indexOf('meta ') != -1){
+//         var tokens = e.data.split(' ');
+        metadata = "hello"; //e.data;//tokens[1];
+        readyNewData = true; 
+        pointerX = 100;
+        pointerY = 100;
+    }
+    
+    
+};
+</script>

@@ -1,0 +1,223 @@
+<script src="processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+Neighborhood[] hoods;
+
+int plotX1, plotX2, plotY1, plotY2; 
+
+String[] attributeNames; 
+
+void setup(){
+  size(800, 800);
+  
+  plotX1 = (int)(width*.05);
+  plotX2 = (int)(width*.95);
+  plotY1 = (int)(height*.05);
+  plotY2 = (int)(height*.95);
+  
+  readData(); 
+  
+  resizeVis(1400, 1000);
+}
+
+void readData(){
+  String filename = "fakeData.txt";
+  
+  String[] rows = loadStrings(filename);
+  
+  hoods = new Neighborhood[ rows.length-1] ;
+  
+  //rows[0] shows data labels
+  String[] titleTokens = rows[0].split(",");
+  attributeNames = new String[ titleTokens.length ]; 
+  for(int i = 1; i < titleTokens.length; i++){
+    //println("attr: " + attributeNames[i] );
+    attributeNames[i] = titleTokens[i] ;
+  }
+  
+  for(int i = 1; i < rows.length; i++){
+     String[] tokens = rows[i].split(","); 
+     hoods[i-1] = new Neighborhood( tokens[0] ); 
+     hoods[i-1].setNumValues( tokens.length-1 ); 
+     for(int j = 1; j < tokens.length; j++){
+       hoods[i-1].addValue(1999+j, parseFloat(tokens[j]) );
+     }
+  }
+}
+
+void draw(){
+  if( sageCheckBeforeDraw() ){ 
+    sageCheckPointer();
+    
+    background(0); 
+    
+    stroke(255.0);
+    strokeWeight(3);
+    line(plotX1, plotY2, plotX2, plotY2);
+    line(plotX1, plotY1, plotX1, plotY2);
+    
+    for(int i =0 ; i < hoods.length; i++){
+      hoods[i].drawPlotLine();
+    }
+    
+    sageCheckAfterDraw();
+  } 
+}
+
+void resizeVis(int w, int h){
+  size(w, h);
+    
+  plotX1 = (int)(width*.05);
+  plotX2 = (int)(width*.95);
+  plotY1 = (int)(height*.05);
+  plotY2 = (int)(height*.95);
+}
+
+class Neighborhood{
+  String name; 
+  int[] years;
+  float[] values; 
+  int count;
+  
+  color theColor; 
+  
+  float minValue;
+  float maxValue; 
+  
+  Neighborhood(String name){
+    this.name = name;
+    count = 0; 
+    
+    minValue = 99999999999.0;
+    maxValue = -99999999999.0; 
+    
+    theColor = color( random(0, 255), random(0,255), random(0,255) );
+  }
+  
+  void setNumValues(int num){
+      years = new int[num];
+      values = new float[num]; 
+
+  }
+  
+  void addValue(int year, float value){
+    years[count] = year;
+    values[count] = value; 
+    count++; 
+    
+      if( value < minValue ){
+        minValue = value;  
+      }
+      if( value > maxValue){
+         maxValue = value; 
+      }
+  }
+  
+  void drawPlotLine(){
+    stroke(theColor); 
+    beginShape();
+    float gap = (mapYearToX(2001) - mapYearToX(2000))/2.0 ; 
+    for(int i=0; i<values.length; i++){
+      float x = mapYearToX( years[i] );
+      float y = mapValueToY( values[i] );
+      curveVertex(x, y );
+      if( i == 0 || i == values.length-1)
+              curveVertex(x, y );
+      if( mouseX-gap < x && mouseX+gap > x){
+        fill(theColor);
+        ellipse( x, y, 10, 10);
+      }
+        noFill();
+    }
+    endShape();
+  }
+}
+
+float mapYearToX(float year){
+  return map( year, 2000, 2008, plotX1, plotX2);
+}
+
+float mapValueToY(float value){
+  return map( value, 0, 53, plotY2, plotY1);
+}
+
+//------------------------------------------------------------------------
+
+
+Boolean sageCheckBeforeDraw(){
+  return true; 
+}
+
+Boolean sageCheckAfterDraw(){
+
+  return readyRedraw;
+}
+
+void setMouseToPointer(){
+    mouseX = pointerX;
+    mouseY = pointerY;
+}
+
+void sageCheckPointer(){
+    if( pointerPressed ){
+            setMouseToPointer();
+            mousePressed();
+            pointerPressed = false;
+    }
+}
+
+void handleSageEvents(String event){
+    readyRedraw = false; 
+    
+}
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+var readyRedraw = false; 
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true;     
+        readyRedraw = true;     
+    }
+    if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("pointerEventRecorded", msg);
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+
+}
+
+</script>

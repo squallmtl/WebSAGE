@@ -1,0 +1,10 @@
+Theft,230.0  
+Robbery,40.0 
+Burglery,100.0
+Assault,130.0
+Drugs, 800.0
+Dist The Peace,129.0
+Homicide,2
+Auto,500
+Prostitution,300
+Sexual Assault,340
