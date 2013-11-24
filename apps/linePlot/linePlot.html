@@ -8,6 +8,9 @@ int plotX1, plotX2, plotY1, plotY2;
 String[] attributeNames; 
 
 void setup(){
+
+ sageBeforeSetup();
+ 
   size(800, 800);
   
   plotX1 = (int)(width*.05);
@@ -17,7 +20,7 @@ void setup(){
   
   readData(); 
   
-  resizeVis(1400, 1000);
+  sageAfterSetup();
 }
 
 void readData(){
@@ -28,7 +31,7 @@ void readData(){
   hoods = new Neighborhood[ rows.length-1] ;
   
   //rows[0] shows data labels
-  String[] titleTokens = rows[0].split(",");
+  String[] titleTokens = split(rows[0], ",");
   attributeNames = new String[ titleTokens.length ]; 
   for(int i = 1; i < titleTokens.length; i++){
     //println("attr: " + attributeNames[i] );
@@ -36,7 +39,7 @@ void readData(){
   }
   
   for(int i = 1; i < rows.length; i++){
-     String[] tokens = rows[i].split(","); 
+     String[] tokens = split(rows[i], ","); 
      hoods[i-1] = new Neighborhood( tokens[0] ); 
      hoods[i-1].setNumValues( tokens.length-1 ); 
      for(int j = 1; j < tokens.length; j++){
@@ -46,8 +49,9 @@ void readData(){
 }
 
 void draw(){
-  if( sageCheckBeforeDraw() ){ 
-    sageCheckPointer();
+
+    sageBeforeDraw();
+  if( goRedraw ){ 
     
     background(0); 
     
@@ -60,18 +64,11 @@ void draw(){
       hoods[i].drawPlotLine();
     }
     
-    sageCheckAfterDraw();
   } 
+      sageAfterDraw();
 }
 
-void resizeVis(int w, int h){
-  size(w, h);
-    
-  plotX1 = (int)(width*.05);
-  plotX2 = (int)(width*.95);
-  plotY1 = (int)(height*.05);
-  plotY2 = (int)(height*.95);
-}
+
 
 class Neighborhood{
   String name; 
@@ -141,35 +138,160 @@ float mapValueToY(float value){
   return map( value, 0, 53, plotY2, plotY1);
 }
 
+
+
+void mousePressed(){
+    //your mouse pressed handler here
+    
+}
+
+void mouseDrag(){
+    //your mouse drag handler here
+}
+
+void resizeSketch(int newWidth, int newHeight){
+    size( newWidth, newHeight ); 
+    
+  plotX1 = (int)(width*.05);
+  plotX2 = (int)(width*.95);
+  plotY1 = (int)(height*.05);
+  plotY2 = (int)(height*.95);
+}
+    
+
+void acceptSelectionEvents( String selectedId ){
+
+
+}
+
+
+//let sage know that an item has been selected 
+void emitSelectionEvents( String selectedId ){
+    
+    
+}
+
 //------------------------------------------------------------------------
 
+void sageBeforeSetup(){
 
-Boolean sageCheckBeforeDraw(){
-  return true; 
 }
 
-Boolean sageCheckAfterDraw(){
-
-  return readyRedraw;
+void sageAfterSetup(){
+    goRedraw = true;
 }
 
-void setMouseToPointer(){
-    mouseX = pointerX;
-    mouseY = pointerY;
-}
+void sageBeforeDraw(){
+    if( setMouseToPointer ){
+        mouseX = pointerX;
+        mouseY = pointerY;
+        setMouseToPointer = false;
 
-void sageCheckPointer(){
-    if( pointerPressed ){
-            setMouseToPointer();
-            mousePressed();
-            pointerPressed = false;
+    }
+    if( handlePointerPress ){
+        //assume mouse already set to pointer, bc of flag... 
+        mousePressed(); //call yourself
+        
+        //for debugging:
+        sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
+        
+        handlePointerPress = false; 
     }
 }
 
-void handleSageEvents(String event){
-    readyRedraw = false; 
-    
+void sageAfterDraw(){
+    //sendMsg( "drawDone");   
+    goRedraw = false; 
 }
+
+</script>
+<canvas id="mycanvas"></canvas>
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//to do:  make this array of pointer objects... 
+var pointerX = 0;
+var pointerY = 0; 
+var handlePointerPress = false; 
+var pointerPressed = false; 
+var goRedraw = false; 
+var setMouseToPointer = false; 
+//var inputData = "";
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+
+//     if( event.data.indexOf('dataSend') != -1 ){
+//         var tokens = event.data.split(' ');
+//         inputData = tokens[1] ;
+//     }
+    if( event.data.indexOf( 'pointerCreated') != -1 ){
+        //create pointer object
+    }
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true; 
+        handlePointerPress = true;     
+        goRedraw = true;   
+        setMouseToPointer = true;
+    }
+    else if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        goRedraw = true;     
+        setMouseToPointer = true;
+        if( pointerPressed ){
+            //pointer drag
+        }
+    } 
+    else if( event.data.indexOf( 'pointerReleased') != -1 ){
+        pointerPressed = false; 
+    }
+    else if( event.data.indexOf( 'pointerScrolled' ) != -1){
+        //handle scroll events
+    }
+    else if(event.data.indexOf('resize') != -1 ){
+        var tokens = event.data.split(' ' ); 
+        var newWidth = tokens[2];
+        var newHeight = tokens[4]; 
+        resizeSketch(newWidth, newHeight);
+        
+    }
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", msg);
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
+</script>
+
+<!-- 
 
 </script>
 <canvas id="mycanvas"></canvas>
@@ -183,7 +305,7 @@ url = window.location.origin;
 socket = io.connect(url);
 console.log("Connected to server: ", url);
 
-//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//~~~~~~~~- LISTEN TO EVENTS FROM WEBSAGE~~~~~~~~~~~~~~-
 var pointerX = 0;
 var pointerY = 0; 
 var pointerPressed = false; 
@@ -212,7 +334,7 @@ function receiveMessage(event)
 }
 
 
-//--------- SEND EVENTS TO WEBSAGE ---------------
+//~~~~~~~~- SEND EVENTS TO WEBSAGE ~~~~~~~~~~~~~~-
 function sendMsg(msg){
     
     socket.emit("pointerEventRecorded", msg);
@@ -221,3 +343,4 @@ function sendMsg(msg){
 }
 
 </script>
+ -->

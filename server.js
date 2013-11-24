@@ -447,6 +447,20 @@ app.post('/upload', function(request, response) {
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
             }
+            if( request.files[f].name.indexOf("histogram") != -1 ){
+                console.log("histogram " + this.source);
+
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 1;
+                var now = new Date();
+                console.log("histogram: " + title + " " + itemId + " " + request.files[f].name);
+                var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 400, 400, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;
+                
+            }
 // 		    gm(localPath).size(function(err, size) {
 // 				if(!err){
 // 					var itemId = "item"+itemCount.toString();

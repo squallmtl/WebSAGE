@@ -92,6 +92,7 @@
 			if(youtube >= 0) urlType = "youtube";
 			else if(ext == "jpg" || ext == "png" || ext == "bmp") urlType = "img";
 			else if(ext == "metadata") urlType = "metadata";
+			else if(ext == "histogram") urlType = "histogram";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}

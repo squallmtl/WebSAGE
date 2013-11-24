@@ -1,8 +1,8 @@
 <script src="processing-1.4.1.js"></script>
 <script type="text/processing" data-processing-target="mycanvas">
 
-int windowWidth = 1080;
-int windowHeight = 768; 
+int windowWidth = 800;
+int windowHeight = 800; 
 
 float[] data = {230.0, 40.0, 100.0, 130.0, 234.0, 129.0, 234.0, 700.0, 400.0, 500.0};
 color[] colors = {#FC7878, #F25D8A, #F25DDF, #CF5DF2, #AC5DF2, #825DF2, #5D6AF2, #5DA1F2, #5DE2F2, #5DF2D5};
@@ -11,15 +11,18 @@ Boolean[] drawDifferently;
 Chart c; 
 
 void setup(){
-  size( windowWidth, windowHeight );
-  readData("data.txt");
-  c = new Chart( data, colors, labels ); 
-  
-  for(int i = 0; i < data.length; i++){
-    drawDifferently = false; 
-  }
 
+ sageBeforeSetup();
+  size( windowWidth, windowHeight );
+  
+    filename = "data.txt"; //"../../uploads/histdata.txt";
+      readData(filename); //"../../uploads/histdata.txt");   //"data.txt");
+
+  
+    sageAfterSetup();
+    
 }
+
 
 void readData(String filename){    
     String[] rows = loadStrings(filename);
@@ -47,14 +50,24 @@ void readData(String filename){
       // increment the number of valid rows found so far
       rowCount++;      
     }
+    
+      c = new Chart( data, colors, labels ); 
+  
+  
+      for(int i = 0; i < data.length; i++){
+        drawDifferently = false; 
+      }
 }
 
 
 void draw(){
+
+    sageBeforeDraw();
   background(0);
   
   c.drawChart();
  
+       sageAfterDraw();
 }
 
 
@@ -117,50 +130,195 @@ public class Chart{
     
   }
   
-  void mousePressed(){
-    mousePress = true;
-<!-- 
-     for(int i =0; i < values.length; i++)
-    {
-    
-        if( mouseX > runningX && mouseX < runningX+div+gap){
-            drawDifferently[i] = !drawDifferently[i];
-        }
-        
-    }
- -->
-  }
-  
 }
 
 
 
 
+
+void mousePressed(){
+    //your mouse pressed handler here
+    //resizeSketch(2000, 2000);
+}
+
+
+void mouseDrag(){
+    //your mouse drag handler here
+}
+
+void resizeSketch(int newWidth, int newHeight){
+    size( newWidth, newHeight ); 
+    
+    
+    
+}
+
+void acceptSelectionEvents( String selectedId ){
+
+
+}
+
+
+//let sage know that an item has been selected 
+void emitSelectionEvents( String selectedId ){
+    
+    
+}
+
+//------------------------------------------------------------------------
+
+void sageBeforeSetup(){
+
+}
+
+void sageAfterSetup(){
+    goRedraw = true;
+}
+
+void sageBeforeDraw(){
+    if( readyLoadData ){
+        readData(filename);
+        readyLoadData = false;
+        goRedraw = true;
+    }
+
+    if( setMouseToPointer ){
+        mouseX = pointerX;
+        mouseY = pointerY;
+        setMouseToPointer = false;
+
+    }
+    if( handlePointerPress ){
+        //assume mouse already set to pointer, bc of flag... 
+        mousePressed(); //call yourself
+        
+        //for debugging:
+        sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
+        
+        handlePointerPress = false; 
+    }
+    if( handleResize ){
+        resizeSketch( newWidth, newHeight );
+        handleResize = false; 
+    }
+    
+}
+
+void sageAfterDraw(){
+    //sendMsg( "drawDone");   
+    goRedraw = false; 
+}
+
 </script>
 <canvas id="mycanvas"></canvas>
-
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
 <script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//to do:  make this array of pointer objects... 
 var pointerX = 0;
 var pointerY = 0; 
+var handlePointerPress = false; 
 var pointerPressed = false; 
-var readyRedraw = false; 
-window.onmessage = function(e){
-    if (e.data.indexOf( 'pointerClick') != -1) {
-        var tokens = e.data.split(' ');
-        pointerX = tokens[2];
-        pointerY = tokens[4]; 
-        pointerPressed = true;     
-        readyRedraw = true;     
-    }
-    if (e.data.indexOf( 'pointerMove') != -1) {
-        var tokens = e.data.split(' ');
-        pointerX = tokens[2];
-        pointerY = tokens[4]; 
-        readyRedraw = true;     
-    } 
-    
-    
-};
+var goRedraw = false; 
+var setMouseToPointer = false; 
+var handleResize = false;
+var newWidth = 0;
+var newHeight =0;
+var readyLoadData = false; 
+var filename = "";
+//var inputData = "";
 
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+
+//     if( event.data.indexOf('dataSend') != -1 ){
+//         var tokens = event.data.split(' ');
+//         inputData = tokens[1] ;
+//     }
+    if( event.data.indexOf( 'pointerCreated') != -1 ){
+        //create pointer object
+    }
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true; 
+        handlePointerPress = true;     
+        goRedraw = true;   
+        setMouseToPointer = true;
+    }
+    else if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        goRedraw = true;     
+        setMouseToPointer = true;
+        if( pointerPressed ){
+            //pointer drag
+        }
+    } 
+    else if( event.data.indexOf( 'pointerReleased') != -1 ){
+        pointerPressed = false; 
+    }
+    else if( event.data.indexOf( 'pointerScrolled' ) != -1){
+        //handle scroll events
+    }
+    else if(event.data.indexOf('resize') != -1){
+        var tokens = event.data.split(' ' ); 
+        newWidth = tokens[2];
+        newHeight = tokens[4]; 
+        goRedraw = true;
+        handleResize = true; 
+    }
+    else if( event.data.indexOf("loadData") != -1 ){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
+        
+        newWidth = 1000;
+        newHeight = 1000;
+        handleResize = true;
+        goRedraw = true;
+    }
+
+
+}
+
+function loadData(filename){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
+        
+        newWidth = 1000;
+        newHeight = 1000;
+        handleResize = true;
+        goRedraw = true;
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", msg);
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
 
 </script>

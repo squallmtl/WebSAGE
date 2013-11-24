@@ -123,8 +123,34 @@
                 ifrm.width =  elem_data.width;
                 ifrm.height = elem_data.height;
                 windowItem.appendChild(ifrm); 
-//                 console.log("source:" + elem_data.src);
+                 console.log("source:" + elem_data.src);
 
+                //ifrm.onload = function() { ifrm.contentWindow.postMessage('loadData f ' + elem_data.datafileNames, '*') };
+                
+                //ifrm.contentWindow.postMessage('loadData f ../../uploads/histdata.txt', '*');  
+                //ifrm.contentWindow.postMessage('resize w 1000 h 10000', '*' ); // ../../uploads/histdata.txt', '*');  
+
+                console.log("load data");
+			}
+			else if(elem_data.type.indexOf("application") != -1 ){
+			    if( elem_data.type.indexOf("histogram") != -1 ){
+                    var ifrm = document.createElement("IFRAME"); 
+                    ifrm.id = elem_data.id + "_site"
+                    ifrm.className = "sageItem";
+                    if( url.indexOf( "10.0.8.100" ) != -1)
+                        ifrm.src = "http://iridium:9090/apps/histogram/histogram.html";
+                      //  ifrm.src = "10.0.8.100:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                     else
+                        ifrm.src = "http://localhost:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                    ifrm.width =  elem_data.width;
+                    ifrm.height = elem_data.height;
+                    windowItem.appendChild(ifrm); 
+
+                    console.log("Application");
+                    ifrm.onload = function() { 
+                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+                    } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
+			    }
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
@@ -309,6 +335,9 @@
                 var e = document.createEvent('HTMLEvents'); 
                 e.initEvent('resize', true, false);
                 child[0].dispatchEvent(e);
+                
+                console.log(child[0]);
+                child[0].contentWindow.postMessage('resize w ' + child[0].width + " h " + child[0].height, '*');  
 			}
 			if(child[0].id.substring(child[0].id.length - 7) == "kineticjs"){
 				canvasItems[child[0].id].resize(date);
@@ -413,10 +442,10 @@
 			x = x - ptr_data.left; 
 			y = y - ptr_data.top - ptr_data.titleHeight;
 			
-			//if(child[0].tagName.toLowerCase() == "site"){
-            console.log(child[0]);
-            child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
-
+			if(child[0].tagName.toLowerCase() == "iframe"){
+                console.log(child[0]);
+                child[0].contentWindow.postMessage('pointerClick x ' + x + " y " + y, '*');  
+            }
 //                 var oEvent = document.createEvent('MouseEvents');
 //                 oEvent.initMouseEvent(
 //                     'click'          // event type
