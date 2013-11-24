@@ -7,6 +7,8 @@ int plotX1, plotX2, plotY1, plotY2;
 
 String[] attributeNames; 
 
+color backgroundColor = 0; 
+
 void setup(){
 
  sageBeforeSetup();
@@ -18,13 +20,14 @@ void setup(){
   plotY1 = (int)(height*.05);
   plotY2 = (int)(height*.95);
   
-  readData(); 
+  filename = "fakeData.txt";
+  readData(filename); 
   
   sageAfterSetup();
 }
 
-void readData(){
-  String filename = "fakeData.txt";
+void readData(String filename){
+  //String filename = "fakeData.txt";
   
   String[] rows = loadStrings(filename);
   
@@ -53,7 +56,7 @@ void draw(){
     sageBeforeDraw();
   if( goRedraw ){ 
     
-    background(0); 
+    background(backgroundColor); 
     
     stroke(255.0);
     strokeWeight(3);
@@ -152,10 +155,10 @@ void mouseDrag(){
 void resizeSketch(int newWidth, int newHeight){
     size( newWidth, newHeight ); 
     
-  plotX1 = (int)(width*.05);
-  plotX2 = (int)(width*.95);
-  plotY1 = (int)(height*.05);
-  plotY2 = (int)(height*.95);
+  plotX1 = (int)(newWidth*.05);
+  plotX2 = (int)(newWidth*.95);
+  plotY1 = (int)(newHeight*.05);
+  plotY2 = (int)(newHeight*.95);
 }
     
 
@@ -182,6 +185,11 @@ void sageAfterSetup(){
 }
 
 void sageBeforeDraw(){
+    if( readyLoadData ){
+        readData(filename);
+        readyLoadData = false;
+        goRedraw = true;
+    }
     if( setMouseToPointer ){
         mouseX = pointerX;
         mouseY = pointerY;
@@ -196,6 +204,10 @@ void sageBeforeDraw(){
         sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
         
         handlePointerPress = false; 
+    }
+    if( handleResize ){
+        resizeSketch( newWidth, newHeight );
+        handleResize = false; 
     }
 }
 
@@ -224,8 +236,12 @@ var pointerY = 0;
 var handlePointerPress = false; 
 var pointerPressed = false; 
 var goRedraw = false; 
+var handleResize = false;
+var newWidth = 0;
+var newHeight =0;
 var setMouseToPointer = false; 
-//var inputData = "";
+var readyLoadData = false; 
+var filename = "";
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -265,12 +281,17 @@ function receiveMessage(event)
     else if( event.data.indexOf( 'pointerScrolled' ) != -1){
         //handle scroll events
     }
-    else if(event.data.indexOf('resize') != -1 ){
+    else if(event.data.indexOf('resize') != -1){
         var tokens = event.data.split(' ' ); 
-        var newWidth = tokens[2];
-        var newHeight = tokens[4]; 
-        resizeSketch(newWidth, newHeight);
-        
+        newWidth = tokens[2];
+        newHeight = tokens[4]; 
+        goRedraw = true;
+        handleResize = true; 
+    }
+    else if( event.data.indexOf("loadData") != -1 ){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
     }
 
 }

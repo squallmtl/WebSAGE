@@ -1,0 +1,311 @@
+<script src="../processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+Button[] buttons;
+int numButtons;
+
+String[] script; 
+
+void setup(){
+
+ sageBeforeSetup();
+  
+  size( 800, 200);
+  
+  readData("script1.sageScript"); 
+  
+  buttons = new Button[100];
+ 
+  PFont font;
+  font = createFont("EurostileBold", 48);  
+  textFont(font, 48); 
+
+  //resize everything to fit
+  float tw = 0; 
+  for(int i = 0; i < script.length; i++){
+    if( textWidth(script[i] ) > tw )
+      tw = textWidth(script[i] ); 
+  }
+  float th = script.length*48*1.5;
+ 
+  if( th < height )
+   th = height/1.1;
+  if( tw < width )
+   tw = width/1.1; 
+
+  color c = color(#4EC387);
+  String[] text = {"Go" };//, "Undo" };
+  Button b = new Button( width - 120, height-70, width-20, height-20, text, c ); //680, 100, 780, 150, text, c );//width-80.0, (float)height/3.0*4.0, (float)width-20.0, (float)height/3.0*4.0 + 20.0, text, c);  
+  buttons[0] = b;
+  numButtons = 1;
+
+  resizeSketch( (int)(tw*1.1), (int)(th*1.1) );
+  
+    sageAfterSetup();
+ 
+
+}
+
+
+void readData(String filename){
+  script =  loadStrings( filename ); 
+  
+}
+
+void resizeSketch(int newWidth, int newHeight ){
+  size( newWidth, newHeight); 
+  buttons[0].repositionButton(newWidth - 120,  newHeight-70, newWidth-20, newHeight-20);
+}
+
+
+void draw(){
+    sageBeforeDraw();
+    if( goRedraw ){
+      background(0); 
+  
+      fill(255);
+      textSize( 48 );
+      textAlign(LEFT, CENTER); 
+    //  if( script.length > 0 ){
+    //    text(script[0], 20, 20 );
+    //  }
+        int x = 20;
+        int runningY = 20; 
+        for(int i =0; i < script.length; i++){
+          text(script[i], x, runningY);
+          runningY += 48*1.5; 
+        }
+
+      //text("Organize:", buttons[0].x1-20, (buttons[0].y2+buttons[0].y1)/2.0); 
+  
+      for(int i =0; i < numButtons; i++)
+      { 
+        buttons[i].drawButton(); 
+      }
+    }
+    
+ 
+}
+
+void mousePressed(){ 
+
+  for(int i =0; i < numButtons; i++){
+    Boolean pressed = buttons[i].checkMousePress(); 
+    if( pressed ){
+        String msg = buttons[i].theText[buttons[i].currText];
+        for(int j = 0; j < script.length; j++)
+            msg += script[j]; 
+
+        sendMsg( "Hi" );//msg ); 
+
+    }
+  }
+ 
+ 
+}
+
+class Button{
+  float x1, y1, x2, y2;
+  String[] theText;
+  int currTextIdx;
+  color theColor; 
+  
+  Button(float x1, float y1, float x2, float y2, String[] theText, color c){
+    this.theText = theText; 
+    
+    this.x1 = x1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.y1 = y1;
+    currTextIdx = 0; 
+    
+    this.theColor = c; 
+    
+  }
+  
+  void repositionButton(float x1, float y1, float x2, float y2){
+    this.x1 = x1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.y1 = y1;
+  }
+  
+  void drawButton(){
+    rectMode( CORNERS ); 
+    fill(theColor);
+    stroke(theColor);
+    
+    rect(x1, y1, x2, y2, 7);
+    
+    fill(0);
+    textAlign(CENTER,CENTER);
+    textSize( (y2-y1)*.75); 
+    text( theText[currTextIdx], (x1+x2)/2.0, (y1+y2)/2.0 ); 
+  }
+  
+  void toggleText(){
+    currTextIdx ++; 
+    if( currTextIdx >= theText.length)
+      currTextIdx = 0;
+  }
+  
+  String getCurrentText(){
+      return theText[currTextIdx];
+  }
+  
+  Boolean checkMousePress(){
+    if( mouseX > x1 && mouseX < x2 && mouseY > y1 && mouseY < y2 ){
+      toggleText();
+      return true;
+    }
+    return false;
+  }
+}
+
+void sageBeforeSetup(){
+
+}
+
+void sageAfterSetup(){
+    goRedraw = true;
+}
+
+void sageBeforeDraw(){
+    if( readyLoadData ){
+        readData(filename);
+        readyLoadData = false;
+        goRedraw = true;
+    }
+    if( setMouseToPointer ){
+        mouseX = pointerX;
+        mouseY = pointerY;
+        setMouseToPointer = false;
+
+    }
+    if( handlePointerPress ){
+        //assume mouse already set to pointer, bc of flag... 
+        mousePressed(); //call yourself
+        
+        //for debugging:
+        sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
+        
+        handlePointerPress = false; 
+    }
+    if( handleResize ){
+        resizeSketch( newWidth, newHeight );
+        handleResize = false; 
+    }
+
+}
+
+void sageAfterDraw(){
+    //sendMsg( "drawDone");   
+    goRedraw = false; 
+}
+
+
+</script>
+
+<canvas id="mycanvas"></canvas>
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//to do:  make this array of pointer objects... 
+var pointerX = 0;
+var pointerY = 0; 
+var handlePointerPress = false; 
+var pointerPressed = false; 
+var goRedraw = false; 
+var handleResize = false;
+var newWidth = 0;
+var newHeight =0;
+var setMouseToPointer = false; 
+var readyLoadData = false; 
+var filename = "";
+//var itemId = "";
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+
+//     if( event.data.indexOf('dataSend') != -1 ){
+//         var tokens = event.data.split(' ');
+//         inputData = tokens[1] ;
+//     }
+    if( event.data.indexOf( 'pointerCreated') != -1 ){
+        //create pointer object
+    }
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true; 
+        handlePointerPress = true;     
+        goRedraw = true;   
+        setMouseToPointer = true;
+    }
+    else if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        goRedraw = true;     
+        setMouseToPointer = true;
+        if( pointerPressed ){
+            //pointer drag
+        }
+    } 
+    else if( event.data.indexOf( 'pointerReleased') != -1 ){
+        pointerPressed = false; 
+    }
+    else if( event.data.indexOf( 'pointerScrolled' ) != -1){
+        //handle scroll events
+    }
+    else if(event.data.indexOf('resize') != -1){
+        var tokens = event.data.split(' ' ); 
+        newWidth = tokens[2];
+        newHeight = tokens[4]; 
+        goRedraw = true;
+        handleResize = true; 
+    }
+    else if( event.data.indexOf("loadData") != -1 ){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
+    }
+//     else if( event.data.indexOf("setItemId") != -1){
+//         
+//         var tokens = event.data.split(' ' ); 
+//         itemId = tokens[2];
+//     }
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", msg);
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
+</script>
+
+  

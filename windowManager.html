@@ -93,6 +93,11 @@
 			else if(ext == "jpg" || ext == "png" || ext == "bmp") urlType = "img";
 			else if(ext == "metadata") urlType = "metadata";
 			else if(ext == "histogram") urlType = "histogram";
+            else if(ext == "linePlot") urlType = "linePlot";
+            else if(ext == "sageScript") urlType = "sageScript";
+            else if(ext == "chicagoMap") urlType = "chicagoMap";
+            
+
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}

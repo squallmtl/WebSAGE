@@ -45,9 +45,9 @@ var initDate = new Date();
 
 
 var fs = require('fs');
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
- var file = 'config/iridium-cfg.json';
+ //var file = 'config/iridium-cfg.json';
 
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -456,6 +456,34 @@ app.post('/upload', function(request, response) {
                 var now = new Date();
                 console.log("histogram: " + title + " " + itemId + " " + request.files[f].name);
                 var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 400, 400, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;
+                
+            }
+            if( request.files[f].name.indexOf("linePlot") != -1 ){
+                console.log("linePlot " + this.source);
+
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 1;
+                var now = new Date();
+                console.log("linePlot: " + title + " " + itemId + " " + request.files[f].name);
+                var newItem = new item("application-linePlot", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 400, 400, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;
+                
+            }
+            if( request.files[f].name.indexOf("sageScript") != -1 ){
+                console.log("sage script " + this.source);
+
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 800/200;
+                var now = new Date();
+                console.log("sage script: " + title + " " + itemId + " " + request.files[f].name);
+                var newItem = new item("application-sageScript", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 200, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
