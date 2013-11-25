@@ -343,6 +343,14 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
                 sortByMetadataInputCat( tag1 );
             }
             
+                        
+            if( selection.indexOf("Plot") != -1 )
+            {
+                console.log("plot");
+                
+                plotByMetadataByCat( tag1, tag2 );
+            }
+            
             
             eventsFromWindows["organization"] = null;    
         }
@@ -1284,28 +1292,82 @@ function plotByMetadata(xIdx,yIdx){
     
     for(var i = 0; i < items.length; i ++)
     {
-//         //resize
-//         if( items[i].width > items[i].height + config.titleBarHeight ){
-//             items[i].width = config.totalWidth*(2/items.length);
-//             items[i].height = items[i].width/items[i].aspect; 
-//         }
-//         else{
-            items[i].height = config.totalHeight*(2/items.length);
-            items[i].width = items[i].height*items[i].aspect; 
-       // }
+        if( items[i].metadata[metadataCategories[xIdx]] != null &&  items[i].metadata[ metadataCategories[yIdx] ] != null ){
+
+    //         //resize
+    //         if( items[i].width > items[i].height + config.titleBarHeight ){
+    //             items[i].width = config.totalWidth*(2/items.length);
+    //             items[i].height = items[i].width/items[i].aspect; 
+    //         }
+    //         else{
+                items[i].height = config.totalHeight*(2/items.length);
+                items[i].width = items[i].height*items[i].aspect; 
+           // }
         
         //position
-        var newX = map( items[i].metadata[ metadataCategories[xIdx] ] , 0, maxX, 0, config.totalWidth ); 
-        var newY = map( items[i].metadata[ metadataCategories[yIdx] ] , 0, maxY, config.totalHeight, 0 ); 
+            var newX = map( items[i].metadata[ metadataCategories[xIdx] ] , 0, maxX, 0, config.totalWidth ); 
+            var newY = map( items[i].metadata[ metadataCategories[yIdx] ] , 0, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
         
-        console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
+            console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
         
-        items[i].left = newX;
-        items[i].top = newY; 
+            items[i].left = newX;
+            items[i].top = newY; 
         
-        var now = new Date();
-        sio.sockets.emit('setItemPositionAndSize', {elemId: items[i].id, elemLeft: items[i].left, elemTop: items[i].top, elemWidth: items[i].width, elemHeight: items[i].height, date: now});
+            var now = new Date();
+            sio.sockets.emit('setItemPositionAndSize', {elemId: items[i].id, elemLeft: items[i].left, elemTop: items[i].top, elemWidth: items[i].width, elemHeight: items[i].height, date: now});
+        }
+    }
+    
+    
+}
 
+function plotByMetadataByCat(xCat,yCat){
+    var maxX = -999999999999999;
+    var maxY = -999999999999999;
+    
+    for(var i = 0; i < items.length; i ++)
+    {
+        var xVal = items[i].metadata[ xCat ];
+        var yVal = items[i].metadata[ yCat ];
+        if( xVal > maxX )
+        {
+            maxX = xVal;
+        }
+        else if( yVal > maxY )
+        {
+            maxY = yVal;   
+        }
+    
+    }
+    
+    for(var i = 0; i < items.length; i ++)
+    {
+    
+        if( items[i].metadata[ xCat ]  != null &&  items[i].metadata[yCat ] != null ){
+
+    //         //resize
+    //         if( items[i].width > items[i].height + config.titleBarHeight ){
+    //             items[i].width = config.totalWidth*(2/items.length);
+    //             items[i].height = items[i].width/items[i].aspect; 
+    //         }
+    //         else{
+                items[i].height = config.totalHeight*(2/items.length);
+                items[i].width = items[i].height*items[i].aspect; 
+           // }
+        
+        //position
+
+            var newX = map( items[i].metadata[ xCat ] , 0, maxX, 0, config.totalWidth ); 
+            var newY = map( items[i].metadata[yCat ] , 0, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
+        
+            console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
+        
+            items[i].left = newX;
+            items[i].top = newY; 
+        
+            var now = new Date();
+            sio.sockets.emit('setItemPositionAndSize', {elemId: items[i].id, elemLeft: items[i].left, elemTop: items[i].top, elemWidth: items[i].width, elemHeight: items[i].height, date: now});
+        }
     }
     
     
