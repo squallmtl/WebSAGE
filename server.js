@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+var file = 'config/thor-cfg.json';
+//var file = 'config/iridium-cfg.json';
 
 var config;
 var numClients; 
@@ -76,17 +76,17 @@ var eventsFromWindows = []; //store events as they come in, along with a count, 
 
 
 // organizationcontrol panel
-var itemId = "item"+itemCount.toString();
-var title = "Org";//request.files[f].name;
-var aspect = 1;
-var now = new Date();
-//console.log("org: " + title + " " + itemId + " " + request.files[f].name);
-var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
-items.push(newItem);
-sio.sockets.emit('addNewElement', newItem);
-itemCount++;
-
-console.log("added control panel " + itemCount);
+// var itemId = "item"+itemCount.toString();
+// var title = "Org";//request.files[f].name;
+// var aspect = 1;
+// var now = new Date();
+// //console.log("org: " + title + " " + itemId + " " + request.files[f].name);
+// var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
+// items.push(newItem);
+// sio.sockets.emit('addNewElement', newItem);
+// itemCount++;
+// 
+// console.log("added control panel " + itemCount);
 
 
 sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
