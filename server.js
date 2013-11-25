@@ -612,13 +612,7 @@ app.post('/upload', function(request, response) {
                 //var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
-                itemCount++;
-                
-                
-                
-                
-                
-                
+                itemCount++;     
                 
             }
 // 		    gm(localPath).size(function(err, size) {

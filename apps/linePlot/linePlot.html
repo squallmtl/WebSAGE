@@ -8,6 +8,7 @@ int plotX1, plotX2, plotY1, plotY2;
 String[] attributeNames; 
 
 color backgroundColor = 0; 
+float globalMaxValue;
 
 void setup(){
 
@@ -22,6 +23,8 @@ void setup(){
   
   filename = "fakeData.txt";
   readData(filename); 
+  
+  globalMaxValue = -99999999999.0; 
   
   sageAfterSetup();
 }
@@ -46,9 +49,12 @@ void readData(String filename){
      hoods[i-1] = new Neighborhood( tokens[0] ); 
      hoods[i-1].setNumValues( tokens.length-1 ); 
      for(int j = 1; j < tokens.length; j++){
-       hoods[i-1].addValue(1999+j, parseFloat(tokens[j]) );
+       hoods[i-1].addValue(2000+j/12, parseFloat(tokens[j]) );
+       if( parseFloat(tokens[j]) > globalMaxValue )
+        globalMaxValue = parseFloat(tokens[j]);
      }
   }
+  goRedraw = true;
 }
 
 void draw(){
@@ -134,11 +140,11 @@ class Neighborhood{
 }
 
 float mapYearToX(float year){
-  return map( year, 2000, 2008, plotX1, plotX2);
+  return map( year, 2000, 2013, plotX1, plotX2);
 }
 
 float mapValueToY(float value){
-  return map( value, 0, 53, plotY2, plotY1);
+  return map( value, 0, globalMaxValue, plotY2, plotY1);
 }
 
 
