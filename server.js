@@ -315,6 +315,40 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
         }
 	        
 	});
+	
+	socket.on("organizeVisRequested", function( data ){
+        console.log("in server, got it: " + "organizeVisRequested");
+	    
+	    var e = eventsFromWindows[ "organization"];
+	    if( e == null ){
+	        console.log("new event"); 
+	        eventsFromWindows[ "organization"] = 1; 
+        } 
+        else {
+            eventsFromWindows["organization"] = eventsFromWindows["organization"]+1; 
+            console.log( "old event, count = " + eventsFromWindows["organization"] ); 
+        }
+        
+        if( eventsFromWindows[ "organization" ] >= numClients ){
+            console.log("got events from everyone");
+            var selection = data.selection; 
+            var type = data.type;
+            var tag1 = data.tag1;
+            var tag2 = data.tag2;
+            
+            if( selection.indexOf("Sort") != -1 )
+            {
+                console.log("sort");
+                
+                sortByMetadataInputCat( tag1 );
+            }
+            
+            
+            eventsFromWindows["organization"] = null;    
+        }
+	
+    });
+
 
 });
 
@@ -863,7 +897,7 @@ function initiateSagePointerDrag(x, y ){
 //         if( initDrag ){
 //             idx = [] ;
 //             for(var i=items.length-1; i >=0; i--){
-//                 var l = items[i].left;
+//                 var l = items[i].left; 
 //                 var w = items[i].width;
 //                 var t = items[i].top;
 //                 var h = items[i].height; 
@@ -999,7 +1033,13 @@ function tileSubset(subset, startX, stopX){
     var numItems = subset.length;
     
     var numCols = Math.round( Math.sqrt( numItems * width/height ));
-    var numRows = Math.round( numItems / numCols );
+    var numRows = 0; 
+    if( numCols == 0 ){
+        numRows = numItems; 
+        numCols = 1;
+    }
+    else
+        numRows = Math.round( numItems / numCols );
     console.log("tile subset.  rows: " + numRows + " cols: " + numCols);
     
     var colWidth = width/numCols; 
@@ -1112,6 +1152,48 @@ function sortBySrcName(){
     tileAll();
 }
 
+
+function sortByMetadataInputCat(cat){
+    //fill list of valid items
+    var itemsToSort = [];
+    var itemsToPartition = []; 
+    for(var i = 0; i < items.length; i++){
+        if( items[i].metadata[ cat ] != null )
+            itemsToSort.push( items[i] );
+        else
+            itemsToPartition.push( items[i] ); 
+    }
+
+    console.log("sorting by metadata");
+    itemsToSort.sort( function(item1, item2){ 
+        console.log("comparing: " + item1.metadata[ cat ]  + " to  " + item2.metadata[ cat ] ); 
+        if( item1.metadata[ cat ] < item2.metadata[ cat ]  )
+            return 1;
+        if( item1.metadata[cat ] > item2.metadata[ cat ] )
+            return -1;
+        return 0; 
+    });
+    
+    
+    if( itemsToPartition.length > 0 ){
+        var divisor = items.length; 
+        if( items.length % 2 != 0 )
+            divisor = items.length +1;
+        var w1 = itemsToSort.length / divisor * config.totalWidth; 
+        tileSubset( itemsToSort, 0, w1);
+        tileSubset( itemsToPartition, w1, config.totalWidth );
+    }
+    else{
+       tileAll(); 
+    }
+//     
+//     items = [];
+//     items = itemsToSort; 
+//     itemCount = itemsToSort.length;
+// 
+//     tileAll();
+}
+
 function sortByMetadata(idx){
 
     //fill list of valid items
@@ -1135,10 +1217,17 @@ function sortByMetadata(idx){
     });
     
     
-    var w1 = itemsToSort.length / items.length * config.totalWidth; 
-    tileSubset( itemsToSort, 0, w1);
-    tileSubset( itemsToPartition, w1, config.totalWidth );
-    
+     if( itemsToPartition.length > 0 ){
+        var divisor = items.length; 
+        if( items.length % 2 != 0 )
+            divisor = items.length +1;
+        var w1 = itemsToSort.length / divisor * config.totalWidth; 
+        tileSubset( itemsToSort, 0, w1);
+        tileSubset( itemsToPartition, w1, config.totalWidth );
+    }
+    else{
+       tileAll(); 
+    }
 //     
 //     items = [];
 //     items = itemsToSort; 

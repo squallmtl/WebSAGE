@@ -75,10 +75,10 @@ void loadData(String filename){
 void addNewTagValues(String[] newTags){
   String[] temp = new String[ tags.length + newTags.length ] ; 
   for(int i =0 ; i < tags.length; i++){
-    temp[i] = tags[i]; 
+    temp[i] = tags[i].replaceAll("#file:", "");
   }
   for(int i =tags.length ; i < newTags.length; i++){
-    temp[i] = newTags[i]; 
+    temp[i] = newTags[i].replaceAll("#file:", ""); 
   }
   
   tags = temp;
@@ -160,6 +160,8 @@ class Prog{
   } 
   
   void resetProgTagValues(String[] tags){
+    if( tags.length > 0 )
+        tags[0].replaceAll("#file:", "");
     tagButton1.theText = tags; 
     tagButton2.theText = tags;
     tagButton1.currTextIdx = 0;
@@ -234,7 +236,8 @@ class Prog{
     
     if( goButton.checkMousePress() )
     {
-        //handle...
+        goButtonPressed( selectionButton.theText[ selectionButton.currTextIdx ] , typeButton.theText[ typeButton.currTextIdx ] 
+            , tagButton1.theText[ tagButton1.currTextIdx ], tagButton2.theText[ tagButton2.currTextIdx ] ); 
     }
     
     return true; 
@@ -272,6 +275,9 @@ class Button{
   }
   
   void drawButton(){
+    theText[currTextIdx] = theText[currTextIdx].replaceAll("#file:", "");
+    theText[currTextIdx] = theText[currTextIdx].replaceAll("!", "");
+  
     if( !visible )
       return;
     rectMode( CORNERS ); 
@@ -462,6 +468,13 @@ function sendMsg(msg){
 //         pointerPressed = true;     
 //         readyRedraw = true;  
 }
+
+function goButtonPressed(sel, ty, t1, t2 ){
+    socket.emit("organizeVisRequested", {selection: sel, type: ty, tag1: t1, tag2: t2 });
+
+}
+
+// function sendGoMsg(msg){
 
 </script>
 
