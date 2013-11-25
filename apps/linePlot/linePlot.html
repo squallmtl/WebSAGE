@@ -5,7 +5,7 @@ Neighborhood[] hoods;
 
 int plotX1, plotX2, plotY1, plotY2; 
 
-String[] attributeNames; 
+//String[] attributeNames; 
 
 color backgroundColor = 0; 
 float globalMaxValue;
@@ -38,12 +38,12 @@ void readData(String filename){
   hoods = new Neighborhood[ rows.length-1] ;
   
   //rows[0] shows data labels
-  String[] titleTokens = split(rows[0], ",");
-  attributeNames = new String[ titleTokens.length ]; 
-  for(int i = 1; i < titleTokens.length; i++){
+  //String[] titleTokens = split(rows[0], ",");
+  //attributeNames = new String[ titleTokens.length ]; 
+  //for(int i = 1; i < titleTokens.length; i++){
     //println("attr: " + attributeNames[i] );
-    attributeNames[i] = titleTokens[i] ;
-  }
+   // attributeNames[i] = titleTokens[i] ;
+  //}
   
   for(int i = 1; i < rows.length; i++){
      String[] tokens = split(rows[i], ","); 
@@ -130,27 +130,27 @@ class Neighborhood{
       curveVertex(x, y );
       if( i == 0 || i == values.length-1)
               curveVertex(x, y );
-      if( mouseX-gap < x && mouseX+gap > x){
-        fill(theColor);
-        ellipse( x, y, 10, 10);
+//      if( mouseX-gap < x && mouseX+gap > x){
+ //       fill(theColor);
+  //      ellipse( x, y, 10, 10);
         
-      }
+   //   }
         noFill();
     }
     endShape();
   }
   
-  void valueClosestToX(float x){
-      float gap = (mapYearToX(2001) - mapYearToX(2000));  ///2.0 ; 
+//  void valueClosestToX(float x){
+//      float gap = (mapYearToX(2001) - mapYearToX(2000));  ///2.0 ; 
 
-    for(int i=0; i<values.length; i++){
-      float x = mapYearToX( years[i] );
-      if( mouseX-gap < x && mouseX+gap > x){
-            return values[i] 
-      }
-    }
-    return -1;
-  }
+ //   for(int i=0; i<values.length; i++){
+  //    float x = mapYearToX( years[i] );
+   //   if( mouseX-gap < x && mouseX+gap > x){
+    //        return values[i] 
+     // }
+    //}
+    //return -1;
+ // }
 }
 
 
@@ -167,14 +167,15 @@ float mapValueToY(float value){
 void mousePressed(){
     //your mouse pressed handler here
     
-    String toTransmit = ""; 
+    //String toTransmit = ""; 
     
     //fill the pipe
-    for(int i = 0; i < hoods.length; i++){
-        toTransmit += hoods.idx + ":" + hoods.valueClosestToX(mouseX) + " ";
-    }
+    //for(int i = 0; i < hoods.length; i++){
+    //    toTransmit += hoods.idx + ":" + hoods.valueClosestToX(mouseX) + " ";
+    //}
+
     
-    sendMsg("PipeDataOut " + toTransmit );
+    //sendMsg("PipeDataOut " + toTransmit );
     
 }
 
@@ -239,7 +240,25 @@ void sageBeforeDraw(){
         resizeSketch( newWidth, newHeight );
         handleResize = false; 
     }
+    if( goSyncColor ){
+        for(int i = 1; i < colorSyncTokens.length; i+=4){
+            var id = parseInt(colorSyncTokens[i]);
+            var r = parseInt(colorSyncTokens[i+1]);
+            var g = parseInt(colorSyncTokens[i+2]);
+            var b = parseInt(colorSyncTokens[i+3] );
+            //console.log( id + " " + r + " " + g + " " + b )
+            for(int j = 0 ; j < hoods.length; j++){
+               if( parseInt( hoods[j].name ) == id ){
+                    hoods[j].theColor = color(r, g, b );
+                    break;
+                }
+            }
+        }
+
+        goRedraw = true;
+    }
 }
+
 
 void sageAfterDraw(){
     //sendMsg( "drawDone");   
@@ -275,6 +294,13 @@ var filename = "";
 var itemId = "";
 var readyAddTags = false;
 var theNewTags = [];
+var newRed = 0;
+var newBlue = 0;
+var newGreen = 0;
+var colorSyncId = 0;
+var goSyncColor = false;
+
+var colorSyncTokens = [];
 
 
 window.addEventListener("message", receiveMessage, false);
@@ -332,6 +358,22 @@ function receiveMessage(event)
         var tokens = event.data.split(' ' ); 
         itemId = tokens[2];
     }
+    else if (event.data.indexOf("color") != -1 ){
+         colorSyncTokens = event.data.split(' ' );
+         console.log("sync!  " + event.data);
+//         for(int i = 0; i < tokens.size; i++){
+//             
+//         }
+//         newRed = parseInt(tokens[2]);
+//         newGreen = parseInt(tokens[3]);
+//         newBlue = parseInt(tokens[4]);
+//         colorSyncId = parseInt(tokens[1]); 
+//         
+//         console.log("color sync id = " + colorSyncId);
+        goSyncColor = true;
+    }
+    
+    
 //     else if( event.data.indexOf("metaAdded") != -1 ){
 // //         theNewTags = []; 
 // //         readyAddTags = true;
@@ -360,3 +402,4 @@ function sendMsg(msg){
 }
 
 
+</script>

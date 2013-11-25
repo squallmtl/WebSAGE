@@ -465,6 +465,15 @@
 			}
 		});
 		
+		socket.on('colorSync', function(msg){
+		    var children = document.getElementsByClassName("sageItem");
+		    for(var i = 0; i < children.length; i++){
+		        children[i].contentWindow.postMessage('color ' + msg , "*");
+// 		        console.log
+		    }
+		    
+		});
+		
 		
 		//----------------------------------------------------------------//
         //---------------------------  POINTER  --------------------------//

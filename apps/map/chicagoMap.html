@@ -190,11 +190,11 @@ class Neighborhood{
   }
   
   void addDataValue(float value){
-    dataValues[numDataValues] = value;
-    numDataValues++;
+    dataValues[numDataValues] = value/10.0;
     
-    theColor = mapDataToColor( value );
-    
+    theColor = mapDataToColor( dataValues[numDataValues] );
+        numDataValues++;
+
   }
   
   void drawNeighborhood(){
@@ -303,10 +303,10 @@ void mouseDrag(){
 }
 
 void resizeSketch(int newWidth, int newHeight){
-    size( newWidth, newHeight ); 
-    windowWidth = newWidth;
-    windowHeight = newHeight; 
-    remapped = true;
+   size( newWidth, newHeight ); 
+    //windowWidth = newWidth;
+    //windowHeight = newHeight; 
+    //remapped = true;
     
     //adjust sketch to new size....
    // for(int i =0 ; i< hoods.length; i++){
@@ -371,6 +371,23 @@ void sageBeforeDraw(){
         handleResize = false; 
 
     }
+    if( goSyncColor ){
+        for(int i = 1; i < colorSyncTokens.length; i+=4){
+            var id = parseInt(colorSyncTokens[i]);
+            var r = parseInt(colorSyncTokens[i+1]);
+            var g = parseInt(colorSyncTokens[i+2]);
+            var b = parseInt(colorSyncTokens[i+3] );
+            //console.log( id + " " + r + " " + g + " " + b )
+            for(int j = 0 ; j < hoods.length; j++){
+               if( hoods[j].idx == id ){
+                    hoods[j].theColor = color(r, g, b );
+                    break;
+                }
+            }
+        }
+
+        goRedraw = true;
+    }
 }
 
 void sageAfterDraw(){
@@ -406,6 +423,13 @@ var readyLoadData = false;
 var filename = "";
 var pipedDataReady = false;
 var pipedData = [];
+var newRed = 0;
+var newBlue = 0;
+var newGreen = 0;
+var colorSyncId = 0;
+var goSyncColor = false;
+
+var colorSyncTokens = [];
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -462,6 +486,20 @@ function receiveMessage(event)
         pipedData = event.data.split(' '); 
         
         pipedDataReady = true;
+    }
+    else if (event.data.indexOf("color") != -1 ){
+         colorSyncTokens = event.data.split(' ' );
+         console.log("sync!  " + event.data);
+//         for(int i = 0; i < tokens.size; i++){
+//             
+//         }
+//         newRed = parseInt(tokens[2]);
+//         newGreen = parseInt(tokens[3]);
+//         newBlue = parseInt(tokens[4]);
+//         colorSyncId = parseInt(tokens[1]); 
+//         
+//         console.log("color sync id = " + colorSyncId);
+        goSyncColor = true;
     }
 
 }

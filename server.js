@@ -1402,6 +1402,22 @@ function map( val, minVal, maxVal, minCoord, maxCoord ){
     return (val - minVal) / (maxVal - minVal) * (maxCoord - minCoord ) + minCoord;    
 }
 
+function colorSync(){
+//     var setOfColorData = [] ;
+//     var colorData = {};
+    var msg = ""; 
+    for( var i = 0; i < 78; i++){
+        var r = Math.random()*255;
+        var g = Math.random()*255;
+        var b = Math.random()*255;
+        console.log("new color!");
+        msg = msg + i + " " + r + " " + g + " " + b+ " ";
+    }
+    sio.sockets.emit('colorSync', msg );
+
+}
+    
+
 // ---------------------------------------------
 // DATA FROM OMICRONJS
 // ADAPTED FROM LUC's omicronjs server code
@@ -1778,6 +1794,9 @@ process.stdin.on('keypress', function (ch, key) {
   }
   if( key.name == 'g' ){
     plotByMetadataByCat('date', 'hr');
+  }
+  if( key.name == 'q'){
+    colorSync();
   }
   
 //   if( key.name == 'm' ){
