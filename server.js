@@ -1339,10 +1339,16 @@ function plotByMetadataByCat(xCat,yCat){
     var maxX = -999999999999999;
     var maxY = -999999999999999;
     
+    var minX = 999999999999999;
+    var minY = 999999999999999;
+    
+    console.log("xCat " + xCat + " yCat " + yCat);
+    
     for(var i = 0; i < items.length; i ++)
     {
         var xVal = items[i].metadata[ xCat ];
         var yVal = items[i].metadata[ yCat ];
+        console.log( "          xVal: " + xVal + "  yVal " + yVal + " maxX = " + maxX + " maxY = " + maxY );
         if( xVal > maxX )
         {
             maxX = xVal;
@@ -1351,6 +1357,11 @@ function plotByMetadataByCat(xCat,yCat){
         {
             maxY = yVal;   
         }
+        
+        if( xVal < minX )
+            minX = xVal;
+        if( yVal < minY )
+            minY = yVal;
     
     }
     
@@ -1371,8 +1382,8 @@ function plotByMetadataByCat(xCat,yCat){
         
         //position
 
-            var newX = map( items[i].metadata[ xCat ] , 0, maxX, 0, config.totalWidth ); 
-            var newY = map( items[i].metadata[yCat ] , 0, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
+            var newX = map( items[i].metadata[ xCat ] , minX, maxX, 0, config.totalWidth ); 
+            var newY = map( items[i].metadata[ yCat ] , minY, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
         
             console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
         
@@ -1726,6 +1737,12 @@ function addMetadata( src, key, value ){
         if( "uploads/"+src == items[i].src )
         {
             var id = items[i].id; 
+            if( key.indexOf("date") != -1 ){
+//                 var strYr = value.substring(0,4);
+//                 var strMnth =value.substring(4,6);
+//                 var strDay = value.substring(6,8); 
+                console.log ("DATE!!: " );//+ strYr + " " + strMnth + " " + strDay );
+            }
             items[i].metadata[key] = parseInt(value);  
             console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + items[i].metadata[key] );
         }
