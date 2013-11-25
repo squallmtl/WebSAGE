@@ -1022,13 +1022,13 @@ function tileSubset(subset, startX, stopX){
             subset[i].top = y + gapH; 
                         
             //resize
-            if( subset[i].width > items[i].height + config.titleBarHeight ){
+            if( subset[i].width > subset[i].height + config.titleBarHeight ){
                 subset[i].width = maxItemWidth; 
-                subset[i].height = items[i].width/items[i].aspect; 
+                subset[i].height = subset[i].width/subset[i].aspect; 
             }
             else{
                 subset[i].height = maxItemHeight;
-                subset[i].width = items[i].height*items[i].aspect; 
+                subset[i].width = subset[i].height*subset[i].aspect; 
             }
     
             //shift to center
