@@ -341,15 +341,15 @@
 			itemCount += 2;
 		});
 		
-		socket.on('metadataAdded', function(metadataCategories){
-		    console.log("metadata added");
-		    var ifrm = document.getElementById("organizePanel"); 
-		    var msg = 'metaAdded';
-// 		    for(var i = 0; i < metadataCategories.length; i++){
-// 		        msg = msg + metadataCategories[i] + " " ;
-// 		    }
-		    ifrm.contentWindow.postMessage(msg, '*'); // + ' id ' + elem_data.id, '*');
-		});
+// 		socket.on('metadataAdded', function(metadataCategories){
+// 		    console.log("metadata added");
+// 		    var ifrm = document.getElementById("organizePanel"); 
+// 		    var msg = 'metaAdded';
+// // 		    for(var i = 0; i < metadataCategories.length; i++){
+// // 		        msg = msg + metadataCategories[i] + " " ;
+// // 		    }
+// 		    ifrm.contentWindow.postMessage(msg, '*'); // + ' id ' + elem_data.id, '*');
+// 		});
 
 		
 		socket.on('deleteElement', function(elemId) {

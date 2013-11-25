@@ -96,7 +96,7 @@
             else if(ext == "linePlot") urlType = "linePlot";
             else if(ext == "sageScript") urlType = "sageScript";
             else if(ext == "chicagoMap") urlType = "chicagoMap";
-            
+            else if(ext == "controlPanel") urlType = "controlPanel";
 
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});

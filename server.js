@@ -74,13 +74,12 @@ var metadataCategories = new Array();
 
 var eventsFromWindows = []; //store events as they come in, along with a count, so can make sure that events get processed once, not 18 times
 
-
-// organizationcontrol panel
+// 
+// // organizationcontrol panel
 // var itemId = "item"+itemCount.toString();
 // var title = "Org";//request.files[f].name;
 // var aspect = 1;
 // var now = new Date();
-// //console.log("org: " + title + " " + itemId + " " + request.files[f].name);
 // var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
 // items.push(newItem);
 // sio.sockets.emit('addNewElement', newItem);
@@ -467,7 +466,7 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if( request.files[f].type == "application/octet-stream"){
-            console.log("processing: " + request.files[f].name);
+            console.log("in applicaiton/octet-stream     processing: " + request.files[f].name);
             if( request.files[f].name.indexOf("metadata") != -1 ){
                 console.log("metadata " + this.source);
                 
@@ -517,7 +516,7 @@ app.post('/upload', function(request, response) {
                 
                 sio.sockets.emit('metadataAdded', metadataCategories);
             }
-            if( request.files[f].name.indexOf("histogram") != -1 ){
+            else if( request.files[f].name.indexOf("histogram") != -1 ){
                 console.log("histogram " + this.source);
 
                 var itemId = "item"+itemCount.toString();
@@ -531,7 +530,7 @@ app.post('/upload', function(request, response) {
                 itemCount++;
                 
             }
-            if( request.files[f].name.indexOf("linePlot") != -1 ){
+            else if( request.files[f].name.indexOf("linePlot") != -1 ){
                 console.log("linePlot " + this.source);
 
                 var itemId = "item"+itemCount.toString();
@@ -545,7 +544,7 @@ app.post('/upload', function(request, response) {
                 itemCount++;
                 
             }
-            if( request.files[f].name.indexOf("sageScript") != -1 ){
+            else if( request.files[f].name.indexOf("sageScript") != -1 ){
                 console.log("sage script " + this.source);
 
                 var itemId = "item"+itemCount.toString();
@@ -554,6 +553,21 @@ app.post('/upload', function(request, response) {
                 var now = new Date();
                 console.log("sage script: " + title + " " + itemId + " " + request.files[f].name);
                 var newItem = new item("application-sageScript", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 200, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;
+                
+            }
+            if( request.files[f].name.indexOf("control") != -1 ){
+                console.log("controlPanel " + this.source);
+
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 1;
+                var now = new Date();
+                console.log("controlPanel : " + title + " " + itemId + " " + request.files[f].name);
+//                 var newItem = new item("application-organize", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
