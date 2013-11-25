@@ -1738,12 +1738,13 @@ function addMetadata( src, key, value ){
         {
             var id = items[i].id; 
             if( key.indexOf("date") != -1 ){
-//                 var strYr = value.substring(0,4);
-//                 var strMnth =value.substring(4,6);
-//                 var strDay = value.substring(6,8); 
-                console.log ("DATE!!: " );//+ strYr + " " + strMnth + " " + strDay );
+                var yr = parseInt(value.substring(0,4));
+                var mth = parseInt(value.substring(4,6));
+                var day = parseInt(value.substring(6,8)); 
+                value = yr + mth/12 + day/31; 
+                console.log ("DATE!!: "+ yr + " " + mth + " " + day  + " " + value);
             }
-            items[i].metadata[key] = parseInt(value);  
+            items[i].metadata[key] = parseFloat(value);  
             console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + items[i].metadata[key] );
         }
     }
@@ -1773,6 +1774,9 @@ process.stdin.on('keypress', function (ch, key) {
   }
   if( key.name == 'f' ){
     plotByMetadata(1, 2);
+  }
+  if( key.name == 'g' ){
+    plotByMetadataByCat('date', 'hr');
   }
   
 //   if( key.name == 'm' ){
