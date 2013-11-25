@@ -1743,6 +1743,7 @@ function addMetadata( src, key, value ){
                 var day = parseInt(value.substring(6,8)); 
                 value = yr + mth/12 + day/31; 
                 console.log ("DATE!!: "+ yr + " " + mth + " " + day  + " " + value);
+                
             }
             items[i].metadata[key] = parseFloat(value);  
             console.log("added new metadata value to " + src + ", " + id + ":   key= " + key + " value = " + value + " metadata[key] = " + items[i].metadata[key] );

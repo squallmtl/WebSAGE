@@ -6,6 +6,11 @@ Neighborhood[] hoods;
 float globalMinLat, globalMaxLat, globalMinLon, globalMaxLon; 
 Boolean overlay = true;
 
+Boolean remapped = false;
+
+int windowWidth = 800;
+int windowHeight = 800;
+
 void setup(){
     sageBeforeSetup();
     
@@ -40,6 +45,9 @@ void draw(){
          }
 
     }
+    
+    if( remapped )
+        remapped = false;
     
     sageAfterDraw();
 }
@@ -106,7 +114,6 @@ void processStringForOverlay(String r){
     for(int i =0 ; i < hoods.length; i++){
         if(id == i){//hoods.idx){
             hoods[i].addDataValue(value);
-            //hoods[i].theColor = color(255,255,0);
             break;
         }
     }
@@ -115,6 +122,7 @@ void processStringForOverlay(String r){
 class Neighborhood{
   String name;
   int idx;
+  PVector[] latLon; 
   PVector[] coords; 
   int coordCount;
   color theColor; 
@@ -153,11 +161,13 @@ class Neighborhood{
   }
   
   void setNumCoords(int num){
+    latLon = new PVector[num];
     coords = new PVector[num];
     coordCount = 0;
   }
   
   void addCoord(float lon, float lat){
+    latLon[coordCount] = new PVector( lat, lon );
      coords[coordCount] = new PVector( mapLon(lon), mapLat(lat) );
      coordCount ++; 
      
@@ -183,12 +193,20 @@ class Neighborhood{
     dataValues[numDataValues] = value;
     numDataValues++;
     
-    theColor = color(255, 0, 0);//mapDataToColor( value );
+    theColor = mapDataToColor( value );
+    
   }
   
   void drawNeighborhood(){
     if( coords.length == 0 )
       return; 
+      
+    if( remapped ){
+      for(int i =0 ; i < coords.length; i++){
+           coords[i].x = (mapLon(latLon[i].x));
+           coords[i].y = ( mapLat(latLon[i].y) );
+      }
+    }
     
     fill( theColor);
     noStroke();
@@ -214,6 +232,16 @@ class Neighborhood{
 
   }
   
+  //void remapCoords(int newWidth, int newHeight){
+    
+    //for(int i =0; i < latLon.length; i++)
+    //{
+     //coords[i] =  new PVector( mapLonWH( latLon[i].y , newWidth, newHeight), mapLatWH(latLon[i].x ,  newWidth, newHeight) );
+    //}
+   // drawNeighborhood();
+  //}
+  
+  
   //glitchy....
   //currently called when mouse pressed... 
   Boolean mouseIsOver(){
@@ -227,13 +255,16 @@ class Neighborhood{
   float mapLat(float lat)
   {
     //println( "lat = " + lat + " mapped = " + map( lat, 41.3, 41.9, 0, height ) );
-    return map( lat, 41.55, 42.05, height, 0 ); 
+    return map( lat, 41.55, 42.05, windowHeight, 0 ); 
   }
   
   float mapLon(float lon)
   {
-    return map( lon, -87.95, -87.45, 0, width) ;   
+  
+    return map( lon, -87.95, -87.45, 0, windowWidth) ;   
   }
+  
+    
 }
 
 color mapDataToColor(float data){
@@ -273,9 +304,18 @@ void mouseDrag(){
 
 void resizeSketch(int newWidth, int newHeight){
     size( newWidth, newHeight ); 
+    windowWidth = newWidth;
+    windowHeight = newHeight; 
+    remapped = true;
     
     //adjust sketch to new size....
-    
+   // for(int i =0 ; i< hoods.length; i++){
+  //      hoods[i].remapCoords(newWidth,newHeight );
+        //hoods[i].theColor = color(255, 0, 0);
+
+//    }
+
+
 }
 
 void acceptSelectionEvents( String selectedId ){
@@ -326,8 +366,10 @@ void sageBeforeDraw(){
         handlePointerPress = false; 
     }
     if( handleResize ){
+
         resizeSketch( newWidth, newHeight );
         handleResize = false; 
+
     }
 }
 
