@@ -1,0 +1,461 @@
+<script src="../processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+
+Button addNewButton; 
+
+Prog[] progs; 
+int numProgs = 0; 
+
+String[] tags;
+int numTags = 0; 
+
+String statusText = " Status!!";
+
+void setup(){
+    sageBeforeSetup();
+
+
+    size(800, 800);
+
+    PFont font;
+    font = createFont("EurostileBold", 48);  
+    textFont(font, 48); 
+
+    progs = new Prog[100];
+
+    String[] theText = {"+"};
+    addNewButton = new Button( 20, 20, 120, 60, theText , color(#ECD95A) );
+    addNewButton.visible = true;
+
+    tags = new String[ 1 ]; 
+    tags[0] = "<tag>";
+    numTags = 1; 
+  
+    sageAfterSetup();
+}
+
+void readData(String filename){
+
+  
+}
+
+
+
+void resizeSketch(int newWidth, int newHeight ){
+  size( newWidth, newHeight); 
+
+}
+
+
+void draw(){
+    //sageBeforeDraw();
+    //if( goRedraw ){
+        background(0);
+        addNewButton.drawButton();
+
+        for(int i =0 ; i < numProgs; i++){
+            progs[i].drawProg();  
+        }
+        
+        fill(255);
+        text( statusText, width/2, height/2);
+    //}
+    
+    //sageAfterDraw();
+}
+
+void addNewTagValues(String[] newTags){
+  String[] temp = new String[ tags.length + newTags.length ] ; 
+  for(int i =0 ; i < tags.length; i++){
+    temp[i] = tags[i]; 
+  }
+  for(int i =tags.length ; i < newTags.length; i++){
+    temp[i] = newTags[i]; 
+  }
+  
+  tags = temp;
+  
+  for(int i =0 ; i < numProgs; i++){
+    progs[i].resetProgTagValues(temp);
+  }
+}
+
+void resetTagValues(String[] newTags){
+  tags = newTags;
+  
+  for(int i =0 ; i < numProgs; i++){
+    progs[i].resetProgTagValues(tags);
+  }
+  
+}
+
+void mousePressed(){
+  if( addNewButton.checkMousePress() )
+    createNewProg();
+  for(int i = 0; i < numProgs; i++){
+    progs[i].progCheckMousePress(); 
+  }
+}
+
+void createNewProg(){
+  float x1 = addNewButton.x1;
+  float y1 = addNewButton.y1;
+  float x2 = width-20;
+  float y2 = y1+40; 
+  
+  addNewButton.repositionButton( addNewButton.x1, y1+80, addNewButton.x2, y1+120);
+  
+  progs[numProgs] = new Prog( x1, y1, x2, y2);
+  progs[numProgs].resetProgTagValues( tags );
+    numProgs ++;
+  
+}
+
+class Prog{
+  
+  float x1, y1, x2, y2;
+  
+  Button selectionButton;
+  Button typeButton;
+  Button tagButton1;
+  Button tagButton2;
+  Button goButton;
+  
+  Boolean programReady = false; 
+  
+  Prog(float x1, float y1, float x2, float y2){
+    this.x1 = x1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.y1 = y1;
+    
+    String[] theText = {"Select", "Sort", "Plot", "Cluster", "Partition", "Remove"};
+    selectionButton = new Button( x1, y1, x1+120, y1+40, theText, color(#7E8DD1) );
+    selectionButton.currTextIdx = -1;//hack
+    selectionButton.visible = true;
+    
+    String[] typeText = {"All", "Images", "Videos", "Histograms", "Maps", "Plots"};
+    typeButton = new Button( selectionButton.x2+20, y1, selectionButton.x2+20+120, y1+40, typeText, color(#6FD7DF) );
+    typeButton.visible = false;
+    
+    String[] tag1Text = {"Select"};
+    tagButton1 = new Button( typeButton.x2+20, y1, typeButton.x2+20+120, y1+40, tag1Text, color(#E2839E) );
+    tagButton1.visible = false;
+    
+    String[] tag2Text = {"Select"};
+    tagButton2 = new Button( tagButton1.x2+20, y1, tagButton1.x2+20+120, y1+40, tag2Text, color(#E2A283));//#BE83E2) );
+    tagButton2.visible = false;
+    
+    String[] goText = {"Go"};
+    goButton = new Button( tagButton2.x2+20, y1, tagButton2.x2+20+120, y1+40, goText, color(#7FD17E) );
+    goButton.visible = false;
+  } 
+  
+  void resetProgTagValues(String[] tags){
+    tagButton1.theText = tags; 
+    tagButton2.theText = tags;
+    tagButton1.currTextIdx = 0;
+    tagButton2.currTextIdx = 0;
+  }
+  
+  void drawProg(){
+    selectionButton.drawButton();
+    typeButton.drawButton();
+    tagButton1.drawButton();
+    tagButton2.drawButton();
+    goButton.drawButton();
+  }
+//  
+//  void resetTags(String[] newTagVals){
+//    tagButton1.theText = newTagVals ;
+//    tagButton1
+//  }
+//  
+  Boolean progCheckMousePress(){
+    if( selectionButton.checkMousePress() ) {
+      if( selectionButton.theText[ selectionButton.currTextIdx ] == "Sort" ){
+        typeButton.visible = true;
+        tagButton1.visible = true;
+        tagButton2.visible = false;
+        if( programReady )
+          goButton.visible = true;   
+        else
+          goButton.visible = true;
+      }
+      if( selectionButton.theText[ selectionButton.currTextIdx ] == "Plot" ){
+        typeButton.visible = true;
+        tagButton1.visible = true;
+        tagButton2.visible = true;
+        if( programReady )
+          goButton.visible = true;   
+        else
+          goButton.visible = true;
+      }
+      if( selectionButton.theText[ selectionButton.currTextIdx ] == "Cluster" ){
+        typeButton.visible = false;
+        tagButton1.visible = false;
+        tagButton2.visible = false;
+        if( programReady )
+          goButton.visible = false;   
+        else
+          goButton.visible = false;
+      }
+      if( selectionButton.theText[ selectionButton.currTextIdx ] == "Partition" ){
+        typeButton.visible = false;
+        tagButton1.visible = false;
+        tagButton2.visible = false;
+        if( programReady )
+          goButton.visible = false;   
+        else
+          goButton.visible = false;
+      }
+      if( selectionButton.theText[ selectionButton.currTextIdx ] == "Remove" ){
+        typeButton.visible = false;
+        tagButton1.visible = false;
+        tagButton2.visible = false;
+        if( programReady )
+          goButton.visible = false;   
+        else
+          goButton.visible = false;
+      }
+    }
+    
+    typeButton.checkMousePress();
+    tagButton1.checkMousePress();
+    tagButton2.checkMousePress();
+    
+    if( goButton.checkMousePress() )
+    {
+        //handle...
+    }
+    
+    return true; 
+  }
+}
+
+
+class Button{
+  float x1, y1, x2, y2;
+  String[] theText;
+  int currTextIdx;
+  color theColor;
+  Boolean visible;  
+  
+  Button(float x1, float y1, float x2, float y2, String[] theText, color c){
+    this.theText = theText; 
+    
+    this.x1 = x1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.y1 = y1;
+    currTextIdx = 0; 
+    
+    this.theColor = c; 
+    
+    visible = false;
+    
+  }
+  
+  void repositionButton(float x1, float y1, float x2, float y2){
+    this.x1 = x1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.y1 = y1;
+  }
+  
+  void drawButton(){
+    if( !visible )
+      return;
+    rectMode( CORNERS ); 
+    fill(theColor);
+    stroke(theColor);
+    
+    rect(x1, y1, x2, y2, 7);
+    
+    fill(0);
+    textAlign(CENTER,CENTER);
+    textSize( (y2-y1)*.75); 
+    text( theText[currTextIdx], (x1+x2)/2.0, (y1+y2)/2.0 ); 
+  }
+  
+  void toggleText(){
+    currTextIdx ++; 
+    if( currTextIdx >= theText.length)
+      currTextIdx = 0;
+  }
+  
+  String getCurrentText(){
+      return theText[currTextIdx];
+  }
+  
+  Boolean checkMousePress(){
+    if( mouseX > x1 && mouseX < x2 && mouseY > y1 && mouseY < y2 ){
+      toggleText();
+      return true;
+    }
+    return false;
+  }
+}
+
+void sageBeforeSetup(){
+
+}
+
+void sageAfterSetup(){
+    goRedraw = true;
+}
+
+void sageBeforeDraw(){
+    if( readyLoadData ){
+        //readData(filename);
+        //readyLoadData = false;
+        //goRedraw = true;
+    }
+    if( setMouseToPointer ){
+        mouseX = pointerX;
+        mouseY = pointerY;
+        setMouseToPointer = false;
+    }
+    if( handlePointerPress ){
+        //assume mouse already set to pointer, bc of flag... 
+        mousePressed(); //call yourself
+        
+        //for debugging:
+        //sendMsg("pointer event at x= " + mouseX + " y= " + mouseY); 
+        
+        handlePointerPress = false; 
+    }
+    if( handleResize ){
+        resizeSketch( newWidth, newHeight );
+        handleResize = false; 
+    }
+    if( readyAddTags ){
+        addNewTagValues(theNewTags);
+        readyAddTags = false;
+    }
+}
+
+void sageAfterDraw(){
+    //sendMsg( "drawDone");   
+    goRedraw = false; 
+}
+
+
+</script>
+
+<canvas id="mycanvas"></canvas>
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//--------- LISTEN TO EVENTS FROM WEBSAGE---------------
+//to do:  make this array of pointer objects... 
+var pointerX = 0;
+var pointerY = 0; 
+var handlePointerPress = false; 
+var pointerPressed = false; 
+var goRedraw = false; 
+var handleResize = false;
+var newWidth = 0;
+var newHeight =0;
+var setMouseToPointer = false; 
+var readyLoadData = false; 
+var filename = "";
+var itemId = "";
+var readyAddTags = false;
+var theNewTags = [];
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+
+//     if( event.data.indexOf('dataSend') != -1 ){
+//         var tokens = event.data.split(' ');
+//         inputData = tokens[1] ;
+//     }
+    if( event.data.indexOf( 'pointerCreated') != -1 ){
+        //create pointer object
+    }
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true; 
+        handlePointerPress = true;     
+        goRedraw = true;   
+        setMouseToPointer = true;
+    }
+    else if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        goRedraw = true;     
+        setMouseToPointer = true;
+        if( pointerPressed ){
+            //pointer drag
+        }
+    } 
+    else if( event.data.indexOf( 'pointerReleased') != -1 ){
+        pointerPressed = false; 
+    }
+    else if( event.data.indexOf( 'pointerScrolled' ) != -1){
+        //handle scroll events
+    }
+    else if(event.data.indexOf('resize') != -1){
+        var tokens = event.data.split(' ' ); 
+        newWidth = tokens[2];
+        newHeight = tokens[4]; 
+        goRedraw = true;
+        handleResize = true; 
+    }
+    else if( event.data.indexOf("loadData") != -1 ){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
+        itemId = tokens[4];
+    }
+    else if( event.data.indexOf("setItemId") != -1){
+        var tokens = event.data.split(' ' ); 
+        itemId = tokens[2];
+    }
+//     else if( event.data.indexOf("metaAdded") != -1 ){
+// //         theNewTags = []; 
+// //         readyAddTags = true;
+// //         var tokens = event.data.split(' ');
+// //         for(var i = 1; i < tokens.length; i++){
+// //             theNewTags[i-1] = tokens[i];
+// //         }
+//         statusText = "ADDED!!";//event.data;
+//         goRedraw = true;
+//     }
+
+}
+
+
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", (msg+" id " + itemId) );
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
+
+</script>
+
+  

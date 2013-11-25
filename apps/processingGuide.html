@@ -1,4 +1,4 @@
-////ADD THIS TO PROCESSING SKETCHES
+
 <script src="processing-1.4.1.js"></script>
 <script type="text/processing" data-processing-target="mycanvas">
 
@@ -15,12 +15,7 @@ void draw(){
     sageBeforeDraw();
     
     if( goRedraw ){
-    
-        background(0);
-        
-         for( int i = 0; i < hoods.length; i++){
-               hoods[i].drawNeighborhood();
-         }
+
 
     }
     
@@ -28,173 +23,7 @@ void draw(){
 }
 
 //************* YOUR FUNCTIONS HERE ********************//
-void readData(){
-  String filename = "communityBoundaries.txt";
-  String[] rows = loadStrings(filename);
 
-  hoods = new Neighborhood[ rows.length ]; 
-  for(int i = 0; i < rows.length; i++)
-  {
-    String[] tokens = rows[i].split(":"); 
-    hoods[i] = new Neighborhood( parseInt(tokens[0]), tokens[1] );
-    
-    String[] coordTokens = tokens[2].split(" ");
-    hoods[i].setNumCoords( coordTokens.length);
-    for(int j =0; j < coordTokens.length; j++){
-      String[] coord = coordTokens[j].split(","); 
-      hoods[i].addCoord( parseFloat( coord[0]), parseFloat(coord[1]) );
-    }
-  }
-}
-
-//fake!
-void readOverlayData(){
-  
-  for(int i = 0; i < hoods.length; i++)
-  {
-    hoods[i].addDataValue( random(0.0, 100.0) );
-    hoods[i].addDataValue( random(0.0, 100.0) ); 
-  }
-}
-
-
-class Neighborhood{
-  String name;
-  int idx;
-  PVector[] coords; 
-  int coordCount;
-  color theColor; 
-  float[] dataValues;
-  int numDataValues; 
-  
-  float minLat;
-  float maxLat;
-  float minLon;
-  float maxLon; 
-  
-  float minX;
-  float maxX;
-  float minY;
-  float maxY; 
-  
-  Neighborhood(int idx, String name){
-    this.name = name;
-    this.idx = idx;
-    coordCount = 0;
-    theColor = color( random(0, 255), random(0, 255), random(0, 255) );
-    
-    minLat = 999999999999.0;
-    minLon = 99999999999.0;
-    maxLat = -999999999.0;
-    maxLon = -99999999999.0;
-    
-    minX = 999999999999.0;
-    minY = 99999999999.0;
-    maxX = -999999999.0;
-    maxY = -99999999999.0;
-    
-    dataValues = new float[1000]; 
-    numDataValues = 0;
-    
-  }
-  
-  void setNumCoords(int num){
-    coords = new PVector[num];
-    coordCount = 0;
-  }
-  
-  void addCoord(float lon, float lat){
-     coords[coordCount] = new PVector( mapLon(lon), mapLat(lat) );
-     coordCount ++; 
-     
-     if( lat < minLat ){
-       minLat = lat;
-       maxY = mapLat( minLat );
-     }
-     if( lon < minLon ){
-       minLon = lon;
-       minX = mapLon( minLon);
-     }
-     if( lat > maxLat ){
-       maxLat = lat;
-       minY = mapLat( maxLat);
-     }
-     if( lon > maxLon ){
-       maxLon = lon; 
-       maxX = mapLon( maxLon);
-     }
-  }
-  
-  void addDataValue(float value){
-    dataValues[numDataValues] = value;
-    numDataValues++;
-    
-    theColor = mapDataToColor( value );
-  }
-  
-  void drawNeighborhood(){
-    if( coords.length == 0 )
-      return; 
-    
-    fill( theColor);
-    noStroke();
-    if( mouseIsOver() ){
-      fill( #FDCD4D);
-    }
-
-    beginShape(); 
-    for(int i = 0; i < coords.length; i++)
-    {
-      //println(coords[i].x + " " + coords[i].y);
-      curveVertex( coords[i].x, coords[i].y ); 
-    }
-    curveVertex(coords[0].x, coords[0].y); 
-    endShape(); 
-
-  }
-  
-  //glitchy....
-  Boolean mouseIsOver(){
-    float borderY = ( maxY-minY ) * .05;
-    float borderX = ( maxX-minX ) * .05;
-    if(  mouseY >= minY+borderY && mouseY <= maxY-borderY && mouseX >= minX+borderX && mouseX <= maxX-borderX )
-      return true;
-    return false;
-  }
-  
-  float mapLat(float lat)
-  {
-    println( "lat = " + lat + " mapped = " + map( lat, 41.3, 41.9, 0, height ) );
-    return map( lat, 41.55, 42.05, height, 0 ); 
-  }
-  
-  float mapLon(float lon)
-  {
-    return map( lon, -87.95, -87.45, 0, width) ;   
-  }
-}
-
-color mapDataToColor(float data){
-  if( data > 90.0 )
-    return color(#B6564E);
-   if( data > 80 )
-     return color(#CD6A62);
-   if( data > 70.0 )
-     return color(#E1746B);
-   if( data > 60.0 )
-     return color(#ED776D);
-   if( data > 50.0 )
-     return color(#FD8279);
-   if( data > 40.0 )
-      return color(#FD948C); 
-   if( data > 30.0 )
-     return color(#FDA39C);
-   if( data > 20.0 )
-     return color(#FDB1AB);
-   if( data > 10.0 )
-     return color(#FFC8C4);
-   return color(#FFDEDB); 
-}
 
 //************* END YOUR FUNCTIONS HERE ********************//
 

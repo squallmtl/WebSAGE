@@ -45,11 +45,12 @@ var initDate = new Date();
 
 
 var fs = require('fs');
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
- //var file = 'config/iridium-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
+var numClients; 
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
 		console.log('Error: ' + err);
@@ -61,6 +62,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 	config.titleBarHeight = Math.round(0.03 * config.totalHeight);
 	config.titleTextSize = Math.round(0.018 * config.totalHeight);
 	console.log(config);
+	numClients = config.layout.columns * config.layout.rows; 
+	
 });
 
 var itemCount = 0;//num windows 
@@ -68,6 +71,22 @@ var items = [];//windows
 
 //metadataCategories
 var metadataCategories = new Array(); 
+
+var eventsFromWindows = []; //store events as they come in, along with a count, so can make sure that events get processed once, not 18 times
+
+
+// organizationcontrol panel
+var itemId = "item"+itemCount.toString();
+var title = "Org";//request.files[f].name;
+var aspect = 1;
+var now = new Date();
+//console.log("org: " + title + " " + itemId + " " + request.files[f].name);
+var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
+items.push(newItem);
+sio.sockets.emit('addNewElement', newItem);
+itemCount++;
+
+console.log("added control panel " + itemCount);
 
 
 sio.sockets.on('connection', function(socket) {  //called every time new window manager connects and new sage pointer connects 
@@ -275,11 +294,60 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 	});
 	
 
+    //to do- incorporate ptr id, so can distinguish counts of multiple pointers
 	socket.on('eventInWindowRecorded', function(msg){
 	    console.log("in server, got it: " + msg);
+	    
+	    var tokens = msg.split( " " ); 
+	    var e = eventsFromWindows[ tokens[0] ];
+	    if( e == null ){
+	        console.log("new event"); 
+	        eventsFromWindows[ tokens[0] ] = 1; 
+        } 
+        else {
+            eventsFromWindows[tokens[0]] = eventsFromWindows[tokens[0]]+1; 
+            console.log( "old event, count = " + eventsFromWindows[tokens[0]] ); 
+        }
+        
+        if( eventsFromWindows[ tokens[0] ] >= numClients ){
+            console.log("got events from everyone");
+            processEventFromWindows( msg, tokens ); 
+            eventsFromWindows[tokens[0]] = null;    
+        }
+	        
 	});
 
 });
+
+function processEventFromWindows( msg, tokens ){
+    console.log("processing: " + msg);
+    if( tokens[0].indexOf("resizeEvent") != -1 ){
+        var w = tokens[2];
+        var h = tokens[4];
+        var id = tokens[6]; 
+        console.log( "resize event received: " + w + " " + h + " " + id); 
+        
+        //to do:  handle this.  
+    }
+    else if( msg.indexOf("SageScriptGo") != -1 ){
+        console.log("sage script go event ");
+        
+        var toks = msg.split("|");
+        var script = toks[1]; 
+        console.log("script = " + script );
+        //runScript(script);
+          
+    }
+}
+
+// function runScript(script){
+//     if( script.indexOf("Sort") != -1 ){
+//         var tokens = script.split(" " ); 
+//         var type = tokens[2];
+//         if( type == 
+//         
+//     }
+// }
 
 app.post('/upload', function(request, response) {
 	var i;
@@ -442,10 +510,12 @@ app.post('/upload', function(request, response) {
                 var aspect = 1;
                 var now = new Date();
                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 400, 400, aspect, now, "", "");
+                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
+                
+                sio.sockets.emit('metadataAdded', metadataCategories);
             }
             if( request.files[f].name.indexOf("histogram") != -1 ){
                 console.log("histogram " + this.source);
@@ -455,7 +525,7 @@ app.post('/upload', function(request, response) {
                 var aspect = 1;
                 var now = new Date();
                 console.log("histogram: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 400, 400, aspect, now, "", "");
+                var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
@@ -469,7 +539,7 @@ app.post('/upload', function(request, response) {
                 var aspect = 1;
                 var now = new Date();
                 console.log("linePlot: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-linePlot", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 400, 400, aspect, now, "", "");
+                var newItem = new item("application-linePlot", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
@@ -626,7 +696,7 @@ function moveItemToFrontByPos(x,y){
         var w = items[i].width;
         var t = items[i].top;
         var h = items[i].height; 
-		if(l < x && l+w > x && t < y && t+h > y) { 
+		if(l < x && l+w > x && t < y && t+h+config.titleBarHeight > y) { 
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];
 			found = true; 
@@ -694,7 +764,7 @@ function clickInsideWindow(x, y, pID){
         var t = items[i].top;
         var h = items[i].height; 
         console.log("l = " + l + " l+w " + (l+w) + " t " + t + " t+h " + (t+h) );
-		if(l < x && l+w > x && t < y && t+h > y) { 
+		if(l < x && l+w > x && t < y && t+h+config.titleBarHeight > y) { 
 		    console.log("true");
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];

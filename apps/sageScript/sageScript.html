@@ -21,17 +21,18 @@ void setup(){
   textFont(font, 48); 
 
   //resize everything to fit
-  float tw = 0; 
-  for(int i = 0; i < script.length; i++){
-    if( textWidth(script[i] ) > tw )
-      tw = textWidth(script[i] ); 
-  }
-  float th = script.length*48*1.5;
+//  float tw = 0; 
+//  for(int i = 0; i < script.length; i++){
+//    if( textWidth(script[i] ) > tw )
+//      tw = textWidth(script[i] ); 
+//  }
+//  float th = script.length*48*1.5;
  
-  if( th < height )
-   th = height/1.1;
-  if( tw < width )
-   tw = width/1.1; 
+//  if( th < height )
+//   th = height/1.1;
+//  if( tw < width )
+//   tw = width/1.1; 
+
 
   color c = color(#4EC387);
   String[] text = {"Go" };//, "Undo" };
@@ -39,7 +40,8 @@ void setup(){
   buttons[0] = b;
   numButtons = 1;
 
-  resizeSketch( (int)(tw*1.1), (int)(th*1.1) );
+  //resizeSketch( (int)(tw*1.1), (int)(th*1.1) );
+  //sendMsg("resizeEvent w " + (int)(tw*1.1) + " h " + (int)(th*1.1) );
   
     sageAfterSetup();
  
@@ -51,6 +53,8 @@ void readData(String filename){
   script =  loadStrings( filename ); 
   
 }
+
+
 
 void resizeSketch(int newWidth, int newHeight ){
   size( newWidth, newHeight); 
@@ -83,7 +87,8 @@ void draw(){
         buttons[i].drawButton(); 
       }
     }
-    
+ // 
+ sageAfterDraw(); //just added- need to check for whether this breaks things   
  
 }
 
@@ -92,11 +97,11 @@ void mousePressed(){
   for(int i =0; i < numButtons; i++){
     Boolean pressed = buttons[i].checkMousePress(); 
     if( pressed ){
-        String msg = buttons[i].theText[buttons[i].currText];
+        String msg = "SageScriptGo |";//buttons[i].theText[buttons[i].currText];
         for(int j = 0; j < script.length; j++)
-            msg += script[j]; 
-
-        sendMsg( "Hi" );//msg ); 
+            msg += script[j] + " " ; 
+        msg += "|";
+        sendMsg( msg ); 
 
     }
   }
@@ -231,7 +236,7 @@ var newHeight =0;
 var setMouseToPointer = false; 
 var readyLoadData = false; 
 var filename = "";
-//var itemId = "";
+var itemId = "";
 
 
 window.addEventListener("message", receiveMessage, false);
@@ -283,6 +288,7 @@ function receiveMessage(event)
         var tokens = event.data.split(' ' ); 
         filename = tokens[2];
         readyLoadData = true;
+        itemId = "item0";//tokens[4];
     }
 //     else if( event.data.indexOf("setItemId") != -1){
 //         
@@ -296,7 +302,7 @@ function receiveMessage(event)
 //--------- SEND EVENTS TO WEBSAGE ---------------
 function sendMsg(msg){
     
-    socket.emit("eventInWindowRecorded", msg);
+    socket.emit("eventInWindowRecorded", (msg+" id " + itemId) );
     
     //window.parent.postMessage('sendingMsg: ' + msg, '*');  
 //     

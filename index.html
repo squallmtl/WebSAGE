@@ -142,13 +142,16 @@
                       //  ifrm.src = "10.0.8.100:9090/apps/histogram/histogram.html";  //elem_data.src; 
                      else
                         ifrm.src = url+"/apps/histogram/histogram.html";  //"http://localhost:9090/apps/histogram/histogram.html";  //elem_data.src; 
-                    ifrm.width =  elem_data.width;
+                    ifrm.width =  elem_data.width; 
                     ifrm.height = elem_data.height;
                     windowItem.appendChild(ifrm); 
 
                     console.log("Application");
                     ifrm.onload = function() { 
-                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+                            ifrm.contentWindow.postMessage('loadData f ' + elem_data.src + ' id ' + elem_data.id, '*');
+
+//                         ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+//                         ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
                     } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
 			    }
                 if( elem_data.type.indexOf("linePlot") != -1 ){
@@ -166,8 +169,10 @@
 
                     console.log("Application");
                     ifrm.onload = function() { 
-                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
-                    } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
+                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src + ' id ' + elem_data.id, '*');
+                        //ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
+ 
+                    } 
 			    }
                 if( elem_data.type.indexOf("sageScript") != -1 ){
                     var ifrm = document.createElement("IFRAME"); 
@@ -184,7 +189,31 @@
 
                     console.log("Application");
                     ifrm.onload = function() { 
-                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src + ' id ' + elem_data.id, '*');
+
+                        //ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+                        //ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
+                    } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
+			    }
+                if( elem_data.type.indexOf("organize") != -1 ){
+                    var ifrm = document.createElement("IFRAME"); 
+                    ifrm.id = "organizePanel";//elem_data.id + "_site"
+                    ifrm.className = "sageItem";
+                    if( url.indexOf( "10.0.8.100" ) != -1)
+                        ifrm.src = "http://iridium:9090/apps/organize/organizationControlPanel.html";
+                      //  ifrm.src = "10.0.8.100:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                     else
+                        ifrm.src = url+"/apps/organize/organizationControlPanel.html";  //"http://localhost:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                    ifrm.width =  elem_data.width;
+                    ifrm.height = elem_data.height;
+                    windowItem.appendChild(ifrm); 
+
+                    console.log("Application");
+                    ifrm.onload = function() { 
+                        //ifrm.contentWindow.postMessage('loadData f ' + elem_data.src + ' id ' + elem_data.id, '*');
+
+                        //ifrm.contentWindow.postMessage('loadData f ' + elem_data.src, '*'); 
+                        ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
                     } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
 			    }
 			}
@@ -291,19 +320,33 @@
 				windowItem.appendChild(vid);
 			}
 			else if(elem_data.type == "metadata"){	
-                var ifrm = document.createElement("IFRAME"); 
-				ifrm.id = elem_data.id + "_site";
-                ifrm.className = "sageItem";
-                ifrm.src = "http://localhost:9090/apps/metadataDisplay/metadataDisplay.html"; 
-                ifrm.width =  elem_data.width;
-                ifrm.height = elem_data.height;
-                //ifrm.filename = elem_data.src;
-                windowItem.appendChild(ifrm); 
-                
-//                 ifrm.contentWindow.postMessage('metadataLoad ' + elem_data.src, '*');  
+//                 var ifrm = document.createElement("IFRAME"); 
+// 				ifrm.id = elem_data.id + "_site";
+//                 ifrm.className = "sageItem";
+// //                 ifrm.src = "http://localhost:9090/apps/metadataDisplay/metadataDisplay.html"; 
+//                 if( url.indexOf( "10.0.8.100" ) != -1)
+//                         ifrm.src = "http://iridium:9090/apps/metadataDisplay/metadataDisplay.html";
+//                      else
+//                         ifrm.src = url+"/apps/metadataDisplay/metadataDisplay.html";  
+//                 ifrm.width =  elem_data.width;
+//                 ifrm.height = elem_data.height;
+//                 //ifrm.filename = elem_data.src;
+//                 windowItem.appendChild(ifrm); 
+//                 
+// //                 ifrm.contentWindow.postMessage('metadataLoad ' + elem_data.src, '*');  
 			}
 			
 			itemCount += 2;
+		});
+		
+		socket.on('metadataAdded', function(metadataCategories){
+		    console.log("metadata added");
+		    var ifrm = document.getElementById("organizePanel"); 
+		    var msg = 'metaAdded';
+// 		    for(var i = 0; i < metadataCategories.length; i++){
+// 		        msg = msg + metadataCategories[i] + " " ;
+// 		    }
+		    ifrm.contentWindow.postMessage(msg, '*'); // + ' id ' + elem_data.id, '*');
 		});
 
 		

@@ -1,0 +1,35 @@
+<script src="../processing-1.4.1.js"></script>
+<script type="text/processing" data-processing-target="mycanvas">
+
+
+Button addNewButton; 
+
+Prog[] progs; 
+int numProgs = 0; 
+
+String[] tags;
+int numTags = 0; 
+
+void setup(){
+    sageBeforeSetup();
+
+
+    size(800, 800);
+
+    PFont font;
+    font = createFont("EurostileBold", 48);  
+    textFont(font, 48); 
+
+    progs = new Prog[100];
+
+    String[] theText = {"+"};
+    addNewButton = new Button( 20, 20, 120, 60, theText , color(#ECD95A) );
+    addNewButton.visible = true;
+
+    tags = new String[ 1 ]; 
+    tags[0] = "<tag>";
+    numTags = 1; 
+  
+    sageAfterSetup();
+}
+
