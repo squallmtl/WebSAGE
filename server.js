@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+//var file = 'config/thor-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
 var numClients; 
@@ -503,18 +503,18 @@ app.post('/upload', function(request, response) {
                     }
                 });
 
-                
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 1;
-                var now = new Date();
-                console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 800, 800, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;
-                
-                sio.sockets.emit('metadataAdded', metadataCategories);
+//                 
+//                 var itemId = "item"+itemCount.toString();
+//                 var title = request.files[f].name;
+//                 var aspect = 1;
+//                 var now = new Date();
+//                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
+//                 var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 800, 800, aspect, now, "", "");
+//                 items.push(newItem);
+//                 sio.sockets.emit('addNewElement', newItem);
+//                 itemCount++;
+//                 
+//                 sio.sockets.emit('metadataAdded', metadataCategories);
             }
             else if( request.files[f].name.indexOf("histogram") != -1 ){
                 console.log("histogram " + this.source);
@@ -558,7 +558,7 @@ app.post('/upload', function(request, response) {
                 itemCount++;
                 
             }
-            if( request.files[f].name.indexOf("control") != -1 ){
+            if( request.files[f].name.indexOf("meta") != -1 ){
                 console.log("controlPanel " + this.source);
 
                 var itemId = "item"+itemCount.toString();
@@ -566,11 +566,17 @@ app.post('/upload', function(request, response) {
                 var aspect = 1;
                 var now = new Date();
                 console.log("controlPanel : " + title + " " + itemId + " " + request.files[f].name);
-//                 var newItem = new item("application-organize", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
-                var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
+                 var newItem = new item("application-organize", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                //var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;
+                
+                
+                
+                
+                
+                
                 
             }
 // 		    gm(localPath).size(function(err, size) {
@@ -987,6 +993,62 @@ function tileAll(){
      }
 }
 
+function tileSubset(subset, startX, stopX){
+    var width = stopX-startX;
+    var height = config.totalHeight; 
+    var numItems = subset.length;
+    
+    var numCols = Math.round( Math.sqrt( numItems * width/height ));
+    var numRows = Math.round( numItems / numCols );
+    console.log("tile subset.  rows: " + numRows + " cols: " + numCols);
+    
+    var colWidth = width/numCols; 
+    var rowHeight = height/numRows; 
+    
+    var gapW = colWidth*.025;
+    var gapH = rowHeight*.025; 
+    
+    var maxItemWidth = colWidth - 2*gapW;
+    var maxItemHeight = rowHeight - 2*gapH - config.titleBarHeight; 
+    
+    var row = 0;
+    var col = 0; 
+    for(var i=subset.length-1; i >=0; i--){
+            var x = col*colWidth + startX;
+            var y = row*rowHeight;
+            
+            //initial postion
+            subset[i].left = x + gapW;
+            subset[i].top = y + gapH; 
+                        
+            //resize
+            if( subset[i].width > items[i].height + config.titleBarHeight ){
+                subset[i].width = maxItemWidth; 
+                subset[i].height = items[i].width/items[i].aspect; 
+            }
+            else{
+                subset[i].height = maxItemHeight;
+                subset[i].width = items[i].height*items[i].aspect; 
+            }
+    
+            //shift to center
+            subset[i].left = subset[i].left + colWidth/2 - subset[i].width/2 - gapW;
+            subset[i].top = subset[i].top + rowHeight/2 - subset[i].height/2 - gapH;
+
+            var now = new Date();
+            sio.sockets.emit('setItemPositionAndSize', {elemId: subset[i].id, elemLeft: subset[i].left, elemTop: subset[i].top, elemWidth: subset[i].width, elemHeight: subset[i].height, date: now});
+
+            col++;
+            if( col >= numCols ){
+                col = 0;
+                row++; 
+            }
+     }
+
+
+
+}
+
 
 function sortBySrcName() {
     console.log("sorting by width");
@@ -1051,8 +1113,19 @@ function sortBySrcName(){
 }
 
 function sortByMetadata(idx){
+
+    //fill list of valid items
+    var itemsToSort = [];
+    var itemsToPartition = []; 
+    for(var i = 0; i < items.length; i++){
+        if( items[i].metadata[ metadataCategories[idx] ] != null )
+            itemsToSort.push( items[i] );
+        else
+            itemsToPartition.push( items[i] ); 
+    }
+
     console.log("sorting by metadata");
-    items.sort( function(item1, item2){ 
+    itemsToSort.sort( function(item1, item2){ 
         console.log("comparing: " + item1.metadata[ metadataCategories[idx] ]  + " to  " + item2.metadata[ metadataCategories[idx] ] ); 
         if( item1.metadata[ metadataCategories[idx] ] < item2.metadata[ metadataCategories[idx] ]  )
             return 1;
@@ -1060,8 +1133,18 @@ function sortByMetadata(idx){
             return -1;
         return 0; 
     });
-
-    tileAll();
+    
+    
+    var w1 = itemsToSort.length / items.length * config.totalWidth; 
+    tileSubset( itemsToSort, 0, w1);
+    tileSubset( itemsToPartition, w1, config.totalWidth );
+    
+//     
+//     items = [];
+//     items = itemsToSort; 
+//     itemCount = itemsToSort.length;
+// 
+//     tileAll();
 }
 
 function plotByMetadata(xIdx,yIdx){

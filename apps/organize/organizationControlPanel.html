@@ -36,7 +36,10 @@ void setup(){
 }
 
 void readData(String filename){
-
+  script =  loadStrings( filename ); 
+  
+  String[] tokens = split( script[0], "," ); 
+  resetTagValues( tokens );
   
 }
 
@@ -49,8 +52,8 @@ void resizeSketch(int newWidth, int newHeight ){
 
 
 void draw(){
-    //sageBeforeDraw();
-    //if( goRedraw ){
+    sageBeforeDraw();
+    if( goRedraw ){
         background(0);
         addNewButton.drawButton();
 
@@ -60,9 +63,13 @@ void draw(){
         
         fill(255);
         text( statusText, width/2, height/2);
-    //}
+    }
     
-    //sageAfterDraw();
+    sageAfterDraw();
+}
+
+void loadData(String filename){
+    
 }
 
 void addNewTagValues(String[] newTags){
@@ -308,9 +315,9 @@ void sageAfterSetup(){
 
 void sageBeforeDraw(){
     if( readyLoadData ){
-        //readData(filename);
-        //readyLoadData = false;
-        //goRedraw = true;
+        readData(filename);
+        readyLoadData = false;
+        goRedraw = true;
     }
     if( setMouseToPointer ){
         mouseX = pointerX;
