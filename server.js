@@ -1008,8 +1008,21 @@ function tileAll(){
                 items[i].height = items[i].width/items[i].aspect; 
             }
             else{
-                items[i].height = maxItemHeight;
+                items[i].height = maxItemHeight-config.titleBarHeight;
                 items[i].width = items[i].height*items[i].aspect; 
+            }
+            
+            //make sure in bounds
+            if( items[i].width > maxItemWidth )
+            {
+                 items[i].width = maxItemWidth; 
+                items[i].height = items[i].width/items[i].aspect;        
+            }
+            
+            if( items[i].height > maxItemHeight )
+            {
+                 items[i].height = maxItemHeight-config.titleBarHeight;
+                items[i].width = items[i].height*items[i].aspect;      
             }
     
             //shift to center
@@ -1070,6 +1083,20 @@ function tileSubset(subset, startX, stopX){
                 subset[i].height = maxItemHeight;
                 subset[i].width = subset[i].height*subset[i].aspect; 
             }
+            
+            //make sure in bounds
+            if( items[i].width > maxItemWidth )
+            {
+                 items[i].width = maxItemWidth; 
+                items[i].height = items[i].width/items[i].aspect;        
+            }
+            
+            if( items[i].height > maxItemHeight )
+            {
+                 items[i].height = maxItemHeight-config.titleBarHeight;
+                items[i].width = items[i].height*items[i].aspect;      
+            }
+    
     
             //shift to center
             subset[i].left = subset[i].left + colWidth/2 - subset[i].width/2 - gapW;
