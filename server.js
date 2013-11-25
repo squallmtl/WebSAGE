@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+var file = 'config/thor-cfg.json';
+//var file = 'config/iridium-cfg.json';
 
 var config;
 var numClients; 
