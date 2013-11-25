@@ -356,6 +356,12 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
         }
 	
     });
+    
+    socket.on("PipeDataOut" , function( data ){
+        console.log("pipe! " + data);
+        socket.emit("SendPipeDataOut", data);
+    
+    });
 
 
 });
@@ -613,6 +619,20 @@ app.post('/upload', function(request, response) {
                 items.push(newItem);
                 sio.sockets.emit('addNewElement', newItem);
                 itemCount++;     
+                
+            }
+            if( request.files[f].name.indexOf("chicagoMap") != -1 ){
+                console.log("chicagoMap " + this.source);
+
+                var itemId = "item"+itemCount.toString();
+                var title = request.files[f].name;
+                var aspect = 1;
+                var now = new Date();
+                console.log("chicagoMap: " + title + " " + itemId + " " + request.files[f].name);
+                var newItem = new item("application-chicagoMap", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                items.push(newItem);
+                sio.sockets.emit('addNewElement', newItem);
+                itemCount++;   
                 
             }
 // 		    gm(localPath).size(function(err, size) {

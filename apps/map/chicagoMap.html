@@ -4,7 +4,7 @@
 String[] names; 
 Neighborhood[] hoods;  
 float globalMinLat, globalMaxLat, globalMinLon, globalMaxLon; 
-Boolean overlay = false;
+Boolean overlay = true;
 
 void setup(){
     sageBeforeSetup();
@@ -12,15 +12,17 @@ void setup(){
     //****YOUR SETUP CODE HERE****
     size(800, 800);
 
-    readData(); 
+    readBoundaryData(); 
 
-    for( int i = 0; i < hoods.length; i++){
+    //for( int i = 0; i < hoods.length; i++){
         //println("minLat: " + hoods[i].minLat + " maxLat: " 
         //    + hoods[i].maxLat + " minLon " + hoods[i].minLon + " maxLon " + hoods[i].maxLon );
-    }
+    //}
 
-    if( overlay )
-        readOverlayData(); 
+    //if( overlay )
+    //    readData("../../uploads/fake.chicagoMap");
+        //readOverlayData(); 
+
     
     sageAfterSetup();
 }
@@ -44,7 +46,7 @@ void draw(){
 
 //************* YOUR FUNCTIONS HERE ********************//
 
-void readData(){
+void readBoundaryData(){
 
   String filename = "communityBoundaries.txt";
   String[] rows = loadStrings(filename); 
@@ -73,14 +75,41 @@ void readData(){
 
 }
 
-//fake!
-void readOverlayData(){
+void readData(String filename){
+    readOverlayData(filename);
+}
+
+void readPipedData(String[] newData){
+     for(int i =0 ; i<rows.length; i++){
+        processStringForOverlay( rows[i] );
+    }
+}
+
+void readOverlayData(String filename){
   
-  for(int i = 0; i < hoods.length; i++)
-  {
-    hoods[i].addDataValue( random(0.0, 100.0) );
-    hoods[i].addDataValue( random(0.0, 100.0) ); 
-  }
+    String[] rows = loadStrings(filename); 
+
+    
+    for(int i =0 ; i<rows.length; i++){
+        processStringForOverlay( rows[i] );
+    }
+
+ 
+}
+
+void processStringForOverlay(String r){
+
+    String[] tokens = split(r, ":" ); 
+    int id = parseInt(tokens[0]);
+    float value = parseFloat(tokens[1]);
+    
+    for(int i =0 ; i < hoods.length; i++){
+        if(id == i){//hoods.idx){
+            hoods[i].addDataValue(value);
+            //hoods[i].theColor = color(255,255,0);
+            break;
+        }
+    }
 }
 
 class Neighborhood{
@@ -154,7 +183,7 @@ class Neighborhood{
     dataValues[numDataValues] = value;
     numDataValues++;
     
-    theColor = mapDataToColor( value );
+    theColor = color(255, 0, 0);//mapDataToColor( value );
   }
   
   void drawNeighborhood(){
@@ -261,7 +290,7 @@ void emitSelectionEvents( String selectedId ){
     
 }
 
-//*************  NO NEED TO MODIFY THE FOLLOWING METHODS *************//
+
 void sageBeforeSetup(){
 
 }
@@ -271,6 +300,16 @@ void sageAfterSetup(){
 }
 
 void sageBeforeDraw(){
+    if( pipedDataReady ){
+        readPipedData( pipedData);
+        goRedraw = true;
+    }
+    
+    if( readyLoadData ){
+        readData(filename);
+        readyLoadData = false;
+        goRedraw = true;
+    }
     if( setMouseToPointer ){
         mouseX = pointerX;
         mouseY = pointerY;
@@ -286,18 +325,16 @@ void sageBeforeDraw(){
         
         handlePointerPress = false; 
     }
+    if( handleResize ){
+        resizeSketch( newWidth, newHeight );
+        handleResize = false; 
+    }
 }
 
 void sageAfterDraw(){
     //sendMsg( "drawDone");   
     goRedraw = false; 
 }
-
-
-//Sage Vis developers note:
-//  to add:
-//  Boolean pointerOver(xMin, xMan, yMin, yMax): look though all pointers and return true if a pointer is over
-
 
 </script>
 <canvas id="mycanvas"></canvas>
@@ -319,8 +356,14 @@ var pointerY = 0;
 var handlePointerPress = false; 
 var pointerPressed = false; 
 var goRedraw = false; 
+var handleResize = false;
+var newWidth = 0;
+var newHeight =0;
 var setMouseToPointer = false; 
-//var inputData = "";
+var readyLoadData = false; 
+var filename = "";
+var pipedDataReady = false;
+var pipedData = [];
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -362,10 +405,21 @@ function receiveMessage(event)
     }
     else if(event.data.indexOf('resize') != -1){
         var tokens = event.data.split(' ' ); 
-        var newWidth = tokens[2];
-        var newHeight = tokens[4]; 
-        resizeSketch(newWidth, newHeight);
+        newWidth = tokens[2];
+        newHeight = tokens[4]; 
+        goRedraw = true;
+        handleResize = true; 
+    }
+    else if( event.data.indexOf("loadData") != -1 ){
+        var tokens = event.data.split(' ' ); 
+        filename = tokens[2];
+        readyLoadData = true;
+        goRedraw = true;
+    }
+    else if(event.data.indexOf("newOverlayData") != -1){
+        pipedData = event.data.split(' '); 
         
+        pipedDataReady = true;
     }
 
 }
@@ -386,3 +440,56 @@ function sendMsg(msg){
 
 </script>
 
+<!-- 
+
+</script>
+<canvas id="mycanvas"></canvas>
+
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
+<script type="application/javascript">
+var url;
+var socket;
+
+url = window.location.origin;
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
+//~~~~~~~~- LISTEN TO EVENTS FROM WEBSAGE~~~~~~~~~~~~~~-
+var pointerX = 0;
+var pointerY = 0; 
+var pointerPressed = false; 
+var readyRedraw = false; 
+
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
+//     return;
+    if (event.data.indexOf( 'pointerClick') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        pointerPressed = true;     
+        readyRedraw = true;     
+    }
+    if (event.data.indexOf( 'pointerMove') != -1) {
+        var tokens = event.data.split(' ');
+        pointerX = tokens[2];
+        pointerY = tokens[4]; 
+        readyRedraw = true;     
+    } 
+
+}
+
+
+//~~~~~~~~- SEND EVENTS TO WEBSAGE ~~~~~~~~~~~~~~-
+function sendMsg(msg){
+    
+    socket.emit("pointerEventRecorded", msg);
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+
+}
+
+</script>
+ -->

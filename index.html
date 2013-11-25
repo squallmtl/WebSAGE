@@ -176,6 +176,26 @@
  
                     } 
 			    }
+                if( elem_data.type.indexOf("chicagoMap") != -1 ){
+                    var ifrm = document.createElement("IFRAME"); 
+                    ifrm.id = elem_data.id + "_site"
+                    ifrm.className = "sageItem";
+                    if( url.indexOf( "10.0.8.100" ) != -1)
+                        ifrm.src = "http://iridium:9090/apps/map/chicagoMap.html";
+                      //  ifrm.src = "10.0.8.100:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                     else
+                        ifrm.src = url+"/apps/map/chicagoMap.html";  //"http://localhost:9090/apps/histogram/histogram.html";  //elem_data.src; 
+                    ifrm.width =  elem_data.width;
+                    ifrm.height = elem_data.height;
+                    windowItem.appendChild(ifrm); 
+
+                    console.log("Application");
+                    ifrm.onload = function() { 
+                        ifrm.contentWindow.postMessage('loadData f ' + elem_data.src + ' id ' + elem_data.id, '*');
+                        //ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
+ 
+                    } 
+			    }
                 if( elem_data.type.indexOf("sageScript") != -1 ){
                     var ifrm = document.createElement("IFRAME"); 
                     ifrm.id = elem_data.id + "_site"
@@ -559,6 +579,16 @@
 //             selectedElement.dispatchEvent(e);
           
           });  
+          
+          socket.on("SendPipeDataOut", function(data){
+              var child = selectedWindow.getElementsByClassName("sageItem");
+                for(var i = 0; i < child.length; i++){
+                   if(child[i].tagName.toLowerCase() == "iframe"){
+                        console.log(child[i]);
+                        child[i].contentWindow.postMessage('newOverlayData ' + data, '*');  
+                    }
+                }
+          });
             
 //             var selectedElement = document.getElementById( ptr_data.elemId+"_site" );
 //              console.log(selectedElement);

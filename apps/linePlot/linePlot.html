@@ -10,6 +10,7 @@ String[] attributeNames;
 color backgroundColor = 0; 
 float globalMaxValue;
 
+
 void setup(){
 
  sageBeforeSetup();
@@ -73,10 +74,10 @@ void draw(){
       hoods[i].drawPlotLine();
     }
     
-  } 
+  }
+
       sageAfterDraw();
 }
-
 
 
 class Neighborhood{
@@ -132,12 +133,26 @@ class Neighborhood{
       if( mouseX-gap < x && mouseX+gap > x){
         fill(theColor);
         ellipse( x, y, 10, 10);
+        
       }
         noFill();
     }
     endShape();
   }
+  
+  void valueClosestToX(float x){
+      float gap = (mapYearToX(2001) - mapYearToX(2000));  ///2.0 ; 
+
+    for(int i=0; i<values.length; i++){
+      float x = mapYearToX( years[i] );
+      if( mouseX-gap < x && mouseX+gap > x){
+            return values[i] 
+      }
+    }
+    return -1;
+  }
 }
+
 
 float mapYearToX(float year){
   return map( year, 2000, 2013, plotX1, plotX2);
@@ -151,6 +166,15 @@ float mapValueToY(float value){
 
 void mousePressed(){
     //your mouse pressed handler here
+    
+    String toTransmit = ""; 
+    
+    //fill the pipe
+    for(int i = 0; i < hoods.length; i++){
+        toTransmit += hoods.idx + ":" + hoods.valueClosestToX(mouseX) + " ";
+    }
+    
+    sendMsg("PipeDataOut " + toTransmit );
     
 }
 
@@ -248,6 +272,10 @@ var newHeight =0;
 var setMouseToPointer = false; 
 var readyLoadData = false; 
 var filename = "";
+var itemId = "";
+var readyAddTags = false;
+var theNewTags = [];
+
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -298,7 +326,22 @@ function receiveMessage(event)
         var tokens = event.data.split(' ' ); 
         filename = tokens[2];
         readyLoadData = true;
+        itemId = tokens[4];
     }
+    else if( event.data.indexOf("setItemId") != -1){
+        var tokens = event.data.split(' ' ); 
+        itemId = tokens[2];
+    }
+//     else if( event.data.indexOf("metaAdded") != -1 ){
+// //         theNewTags = []; 
+// //         readyAddTags = true;
+// //         var tokens = event.data.split(' ');
+// //         for(var i = 1; i < tokens.length; i++){
+// //             theNewTags[i-1] = tokens[i];
+// //         }
+//         statusText = "ADDED!!";//event.data;
+//         goRedraw = true;
+//     }
 
 }
 
@@ -306,7 +349,7 @@ function receiveMessage(event)
 //--------- SEND EVENTS TO WEBSAGE ---------------
 function sendMsg(msg){
     
-    socket.emit("eventInWindowRecorded", msg);
+    socket.emit("eventInWindowRecorded", (msg+" id " + itemId) );
     
     //window.parent.postMessage('sendingMsg: ' + msg, '*');  
 //     
@@ -316,58 +359,4 @@ function sendMsg(msg){
 //         readyRedraw = true;  
 }
 
-</script>
 
-<!-- 
-
-</script>
-<canvas id="mycanvas"></canvas>
-
-<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
-<script type="application/javascript">
-var url;
-var socket;
-
-url = window.location.origin;
-socket = io.connect(url);
-console.log("Connected to server: ", url);
-
-//~~~~~~~~- LISTEN TO EVENTS FROM WEBSAGE~~~~~~~~~~~~~~-
-var pointerX = 0;
-var pointerY = 0; 
-var pointerPressed = false; 
-var readyRedraw = false; 
-
-
-window.addEventListener("message", receiveMessage, false);
-function receiveMessage(event)
-{
-//   if (event.origin !== "http://example.org:8080")  //may add this later for security concerns
-//     return;
-    if (event.data.indexOf( 'pointerClick') != -1) {
-        var tokens = event.data.split(' ');
-        pointerX = tokens[2];
-        pointerY = tokens[4]; 
-        pointerPressed = true;     
-        readyRedraw = true;     
-    }
-    if (event.data.indexOf( 'pointerMove') != -1) {
-        var tokens = event.data.split(' ');
-        pointerX = tokens[2];
-        pointerY = tokens[4]; 
-        readyRedraw = true;     
-    } 
-
-}
-
-
-//~~~~~~~~- SEND EVENTS TO WEBSAGE ~~~~~~~~~~~~~~-
-function sendMsg(msg){
-    
-    socket.emit("pointerEventRecorded", msg);
-    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
-
-}
-
-</script>
- -->
