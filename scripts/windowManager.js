@@ -43,7 +43,6 @@ function windowManager(id, sock) {
 		this.ctx.fillStyle = "rgba(200, 200, 200, 1.0)";
 		this.ctx.fillRect(0,0, this.element.width, this.element.height);
         
-        
 		/* draw all items */
 		for(i=0; i<this.items.length; i++){
 			// item
@@ -56,9 +55,15 @@ function windowManager(id, sock) {
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
+        this.ctx.shadowOffsetX = 8;
+        this.ctx.shadowOffsetY = 8;
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = "#222222";
+
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
 			
+
 			// item icon
 			var size = 0.8*Math.min(eWidth, eHeight);
 			var x = eLeft + (eWidth/2) - (size/2);
@@ -82,11 +87,17 @@ function windowManager(id, sock) {
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.titleBarHeight * this.scale;
 			
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        this.ctx.shadowBlur = 0;
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
 		}
 		
-		
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        this.ctx.shadowBlur = 0;
+
 		/* draw tiled display layout */
 		this.ctx.lineWidth = 2;
 		this.ctx.strokeStyle = "rgba(0, 0, 0, 1.0)";

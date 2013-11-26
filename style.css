@@ -34,6 +34,7 @@ body {
 	background-color: #666666;
 	border: solid 1px #000000;
 	overflow: hidden;
+	box-shadow: 8px 8px 12px #222222;
 }
 
 .windowControls {
@@ -45,4 +46,5 @@ body {
 
 .sageItem {
 	display: block;
+	box-shadow: 8px 8px 12px #222222;
 }
