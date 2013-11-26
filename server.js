@@ -46,8 +46,8 @@ var initDate = new Date();
 
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
-var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
+//var file = 'config/thor-cfg.json';
+var file = 'config/iridium-cfg.json';
 
 var config;
 var numClients; 
@@ -1320,7 +1320,7 @@ function plotByMetadata(xIdx,yIdx){
         
         //position
             var newX = map( items[i].metadata[ metadataCategories[xIdx] ] , 0, maxX, 0, config.totalWidth ); 
-            var newY = map( items[i].metadata[ metadataCategories[yIdx] ] , 0, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
+            var newY = map( items[i].metadata[ metadataCategories[yIdx] ] , 0, maxY, config.totalHeight-config.totalHeight*(12/items.length), 0 ); 
         
             console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
         
@@ -1376,14 +1376,14 @@ function plotByMetadataByCat(xCat,yCat){
     //             items[i].height = items[i].width/items[i].aspect; 
     //         }
     //         else{
-                items[i].height = config.totalHeight*(2/items.length);
+                items[i].height = config.totalHeight*(6/items.length);
                 items[i].width = items[i].height*items[i].aspect; 
            // }
         
         //position
 
             var newX = map( items[i].metadata[ xCat ] , minX, maxX, 0, config.totalWidth ); 
-            var newY = map( items[i].metadata[ yCat ] , minY, maxY, config.totalHeight-config.totalHeight*(2/items.length), 0 ); 
+            var newY = map( items[i].metadata[ yCat ] , minY, maxY, config.totalHeight-config.totalHeight*(12/items.length), 0 ); 
         
             console.log( newX + " " + newY + " " + maxX + " " + maxY + " " + config.totalWidth + " " + config.totalHeight );
         
@@ -1506,7 +1506,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                         var r_pitch = Math.atan2(2.0*e.orx*e.orw-2.0*e.ory*e.orz , 1.0 - 2.0*e.orx*e.orx - 2.0*e.orz*e.orz);
 
                         if (e.serviceType == 0) {  // ServiceTypePointer
-                                console.log("pointer event! type: " + e.type  );
+                                //console.log("pointer event! type: " + e.type  );
                                 //console.log("ServiceTypePointer> source ", e.sourceId);
                                 if (e.type == 3) { // update
                                          if( e.sourceId in ptrs )
@@ -1524,7 +1524,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                         }
                                 }
                                 else if (e.type == 4) { // move
-                                        console.log("\t move ", e.posx, e.posy);
+                                        //console.log("\t move ", e.posx, e.posy);
                                         if (e.sourceId in ptrs) {
                                            sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
                                            ptrs[e.sourceId].position = [e.posx, e.posy];
@@ -1554,7 +1554,7 @@ var client    = net.connect(tport, tserver,  function() { //'connect' listener
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
                                         if (e.sourceId in ptrs) {
-                                                console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
+                                                //console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
 
                                                 //ptrs[e.sourceId].position = [e.posx, e.posy];
                                                 ptrs[e.sourceId].zoom = 1;
