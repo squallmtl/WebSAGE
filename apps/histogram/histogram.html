@@ -116,6 +116,7 @@ public class Chart{
         pushMatrix(); 
         translate( runningX+div/2,height-55);//-1* ((int)runningX+(int)div/2), -1*(int)height-55); 
         rotate(radians(360.0-45.0)); 
+        textSize(36);
         text(labels[i], 0, 0); //runningX+div/2, height-55 );
         popMatrix();
         
