@@ -13,6 +13,7 @@ p {
 body {
 	background-image: url('images/background2.jpg');
 	background-size: 100%;
+	cursor: none;
 }
 
 #main {

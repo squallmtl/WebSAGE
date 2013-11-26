@@ -1,3 +1,3 @@
 #!/bin/sh
 
-tentakel pkill chrome -HUP
+tentakel pkill -HUP chrome

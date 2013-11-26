@@ -27,8 +27,6 @@
 	//document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
-		document.body.style.cursor = 'none'; // page needs to have mouse in focus to initiate 
-	
 		url = window.location.origin;
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
