@@ -104,7 +104,7 @@ public class Chart{
     {
     
         if( !drawDifferently[1] )
-            fill(colors[i]);
+            fill(colors[i%10]);
         else{
             fill(#FFE45D);
         }
@@ -201,6 +201,19 @@ void sageBeforeDraw(){
         resizeSketch( newWidth, newHeight );
         handleResize = false; 
     }
+    if( goSyncColor ){
+        colors = new color[];
+        for(int i = 1; i < colorSyncTokens.length; i+=4){
+            var id = parseInt(colorSyncTokens[i]);
+            var r = parseInt(colorSyncTokens[i+1]);
+            var g = parseInt(colorSyncTokens[i+2]);
+            var b = parseInt(colorSyncTokens[i+3] );
+            //console.log( id + " " + r + " " + g + " " + b )
+            colors.push( color(r,g,b) );
+        }
+
+        goRedraw = true;
+    }
     
 }
 
@@ -236,6 +249,14 @@ var newHeight =0;
 var readyLoadData = false; 
 var filename = "";
 //var inputData = "";
+var theNewTags = [];
+var newRed = 0;
+var newBlue = 0;
+var newGreen = 0;
+var colorSyncId = 0;
+var goSyncColor = false;
+
+var colorSyncTokens = [];
 
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -291,6 +312,20 @@ function receiveMessage(event)
 //         newHeight = 1000;
 //         handleResize = true;
 //         goRedraw = true;
+    }
+    else if (event.data.indexOf("color") != -1 ){
+         colorSyncTokens = event.data.split(' ' );
+         console.log("sync!  " + event.data);
+//         for(int i = 0; i < tokens.size; i++){
+//             
+//         }
+//         newRed = parseInt(tokens[2]);
+//         newGreen = parseInt(tokens[3]);
+//         newBlue = parseInt(tokens[4]);
+//         colorSyncId = parseInt(tokens[1]); 
+//         
+//         console.log("color sync id = " + colorSyncId);
+        goSyncColor = true;
     }
 
 

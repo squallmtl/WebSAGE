@@ -76,6 +76,28 @@ public class Chart{
   }
   
   void drawChart(){
+  
+      if( goSyncColor ){
+        colors = new color[values.length]; 
+        for(int i = 1; i < colorSyncTokens.length; i+=4){
+            var id = parseInt(colorSyncTokens[i]);
+            var r = parseInt(colorSyncTokens[i+1]);
+            var g = parseInt(colorSyncTokens[i+2]);
+            var b = parseInt(colorSyncTokens[i+3] );
+            colors[id] = color(r,g,b);  //.push( color( r, g, b ) );
+            //console.log( id + " " + r + " " + g + " " + b )
+            //for(int j = 0 ; j < hoods.length; j++){
+               //if( parseInt( hoods[j].name ) == id ){
+                    //hoods[j].theColor = color(r, g, b );
+                 //   break;
+                //}
+            //}
+        }
+
+       goSynColor = false;
+    }
+  
+  
     rectMode(CORNERS);
     float startX = 100; 
     float endX = width-10;
@@ -91,7 +113,7 @@ public class Chart{
     {
     
         if( !drawDifferently[1] )
-            fill(colors[i]);
+            fill(colors[i%10]);
         else{
             fill(#FFE45D);
         }
@@ -135,32 +157,79 @@ public class Chart{
 
 
 
-
 </script>
 <canvas id="mycanvas"></canvas>
-
+<script type="text/javascript" src="../../lib/socket.io.min.js"></script>
 <script type="application/javascript">
+
+var url;
+var socket;
+
+url = window.location.origin;  //works on desktop and thor
+if( url.indexOf("iridium") >= 0 ) //iridium is special
+    url = "10.0.8.100:9090";
+socket = io.connect(url);
+console.log("Connected to server: ", url);
+
 var pointerX = 0;
 var pointerY = 0; 
 var pointerPressed = false; 
 var readyRedraw = false; 
-window.onmessage = function(e){
-    if (e.data.indexOf( 'pointerClick') != -1) {
+var theNewTags = [];
+var newRed = 0;
+var newBlue = 0;
+var newGreen = 0;
+var colorSyncId = 0;
+var goSyncColor = false;
+
+var colorSyncTokens = [];
+
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+//window.onmessage = function(e){
+    if (event.data.indexOf( 'pointerClick') != -1) {
         var tokens = e.data.split(' ');
         pointerX = tokens[2];
         pointerY = tokens[4]; 
         pointerPressed = true;     
         readyRedraw = true;     
     }
-    if (e.data.indexOf( 'pointerMove') != -1) {
+    if (event.data.indexOf( 'pointerMove') != -1) {
         var tokens = e.data.split(' ');
         pointerX = tokens[2];
         pointerY = tokens[4]; 
         readyRedraw = true;     
     } 
+    if (event.data.indexOf("color") != -1 ){
+         colorSyncTokens = event.data.split(' ' );
+         console.log("sync!  " + event.data);
+//         for(int i = 0; i < tokens.size; i++){
+//             
+//         }
+//         newRed = parseInt(tokens[2]);
+//         newGreen = parseInt(tokens[3]);
+//         newBlue = parseInt(tokens[4]);
+//         colorSyncId = parseInt(tokens[1]); 
+//         
+//         console.log("color sync id = " + colorSyncId);
+        goSyncColor = true;
+    }
     
     
 };
+//--------- SEND EVENTS TO WEBSAGE ---------------
+function sendMsg(msg){
+    
+    socket.emit("eventInWindowRecorded", (msg+" id " + itemId) );
+    
+    //window.parent.postMessage('sendingMsg: ' + msg, '*');  
+//     
+//         pointerX = 800;
+//         pointerY = 100; 
+//         pointerPressed = true;     
+//         readyRedraw = true;  
+}
 
 
 </script>
