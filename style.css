@@ -28,6 +28,7 @@ body {
 .windowItem {
 	position:absolute;
 	border: solid 1px #000000;
+	box-shadow: 8px 8px 12px #222222;
 }
 
 .windowTitle {

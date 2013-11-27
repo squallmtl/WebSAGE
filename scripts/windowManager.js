@@ -51,12 +51,22 @@ function windowManager(id, sock) {
 			this.ctx.lineWidth = 2;
 			this.ctx.strokeStyle = "rgba(90, 90, 90, 1.0)";
 			
+			this.ctx.shadowOffsetX = 8;
+			this.ctx.shadowOffsetY = 8;
+			this.ctx.shadowBlur = 12;
+			this.ctx.shadowColor = "#222222";
+			
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = (this.items[i].top+this.titleBarHeight) * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
+			
+			this.ctx.shadowOffsetX = 0;
+			this.ctx.shadowOffsetY = 0;
+			this.ctx.shadowBlur = 0;
+			
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
 			
 			// item icon

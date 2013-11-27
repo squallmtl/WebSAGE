@@ -172,7 +172,7 @@
 				vid.height = elem_data.height;
 				vid.controls = false;
 				vid.style.backgroundColor = "#333333";
-				if(elem_data.extra != null) vid.poster = elem_data.extra;
+				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
 				vid.addEventListener('canplay', function() {
 					console.log("video can now play"); // Video is loaded and can be played
@@ -180,23 +180,12 @@
 				
 				console.log(elem_data.src);
 				
-				if(elem_data.src != null){
-					var source1 = document.createElement("source");
-					var param = elem_data.src.indexOf('?');
-					if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
-					else source1.src = elem_data.src + "?clientID=" + clientID.toString();
-					source1.type = "video/mp4";
-					vid.appendChild(source1);
-				}
-				
-				if(elem_data.resrc != null){
-					var source2 = document.createElement("source");
-					var param = elem_data.resrc.indexOf('?');
-					if(param >= 0) source2.src = elem_data.resrc + "&clientID=" + clientID.toString();
-					else source2.src = elem_data.resrc + "?clientID=" + clientID.toString();
-					source2.type = "video/webm";
-					vid.appendChild(source2);
-				}
+				var source1 = document.createElement("source");
+				var param = elem_data.src.indexOf('?');
+				if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
+				else source1.src = elem_data.src + "?clientID=" + clientID.toString();
+				source1.type = "video/mp4";
+				vid.appendChild(source1);
 				
 				windowItem.appendChild(vid);
 			}

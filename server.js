@@ -107,8 +107,6 @@ sio.sockets.on('connection', function(socket) {
 				console.log(info.title);
 				var mp4Idx = -1;
 				var mp4Resolution = 0;
-				var webmIdx = -1;
-				var webmResolution = 0;
 				for(i=0; i<info.formats.length; i++){
 					if(info.formats[i].container == "mp4"){
 						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
@@ -117,27 +115,19 @@ sio.sockets.on('connection', function(socket) {
 							mp4Resolution = res;
 						}
 					}
-					else if(info.formats[i].container == "webm"){
-						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
-						if(res > webmResolution){
-							webmIdx = i;
-							webmResolution = res;
-						}
-					}
 				}
 				console.log("mp4 resolution:  " + mp4Resolution);
-				console.log("webm resolution: " + webmResolution);
 				
 				var itemId = "item"+itemCount.toString();
 				var title = info.title;
 				var aspect = 16/9;
 				var now = new Date();
-				var resolutionY = Math.max(mp4Resolution, webmResolution);
+				var resolutionY = mp4Resolution;
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
 				if(poster == null) poster = info.iurl;
 				if(poster == null) poster = info.iurlsd;
-				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
+				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, poster, null);
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -310,7 +300,7 @@ app.post('/upload', function(request, response) {
 				});
 				unzipper.extract({
 					path: uploadsFolder,
-					filter: function (file) {
+					filter: function(file) {
 						return file.type !== "SymbolicLink";
 					}
 				});
