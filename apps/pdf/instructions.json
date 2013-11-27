@@ -1,0 +1,12 @@
+{
+	"main_script": "pdf.js",
+	"type": "canvas",
+	"width": 400,
+	"height": 600,
+    "resources": [
+            {
+                    "type": "image",
+                    "src": "doc/test.pdf"
+            }
+    ]
+}

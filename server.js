@@ -43,9 +43,9 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
 	if(err){
@@ -219,6 +219,15 @@ sio.sockets.on('connection', function(socket) {
 				sio.sockets.emit('updateItemOrder', newOrder);
 				sio.sockets.emit('playPauseVideo', keypressItem.id);
 			}
+		}
+		else {
+			// Any other key: send it to the app
+			var keypressItem = findItemById(keypress_data.elemId);
+			var newOrder = moveItemToFront(keypressItem.id);
+			sio.sockets.emit('updateItemOrder', newOrder);
+			sio.sockets.emit('keyPressed', {elemId: keypressItem.id, type:keypressItem.type, key: keypress_data.keyCode} );
+			// var now = new Date();
+			// sio.sockets.emit('animateCanvas', {elemId: keypressItem.id, type: keypressItem.type, date: now});
 		}
 	});
 });

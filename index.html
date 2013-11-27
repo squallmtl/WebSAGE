@@ -8,6 +8,8 @@
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
+<script type="text/javascript" src="scripts/pdf.js"></script>
+
 <script type="text/javascript">
 	var sysTime;
 	var clientID;
@@ -115,12 +117,12 @@
 				canvasJS.type = "text/javascript";
 				canvasJS.src = elem_data.src;
 				document.head.appendChild(canvasJS);
-			
+
 				canvasJS.addEventListener('load', function(event) {
 					var canvasObj = new window[elem_data.extra];
+					canvasItems[elem_data.id + "_canvas"] = canvasObj;
 					canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
 					canvasObj.draw(date);
-					canvasItems[elem_data.id + "_canvas"] = canvasObj;
 				}, false);
 			}
 			else if(elem_data.type == "kineticjs"){
@@ -278,6 +280,17 @@
 			console.log(videoElem);
 			if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
 			else{ videoElem.pause(); console.log("pause"); }
+		});
+
+		socket.on('keyPressed', function(key_data) {
+			var canvasElem = document.getElementById(key_data.elemId);
+			var child = canvasElem.getElementsByClassName("sageItem");
+			if(key_data.type == "canvas" || key_data.type == "webgl" || key_data.type == "kineticjs" || key_data.type == "threejs"){
+				// if the app has a 'key' handler, call it
+				if (canvasItems[child[0].id].hasOwnProperty("key")) {
+					canvasItems[child[0].id].key(key_data.key);
+				}
+			}
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {

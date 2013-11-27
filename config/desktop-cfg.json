@@ -2,22 +2,17 @@
         "config": "laptop",
         "resolution": {
                 "width": 700,
-                "height": 700
+                "height": 500
         },
         "layout": {
                 "rows": 1,
-                "columns": 2
+                "columns": 1
         },
         "displays": [
                 {
                         "ID": 0,
                         "row": 0,
                         "column": 0
-                },
-                {
-                        "ID": 1,
-                        "row": 0,
-                        "column": 1
                 }
         ]
 }

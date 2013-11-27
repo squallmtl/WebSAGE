@@ -55,10 +55,11 @@ function windowManager(id, sock) {
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
-        this.ctx.shadowOffsetX = 8;
-        this.ctx.shadowOffsetY = 8;
-        this.ctx.shadowBlur = 12;
-        this.ctx.shadowColor = "#222222";
+			// Sets the drop shadow settings
+	        this.ctx.shadowOffsetX = 8;
+	        this.ctx.shadowOffsetY = 8;
+	        this.ctx.shadowBlur = 12;
+	        this.ctx.shadowColor = "#222222";
 
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
@@ -76,7 +77,6 @@ function windowManager(id, sock) {
 			else if(this.items[i].type == "webgl") this.ctx.drawImage(this.webglImg, x, y, size, size);
 			else if(this.items[i].type == "youtube") this.ctx.drawImage(this.youtubeImg, x, y, size, size);
 			
-			
 			// title bar
 			this.ctx.fillStyle = "rgba(102, 102, 102, 1.0)";
 			this.ctx.lineWidth = 2;
@@ -87,9 +87,11 @@ function windowManager(id, sock) {
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.titleBarHeight * this.scale;
 			
-        this.ctx.shadowOffsetX = 0;
-        this.ctx.shadowOffsetY = 0;
-        this.ctx.shadowBlur = 0;
+			// Disable drop shadow
+	        this.ctx.shadowOffsetX = 0;
+	        this.ctx.shadowOffsetY = 0;
+	        this.ctx.shadowBlur = 0;
+
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
 		}
