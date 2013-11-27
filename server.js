@@ -3,6 +3,7 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var path = require('path');
+var pdfutils = require('pdfutils').pdfutils;
 var decompresszip = require('decompress-zip');
 var gm = require('gm');
 var imageinfo = require('imageinfo');
@@ -258,14 +259,17 @@ app.post('/upload', function(request, response) {
 				});
 			}
 			else if(request.files[key].type == "application/pdf"){
-				var itemId = "item"+itemCount.toString();
-				var title = path.basename(localPath);
-				var aspect = 8.5 / 11;
-				var now = new Date();
-				var newItem = new item("pdf", title, itemId, localPath, 0, 0, 425, 550, aspect, now, null, null);
-				items.push(newItem);
-				sio.sockets.emit('addNewElement', newItem);
-				itemCount++;
+				pdfutils(localPath, function(err, doc) {
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = path.basename(localPath);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, localPath, 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
 			}
 			else if(request.files[key].type == "application/zip"){
 				var zipFolder = localPath.substring(0, localPath.length-4);
