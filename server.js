@@ -140,6 +140,7 @@ sio.sockets.on('connection', function(socket) {
 	var selectedScrollItem;
 	var selectOffsetX;
 	var selectOffsetY;
+	var selectTimeId = {};
 
 	socket.on('selectElementById', function(select_data) {
 		selectedMoveItem = findItemById(select_data.elemId);
@@ -186,6 +187,13 @@ sio.sockets.on('connection', function(socket) {
 		selectedScrollItem.height = iHeight;
 		var now = new Date();
 		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
+		
+		var elemId = selectedScrollItem.id;
+		if(elemId in selectTimeId) clearTimeout(selectTimeId[elemId]);
+		
+		selectTimeId[elemId] = setTimeout(function() {
+			sio.sockets.emit('finishedResize', elemId);
+		}, 500);
 	});
 	
 	socket.on('keypressElementById', function(keypress_data) {
@@ -193,13 +201,11 @@ sio.sockets.on('connection', function(socket) {
 			removeItemById(keypress_data.elemId);
 			sio.sockets.emit('deleteElement', keypress_data.elemId);
 		}
-		else if(keypress_data.keyCode == "32"){ // spacebar
+		else{
 			var keypressItem = findItemById(keypress_data.elemId);
 			var newOrder = moveItemToFront(keypressItem.id);
-			if(keypressItem.type == "video" || keypressItem.type == "youtube"){
-				sio.sockets.emit('updateItemOrder', newOrder);
-				sio.sockets.emit('playPauseVideo', keypressItem.id);
-			}
+			sio.sockets.emit('updateItemOrder', newOrder);
+			sio.sockets.emit('keypressItem', keypress_data);
 		}
 	});
 });
@@ -250,6 +256,16 @@ app.post('/upload', function(request, response) {
 						}
 					}
 				});
+			}
+			else if(request.files[key].type == "application/pdf"){
+				var itemId = "item"+itemCount.toString();
+				var title = path.basename(localPath);
+				var aspect = 8.5 / 11;
+				var now = new Date();
+				var newItem = new item("pdf", title, itemId, localPath, 0, 0, 425, 550, aspect, now, null, null);
+				items.push(newItem);
+				sio.sockets.emit('addNewElement', newItem);
+				itemCount++;
 			}
 			else if(request.files[key].type == "application/zip"){
 				var zipFolder = localPath.substring(0, localPath.length-4);

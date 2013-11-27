@@ -4,6 +4,8 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/pdf.js"></script>
+<script type="text/javascript" src="scripts/pdf_canvas.js"></script>
 <script type="text/javascript" src="scripts/videoControls.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
@@ -20,11 +22,8 @@
 	var socket;
 	
 	var itemCount = 0;
+	var pdfItems = {};
 	var canvasItems = {};
-
-	//document.addEventListener('mousemove', mouseMove, false);
-	//document.addEventListener('mouseup', mouseRelease, false);
-	//document.addEventListener('mousewheel', mouseScroll, false);
 	
 	function init() {
 		url = window.location.origin;
@@ -83,8 +82,6 @@
 			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
 			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
 			windowItem.style.zIndex = (itemCount+1).toString();
-			//windowItem.addEventListener('mousedown', mousePress, false);
-			//windowItem.addEventListener('mousewheel', scrollSelect, false);
 			main.appendChild(windowItem);
 			
 			if(elem_data.type == "img"){
@@ -98,6 +95,20 @@
 				img.draggable = false;
 				
 				windowItem.appendChild(img);
+			}
+			else if(elem_data.type == "pdf"){
+				var pdf = document.createElement("img");
+				pdf.id = elem_data.id + "_pdf"
+				pdf.className = "sageItem";
+				pdf.aspectRatio = elem_data.aspectRatio;
+				pdf.width = elem_data.width;
+				pdf.height = elem_data.height;
+				
+				windowItem.appendChild(pdf);
+				
+				var pdfObj = new pdf_canvas();
+				pdfObj.init(elem_data.id + "_pdf", elem_data.src);
+				pdfItems[elem_data.id + "_pdf"] = pdfObj;
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
@@ -260,11 +271,36 @@
 			}
 		});
 		
-		socket.on('playPauseVideo', function(elemId) {
-			var videoElem = document.getElementById(elemId + "_video");
-			console.log(videoElem);
-			if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
-			else{ videoElem.pause(); console.log("pause"); }
+		socket.on('finishedResize', function(elemId) {
+			var selectedElem = document.getElementById(elemId);
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+			
+			if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+				pdfItems[child[0].id].renderPage();
+			}
+		});
+		
+		socket.on('keypressItem', function(keypress_data) {
+			var selectedElem = document.getElementById(keypress_data.elemId);
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+		
+			if(keypress_data.keyCode == "32"){ // spacebar
+				if(child[0].id.substring(child[0].id.length - 5) == "video"){
+					playPauseVideo(keypress_data.elemId);
+				}
+			}
+			else if(keypress_data.keyCode == "37"){ // left arrow
+				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+					pdfItems[child[0].id].goPrevious();
+				}
+			}
+			else if(keypress_data.keyCode == "39"){ // right arrow
+				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+					pdfItems[child[0].id].goNext();
+				}
+			}
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
@@ -277,45 +313,12 @@
 			}
 		});
 	}
-
-	/*
-	function mousePress(event) {
-		var globalX = event.clientX + offsetX;
-		var globalY = event.clientY + offsetY;
-		
-		var leftpx = event.currentTarget.style.left;
-		var toppx = event.currentTarget.style.top;
-		
-		var eLeft = parseInt(leftpx.substring(0,leftpx.length-2)) + offsetX;
-		var eTop = parseInt(toppx.substring(0,toppx.length-2))+ offsetY;
-		
-		var selectOffsetX = eLeft - globalX;
-		var selectOffsetY = eTop - globalY;
-		
-		socket.emit('selectElementById', {elemId: event.currentTarget.id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
-	}
 	
-	function mouseMove(event) {
-		var globalX = event.clientX + offsetX;
-		var globalY = event.clientY + offsetY;
-		socket.emit('moveSelectedElement', {eventX: globalX, eventY: globalY});
+	function playPauseVideo(elemId) {
+		var videoElem = document.getElementById(elemId + "_video");
+		if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
+		else{ videoElem.pause(); console.log("pause"); }
 	}
-	
-	function mouseRelease(event) {
-		socket.emit('releaseSelectedElement');
-	}
-	
-	function scrollSelect(event) {
-		socket.emit('selectScrollElementById', event.currentTarget.id);
-	}
-	
-	function mouseScroll(event) {
-		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
-		if(event.wheelDelta < 0) scale = 1.0 / scale;
-		
-		socket.emit('scrollSelectedElement', scale);
-	}
-	*/
 	
 	function moveItemToFront(elem) {
 		var last = elem.parentNode.lastChild;
