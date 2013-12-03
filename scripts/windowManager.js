@@ -18,6 +18,8 @@ function windowManager(id, sock) {
 	this.imageImg.src = "images/image.png";
 	this.kineticjsImg = new Image();
 	this.kineticjsImg.src = "images/kineticjs.png";
+	this.pdfImg = new Image();
+	this.pdfImg.src = "images/pdf.png";
 	this.threejsImg = new Image();
 	this.threejsImg.src = "images/threejs.png";
 	this.videoImg = new Image();
@@ -51,12 +53,22 @@ function windowManager(id, sock) {
 			this.ctx.lineWidth = 2;
 			this.ctx.strokeStyle = "rgba(90, 90, 90, 1.0)";
 			
+			this.ctx.shadowOffsetX = 8;
+			this.ctx.shadowOffsetY = 8;
+			this.ctx.shadowBlur = 12;
+			this.ctx.shadowColor = "#222222";
+			
 			var eLeft = this.items[i].left * this.scale;
 			var eTop = (this.items[i].top+this.titleBarHeight) * this.scale;
 			var eWidth = this.items[i].width * this.scale;
 			var eHeight = this.items[i].height * this.scale;
 			
 			this.ctx.fillRect(eLeft, eTop, eWidth, eHeight);
+			
+			this.ctx.shadowOffsetX = 0;
+			this.ctx.shadowOffsetY = 0;
+			this.ctx.shadowBlur = 0;
+			
 			this.ctx.strokeRect(eLeft, eTop, eWidth, eHeight);
 			
 			// item icon
@@ -66,6 +78,7 @@ function windowManager(id, sock) {
 			if(this.items[i].type == "canvas") this.ctx.drawImage(this.canvasImg, x, y, size, size);
 			else if(this.items[i].type == "img") this.ctx.drawImage(this.imageImg, x, y, size, size);
 			else if(this.items[i].type == "kineticjs") this.ctx.drawImage(this.kineticjsImg, x, y, size, size);
+			else if(this.items[i].type == "pdf") this.ctx.drawImage(this.pdfImg, x, y, size, size);
 			else if(this.items[i].type == "threejs") this.ctx.drawImage(this.threejsImg, x, y, size, size);
 			else if(this.items[i].type == "video") this.ctx.drawImage(this.videoImg, x, y, size, size);
 			else if(this.items[i].type == "webgl") this.ctx.drawImage(this.webglImg, x, y, size, size);

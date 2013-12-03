@@ -3,8 +3,10 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var path = require('path');
+var pdfutils = require('pdfutils').pdfutils;
 var decompresszip = require('decompress-zip');
 var gm = require('gm');
+var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
 var ytdl = require('ytdl');
 
@@ -44,10 +46,15 @@ sio.configure('development', function () {
 var initDate = new Date();
 
 
+
 var fs = require('fs');
 //var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridium-cfg.json';
+//var file = 'config/iridium-cfg.json';
+//var file = 'config/thor-cfg.json';
+//var file = 'config/iridium-cfg.json';
+var file = 'config/iridiumX-cfg.json';
+//var file = 'config/lyra-cfg.json';
 
 var config;
 var numClients; 
@@ -59,8 +66,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 	config = JSON.parse(json_str);
 	config.totalWidth = config.resolution.width * config.layout.columns;
 	config.totalHeight = config.resolution.height * config.layout.rows;
-	config.titleBarHeight = Math.round(0.03 * config.totalHeight);
-	config.titleTextSize = Math.round(0.018 * config.totalHeight);
+	config.titleBarHeight = Math.round(0.025 * config.totalHeight);
+	config.titleTextSize = Math.round(0.015 * config.totalHeight);
 	console.log(config);
 	numClients = config.layout.columns * config.layout.rows; 
 	
@@ -140,44 +147,26 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 // 				}
 //
 	socket.on('addNewWebElement', function(elem_data) {
-		if(elem_data.type == "img"){
-			var fileName = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
-			var tmpFile = fs.createWriteStream("tmp/" + fileName);
-			request(elem_data.src).pipe(tmpFile);
-			
-			tmpFile.on('close', function() {
-				console.log("finished");
-				gm("tmp/" + fileName).size(function(err, size) {
-					if(!err){
-						var itemId = "item"+itemCount.toString();
-						var title = fileName;
-						var aspect = size.width / size.height;
-						var now = new Date();
-						var newItem = new item("img", title, itemId, elem_data.src, 0, 0, size.width, size.height, aspect, now, "", "" );
-						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
-						itemCount++;
-						console.log(elem_data.src);
-						
-						// delete tmp file
-						fs.unlink("tmp/" + fileName, function(err) {
-							if(err) console.log(err);
-						});
-					}
-					else{
-						console.log("Error: " + err);
-					}
-				});
-				
-			});
+		if(elem_data.type == "img"){				
+				console.log(elem_data.src);
+				var info = imageinfo(body);
+				var itemId = "item"+itemCount.toString();
+				var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+				var source = "data:" + info.mimeType + ";base64, " + body.toString("base64");
+				var aspect = info.width / info.height;
+				var now = new Date();
+				var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
+				items.push(newItem);
+				sio.sockets.emit('addNewElement', newItem);
+				itemCount++;
 		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
+				if(err) throw err;
+				
 				console.log(info.title);
 				var mp4Idx = -1;
 				var mp4Resolution = 0;
-				var webmIdx = -1;
-				var webmResolution = 0;
 				for(i=0; i<info.formats.length; i++){
 					if(info.formats[i].container == "mp4"){
 						var itemId = "item"+itemCount.toString();
@@ -200,28 +189,19 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 							mp4Resolution = res;
 						}
 					}
-					else if(info.formats[i].container == "webm"){
-						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
-						if(res > webmResolution){
-							webmIdx = i;
-							webmResolution = res;
-						}
-					}
 				}
 				console.log("mp4 resolution:  " + mp4Resolution);
-				console.log("webm resolution: " + webmResolution);
 				
 				var itemId = "item"+itemCount.toString();
 				var title = info.title;
 				var aspect = 16/9;
 				var now = new Date();
-				var resolutionY = Math.max(mp4Resolution, webmResolution);
+				var resolutionY = mp4Resolution;
 				var resolutionX = resolutionY * aspect;
 				var poster = info.iurlmaxres;
 				if(poster == null) poster = info.iurl;
 				if(poster == null) poster = info.iurlsd;
-// 				var newItem = new item("video", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster, {});
-				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, info.formats[webmIdx].url, poster);
+				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, poster, null);
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
@@ -244,6 +224,7 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 	var selectedScrollItem;
 	var selectOffsetX;
 	var selectOffsetY;
+	var selectTimeId = {};
 
 	socket.on('selectElementById', function(select_data) { //when window manager or pointer selects a window, this gets called.  
 		selectedMoveItem = findItemById(select_data.elemId);
@@ -290,9 +271,15 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
 		selectedScrollItem.height = iHeight;
 		var now = new Date();
 		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
+		
+		var elemId = selectedScrollItem.id;
+		if(elemId in selectTimeId) clearTimeout(selectTimeId[elemId]);
+		
+		selectTimeId[elemId] = setTimeout(function() {
+			sio.sockets.emit('finishedResize', elemId);
+		}, 500);
 	});
 	
-
     //to do- incorporate ptr id, so can distinguish counts of multiple pointers
 	socket.on('eventInWindowRecorded', function(msg){
 	    console.log("in server, got it: " + msg);
@@ -313,8 +300,21 @@ sio.sockets.on('connection', function(socket) {  //called every time new window 
             processEventFromWindows( msg, tokens ); 
             eventsFromWindows[tokens[0]] = null;    
         }
-	        
-	});
+	});	        
+
+	socket.on('keypressElementById', function(keypress_data) {
+		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
+			removeItemById(keypress_data.elemId);
+			sio.sockets.emit('deleteElement', keypress_data.elemId);
+		}
+		else{
+			var keypressItem = findItemById(keypress_data.elemId);
+			var newOrder = moveItemToFront(keypressItem.id);
+			sio.sockets.emit('updateItemOrder', newOrder);
+			sio.sockets.emit('keypressItem', keypress_data);
+		}
+
+});
 	
 	socket.on("organizeVisRequested", function( data ){
         console.log("in server, got it: " + "organizeVisRequested");
@@ -397,37 +397,37 @@ function processEventFromWindows( msg, tokens ){
 // }
 
 app.post('/upload', function(request, response) {
-	var i;
-	var uploads
-	for(var f in request.files){
-		var uploadPath = path.dirname(request.files[f].path);
-		var finalPath = path.join(uploadPath, request.files[f].name);
-		fs.rename(request.files[f].path, finalPath);
+	var fileKeys = Object.keys(request.files);
+	fileKeys.forEach(function(key) {
+		var uploadPath = path.dirname(request.files[key].path);
+		var finalPath = path.join(uploadPath, request.files[key].name);
+		fs.rename(request.files[key].path, finalPath, function(err) {
+			if(err) throw err;
+			
+			var localPath = finalPath.substring(__dirname.length+1);
+			console.log(localPath);
 		
-		var localPath = finalPath.substring(__dirname.length+1);
-		console.log(localPath);
-		
-		if(request.files[f].type == "image/jpeg" || request.files[f].type == "image/png" || request.files[f].type == "image/bmp"){
-			gm(localPath).size(function(err, size) {
-				if(!err){
+			if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
+				fs.readFile(localPath, function (err, data) {
+					if(err) throw err;
+				
+					var info = imageinfo(data);
 					var itemId = "item"+itemCount.toString();
-					var title = path.basename(this.source);
-					var aspect = size.width / size.height;
+					var title = path.basename(localPath);
+					var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
+					var aspect = info.width / info.height;
 					var now = new Date();
-					var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
+					var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
-				}
-				else{
-					console.log("Error: " + err);
-				}
-			});
-		}
-		else if(request.files[f].type == "video/mp4"){
-			ffprobe(localPath, function(err, data){
-				if(!err){
-					for(i=0; i<data.streams.length; i++){
+				});
+			}
+			else if(request.files[key].type == "video/mp4"){
+				ffprobe(localPath, function(err, data){
+					if(err) throw err;
+				
+					for(var i=0; i<data.streams.length; i++){
 						if(data.streams[i].codec_type == "video"){
 							var itemId = "item"+itemCount.toString();
 							var title = data.filename;
@@ -437,225 +437,206 @@ app.post('/upload', function(request, response) {
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
-							
+						
 							break;
 						}
 					}
-				}
-				else{
-					console.log("Error: " + err);
-				}
-			});
-		}
-		else if(request.files[f].type == "application/zip"){
-			var zipFolder = localPath.substring(0, localPath.length-4);
-			var zipName = request.files[f].name.substring(0, request.files[f].name.length-4);
+				});
+			}
+			else if(request.files[key].type == "application/pdf"){
+				pdfutils(localPath, function(err, doc) {
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = path.basename(localPath);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, localPath, 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
+			}
+			else if(request.files[key].type == "application/zip"){
+				var zipFolder = localPath.substring(0, localPath.length-4);
+				var zipName = request.files[key].name.substring(0, request.files[key].name.length-4);
 			
-			var unzipper = new decompresszip(localPath);
-			unzipper.on('extract', function (log) {
-				// read instructions for how to handle
-				var zipPath = localPath.substring(0, localPath.length-4);
-				console.log("reading instructions");
-// 				var instuctionsFile = zipPath + "/instructions.json";
-// =======
-				var instuctionsFile = zipFolder + "/instructions.json";
-
-				fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
-					if(err){
-						console.log('Error: ' + err);
-						return;
-					}
-					var instructions = JSON.parse(json_str);
+				var unzipper = new decompresszip(localPath);
+				unzipper.on('extract', function(log) {
+					// read instructions for how to handle
+					var instuctionsFile = zipFolder + "/instructions.json";
+					fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
+						if(err) throw err;
 					
-					// add resource scripts to clients
-					for(i=0; i<instructions.resources.length; i++){
-						if(instructions.resources[i].type == "script"){
-							sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
+						var instructions = JSON.parse(json_str);
+					
+						// add resource scripts to clients
+						for(var i=0; i<instructions.resources.length; i++){
+							if(instructions.resources[i].type == "script"){
+								sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
+							}
 						}
-					}
-					
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
-					setTimeout(function() {
-						var itemId = "item"+itemCount.toString();
-						var title = zipName;
-						var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
-						var now = new Date();
-						var aspect = instructions.width / instructions.height;
-// <<<<<<< HEAD
-// 						var appExtra = [instructions.type, objName];
-// 						var newItem = new item("canvas", title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", appExtra, {});
-// =======
-						var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
-//>>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
-						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
-						itemCount++;
+						setTimeout(function() {
+							var itemId = "item"+itemCount.toString();
+							var title = zipName;
+							var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
+							var now = new Date();
+							var aspect = instructions.width / instructions.height;
+							var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
+							items.push(newItem);
+							sio.sockets.emit('addNewElement', newItem);
+							itemCount++;
 				
-						// set interval timer if specified
-						if(instructions.animation == "timer"){
-							setInterval(function() {
-								var now = new Date();
-								sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
-							}, instructions.interval);
-						}
-					}, 1000);
-				});
+							// set interval timer if specified
+							if(instructions.animation == "timer"){
+								setInterval(function() {
+									var now = new Date();
+									sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
+								}, instructions.interval);
+							}
+						}, 1000);
+					});
 				
-				// delete original zip file
-				fs.unlink(localPath, function(err) {
-					if(err) console.log(err);
+					// delete original zip file
+					fs.unlink(localPath, function(err) {
+						if(err) throw err;
+					});
 				});
-			});
-			unzipper.extract({
-				path: uploadsFolder,
-				filter: function (file) {
-					return file.type !== "SymbolicLink";
-				}
-			});
-		}
-		else if( request.files[f].type == "application/octet-stream"){
-            console.log("in applicaiton/octet-stream     processing: " + request.files[f].name);
-            if( request.files[f].name.indexOf("metadata") != -1 ){
-                console.log("metadata " + this.source);
-                
-                var outputStr; 
-                fs.readFile("uploads/"+request.files[f].name, 'utf8', function(err, outputStr) {
-                    if(err){
-                        console.log('Error: ' + err);
-                        return;
-                    }
-                    console.log("result = " + outputStr);
-                    
-                    var tokens = outputStr.split('!');
-                    console.log(tokens.length);
-                    for(var i = 0; i < tokens.length; i++){
-                        if( tokens[i].charAt(0) == '#' ){
-                            //store category names
-                            var subTokens = tokens[i].split(":"); 
-                            var values = subTokens[1].split(",");
-                            
-                            for(var j =0; j < values.length; j++){
-                                metadataCategories[j] = values[j]; 
-                            }
-                        }
-                        else{ //store data
-                            var subTokens = tokens[i].split(":");
-                            var label = subTokens[0]; 
-                            var values = subTokens[1].split(",");
-                            for(var j =0; j < values.length; j++){
-                                addMetadata( label.trim(), metadataCategories[j], values[j] );
-                            } 
-                            
-                        }
-                            
+                unzipper.extract({
+                    path: uploadsFolder,
+                    filter: function (file) {
+                        return file.type !== "SymbolicLink";
                     }
                 });
-
-//                 
-//                 var itemId = "item"+itemCount.toString();
-//                 var title = request.files[f].name;
-//                 var aspect = 1;
-//                 var now = new Date();
-//                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
-//                 var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 800, 800, aspect, now, "", "");
-//                 items.push(newItem);
-//                 sio.sockets.emit('addNewElement', newItem);
-//                 itemCount++;
-//                 
-//                 sio.sockets.emit('metadataAdded', metadataCategories);
-            }
-            else if( request.files[f].name.indexOf("histogram") != -1 ){
-                console.log("histogram " + this.source);
-
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 1;
-                var now = new Date();
-                console.log("histogram: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;
+			}		
+			else if( request.files[f].type == "application/octet-stream"){
+                console.log("in applicaiton/octet-stream     processing: " + request.files[f].name);
+                if( request.files[f].name.indexOf("metadata") != -1 ){
+                    console.log("metadata " + this.source);
                 
-            }
-            else if( request.files[f].name.indexOf("linePlot") != -1 ){
-                console.log("linePlot " + this.source);
+                    var outputStr; 
+                    fs.readFile("uploads/"+request.files[f].name, 'utf8', function(err, outputStr) {
+                        if(err){
+                            console.log('Error: ' + err);
+                            return;
+                        }
+                        console.log("result = " + outputStr);
+                    
+                        var tokens = outputStr.split('!');
+                        console.log(tokens.length);
+                        for(var i = 0; i < tokens.length; i++){
+                            if( tokens[i].charAt(0) == '#' ){
+                                //store category names
+                                var subTokens = tokens[i].split(":"); 
+                                var values = subTokens[1].split(",");
+                            
+                                for(var j =0; j < values.length; j++){
+                                    metadataCategories[j] = values[j]; 
+                                }
+                            }
+                            else{ //store data
+                                var subTokens = tokens[i].split(":");
+                                var label = subTokens[0]; 
+                                var values = subTokens[1].split(",");
+                                for(var j =0; j < values.length; j++){
+                                    addMetadata( label.trim(), metadataCategories[j], values[j] );
+                                } 
+                            
+                            }
+                            
+                        }
+                    });
 
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 1;
-                var now = new Date();
-                console.log("linePlot: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-linePlot", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;
-                
-            }
-            else if( request.files[f].name.indexOf("sageScript") != -1 ){
-                console.log("sage script " + this.source);
+    //                 
+    //                 var itemId = "item"+itemCount.toString();
+    //                 var title = request.files[f].name;
+    //                 var aspect = 1;
+    //                 var now = new Date();
+    //                 console.log("metadata: " + title + " " + itemId + " " + request.files[f].name);
+    //                 var newItem = new item("metadata", title, itemId, "uploads/"+request.files[f].name, 0, 0, 800, 800, aspect, now, "", "");
+    //                 items.push(newItem);
+    //                 sio.sockets.emit('addNewElement', newItem);
+    //                 itemCount++;
+    //                 
+    //                 sio.sockets.emit('metadataAdded', metadataCategories);
+                }
+                else if( request.files[f].name.indexOf("histogram") != -1 ){
+                    console.log("histogram " + this.source);
 
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 800/200;
-                var now = new Date();
-                console.log("sage script: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-sageScript", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 200, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;
+                    var itemId = "item"+itemCount.toString();
+                    var title = request.files[f].name;
+                    var aspect = 1;
+                    var now = new Date();
+                    console.log("histogram: " + title + " " + itemId + " " + request.files[f].name);
+                    var newItem = new item("application-histogram", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                    items.push(newItem);
+                    sio.sockets.emit('addNewElement', newItem);
+                    itemCount++;
                 
-            }
-            if( request.files[f].name.indexOf("meta") != -1 ){
-                console.log("controlPanel " + this.source);
+                }
+                else if( request.files[f].name.indexOf("linePlot") != -1 ){
+                    console.log("linePlot " + this.source);
 
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 1;
-                var now = new Date();
-                console.log("controlPanel : " + title + " " + itemId + " " + request.files[f].name);
-                 var newItem = new item("application-organize", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
-                //var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;     
+                    var itemId = "item"+itemCount.toString();
+                    var title = request.files[f].name;
+                    var aspect = 1;
+                    var now = new Date();
+                    console.log("linePlot: " + title + " " + itemId + " " + request.files[f].name);
+                    var newItem = new item("application-linePlot", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                    items.push(newItem);
+                    sio.sockets.emit('addNewElement', newItem);
+                    itemCount++;
                 
-            }
-            if( request.files[f].name.indexOf("chicagoMap") != -1 ){
-                console.log("chicagoMap " + this.source);
+                }
+                else if( request.files[f].name.indexOf("sageScript") != -1 ){
+                    console.log("sage script " + this.source);
 
-                var itemId = "item"+itemCount.toString();
-                var title = request.files[f].name;
-                var aspect = 1;
-                var now = new Date();
-                console.log("chicagoMap: " + title + " " + itemId + " " + request.files[f].name);
-                var newItem = new item("application-chicagoMap", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
-                items.push(newItem);
-                sio.sockets.emit('addNewElement', newItem);
-                itemCount++;   
+                    var itemId = "item"+itemCount.toString();
+                    var title = request.files[f].name;
+                    var aspect = 800/200;
+                    var now = new Date();
+                    console.log("sage script: " + title + " " + itemId + " " + request.files[f].name);
+                    var newItem = new item("application-sageScript", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 200, aspect, now, "", "");
+                    items.push(newItem);
+                    sio.sockets.emit('addNewElement', newItem);
+                    itemCount++;
                 
+                }
+                if( request.files[f].name.indexOf("meta") != -1 ){
+                    console.log("controlPanel " + this.source);
+
+                    var itemId = "item"+itemCount.toString();
+                    var title = request.files[f].name;
+                    var aspect = 1;
+                    var now = new Date();
+                    console.log("controlPanel : " + title + " " + itemId + " " + request.files[f].name);
+                     var newItem = new item("application-organize", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                    //var newItem = new item("application-organize", title, itemId, "" , 0, 0, 800, 800, aspect, now, "", "");
+                    items.push(newItem);
+                    sio.sockets.emit('addNewElement', newItem);
+                    itemCount++;     
+                
+                }
+                if( request.files[f].name.indexOf("chicagoMap") != -1 ){
+                    console.log("chicagoMap " + this.source);
+
+                    var itemId = "item"+itemCount.toString();
+                    var title = request.files[f].name;
+                    var aspect = 1;
+                    var now = new Date();
+                    console.log("chicagoMap: " + title + " " + itemId + " " + request.files[f].name);
+                    var newItem = new item("application-chicagoMap", title, itemId, "../../uploads/"+request.files[f].name , 0, 0, 800, 800, aspect, now, "", "");
+                    items.push(newItem);
+                    sio.sockets.emit('addNewElement', newItem);
+                    itemCount++;   
+                
+                }
             }
-// 		    gm(localPath).size(function(err, size) {
-// 				if(!err){
-// 					var itemId = "item"+itemCount.toString();
-// 					var title = request.files[f].name;
-// 					//var aspect = size.width / size.height;
-// 					//var now = new Date();
-// 					//var newItem = new item("img", title, itemId, this.source, 0, 0, size.width, size.height, aspect, now, "", "");
-// 					//items.push(newItem);
-// 					//sio.sockets.emit('addNewElement', newItem);
-// 					itemCount++;
-// 					console.log("just received: " + title );
-// 				}
-// 				else{
-// 					console.log("Error: " + err);
-// 				}
-//             });
-		}
-		else{
-			console.log("Unknown type: " + request.files[f].type);
-		}
-	}
+            else{
+                console.log("Unknown type: " + request.files[f].type);
+            }
+        });
+    });
 	
 	response.end("upload complete");
 });

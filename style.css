@@ -13,6 +13,7 @@ p {
 body {
 	background-image: url('images/background2.jpg');
 	background-size: 100%;
+	cursor: none;
 }
 
 #main {
@@ -27,6 +28,7 @@ body {
 .windowItem {
 	position:absolute;
 	border: solid 1px #000000;
+	box-shadow: 8px 8px 12px #222222;
 }
 
 .windowTitle {

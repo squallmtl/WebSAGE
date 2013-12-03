@@ -1,6 +1,6 @@
 #!/bin/sh
 
-tentakel pkill chrome -HUP
+tentakel pkill -HUP chrome
 
 global_param="--window-size=1366,768 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files --disable-translate"
 

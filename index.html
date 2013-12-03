@@ -5,6 +5,8 @@
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
+<script type="text/javascript" src="scripts/pdf.js"></script>
+<script type="text/javascript" src="scripts/pdf_canvas.js"></script>
 <script type="text/javascript" src="scripts/videoControls.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
@@ -25,18 +27,18 @@
     var totalResolutionY;
 	
 	var itemCount = 0;
+	var pdfItems = {};
 	var canvasItems = {};
 	var interactableItems = {}; //stores items that should receive events
 
 	//document.addEventListener('mousemove', mouseMove, false);
 	//document.addEventListener('mouseup', mouseRelease, false);
 	//document.addEventListener('mousewheel', mouseScroll, false);
+
 	
 // 	console.log("Hi");
 	
 	function init() {
-		document.body.style.cursor = 'none'; // page needs to have mouse in focus to initiate 
-	
 		url = window.location.origin;
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
@@ -99,8 +101,6 @@
 			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
 			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
 			windowItem.style.zIndex = (itemCount+1).toString();
-			//windowItem.addEventListener('mousedown', mousePress, false);
-			//windowItem.addEventListener('mousewheel', scrollSelect, false);
 			main.appendChild(windowItem);
 			
 			if(elem_data.type == "img"){
@@ -238,6 +238,20 @@
                         //ifrm.contentWindow.postMessage('setItemId id ' + elem_data.id, '*'); 
                     } //   ../../uploads/histdata.txt', '*');  };  //send the filename  
 			    }
+			}   
+			else if(elem_data.type == "pdf"){
+				var pdf = document.createElement("img");
+				pdf.id = elem_data.id + "_pdf"
+				pdf.className = "sageItem";
+				pdf.aspectRatio = elem_data.aspectRatio;
+				pdf.width = elem_data.width;
+				pdf.height = elem_data.height;
+				
+				windowItem.appendChild(pdf);
+				
+				var pdfObj = new pdf_canvas();
+				pdfObj.init(elem_data.id + "_pdf", elem_data.src);
+				pdfItems[elem_data.id + "_pdf"] = pdfObj;
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
@@ -270,18 +284,6 @@
 				kineticjs.height = elem_data.height;
 			
 				windowItem.appendChild(kineticjs);
-// >>>>>>> 13b4f1e630f3b9b59b8c69c4794ef5014aef9aec
-// 				
-// 				var kineticjsJS = document.createElement('script')
-// 				kineticjsJS.type = "text/javascript";
-// 				kineticjsJS.src = elem_data.src;
-// 				document.head.appendChild(kineticjsJS);
-// 				
-// 				kineticjsJS.addEventListener('load', function(event) {
-// 					var kineticjsObj = new window[elem_data.extra];
-// 					kineticjsObj.init(elem_data.id + "_kineticjs", date, elem_data.resrc);
-// 					canvasItems[elem_data.id + "_kineticjs"] = kineticjsObj;
-// 				}, false);
 			}
 			else if(elem_data.type == "threejs"){
 				var threejs = document.createElement("div");
@@ -313,7 +315,7 @@
 				vid.height = elem_data.height;
 				vid.controls = false;
 				vid.style.backgroundColor = "#333333";
-				if(elem_data.extra != null) vid.poster = elem_data.extra;
+				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
 				vid.addEventListener('canplay', function() {
 					console.log("video can now play"); // Video is loaded and can be played
@@ -321,23 +323,12 @@
 				
 				console.log(elem_data.src);
 				
-				if(elem_data.src != null){
-					var source1 = document.createElement("source");
-					var param = elem_data.src.indexOf('?');
-					if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
-					else source1.src = elem_data.src + "?clientID=" + clientID.toString();
-					source1.type = "video/mp4";
-					vid.appendChild(source1);
-				}
-				
-				if(elem_data.resrc != null){
-					var source2 = document.createElement("source");
-					var param = elem_data.resrc.indexOf('?');
-					if(param >= 0) source2.src = elem_data.resrc + "&clientID=" + clientID.toString();
-					else source2.src = elem_data.resrc + "?clientID=" + clientID.toString();
-					source2.type = "video/webm";
-					vid.appendChild(source2);
-				}
+				var source1 = document.createElement("source");
+				var param = elem_data.src.indexOf('?');
+				if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
+				else source1.src = elem_data.src + "?clientID=" + clientID.toString();
+				source1.type = "video/mp4";
+				vid.appendChild(source1);
 				
 				windowItem.appendChild(vid);
 			}
@@ -440,7 +431,7 @@
                 console.log(child[0]);
                 child[0].contentWindow.postMessage('resize w ' + child[0].width + " h " + child[0].height, '*');  
 			}
-			if(child[0].id.substring(child[0].id.length - 7) == "kineticjs"){
+			if(child[0].id.substring(child[0].id.length - 9) == "kineticjs"){
 				canvasItems[child[0].id].resize(date);
 			}
 			if(child[0].id.substring(child[0].id.length - 7) == "threejs"){
@@ -448,11 +439,36 @@
 			}
 		});
 		
-		socket.on('playPauseVideo', function(elemId) {
-			var videoElem = document.getElementById(elemId + "_video");
-			console.log(videoElem);
-			if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
-			else{ videoElem.pause(); console.log("pause"); }
+		socket.on('finishedResize', function(elemId) {
+			var selectedElem = document.getElementById(elemId);
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+			
+			if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+				pdfItems[child[0].id].renderPage();
+			}
+		});
+		
+		socket.on('keypressItem', function(keypress_data) {
+			var selectedElem = document.getElementById(keypress_data.elemId);
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+		
+			if(keypress_data.keyCode == "32"){ // spacebar
+				if(child[0].id.substring(child[0].id.length - 5) == "video"){
+					playPauseVideo(keypress_data.elemId);
+				}
+			}
+			else if(keypress_data.keyCode == "37"){ // left arrow
+				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+					pdfItems[child[0].id].goPrevious();
+				}
+			}
+			else if(keypress_data.keyCode == "39"){ // right arrow
+				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+					pdfItems[child[0].id].goNext();
+				}
+			}
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {
@@ -682,24 +698,8 @@
     function mousePress(event) {
 		console.log(event);
 	}
-
-	/*
-	function mousePress(event) {
-		var globalX = event.clientX + offsetX;
-		var globalY = event.clientY + offsetY;
-		
-		var leftpx = event.currentTarget.style.left;
-		var toppx = event.currentTarget.style.top;
-		
-		var eLeft = parseInt(leftpx.substring(0,leftpx.length-2)) + offsetX;
-		var eTop = parseInt(toppx.substring(0,toppx.length-2))+ offsetY;
-		
-		var selectOffsetX = eLeft - globalX;
-		var selectOffsetY = eTop - globalY;
-		
-		socket.emit('selectElementById', {elemId: event.currentTarget.id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
-	}
 	
+
 	function mouseMove(event) {
 		var globalX = event.clientX + offsetX;
 		var globalY = event.clientY + offsetY;
@@ -718,8 +718,13 @@
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
 		socket.emit('scrollSelectedElement', scale);
+    }
+	function playPauseVideo(elemId) {
+		var videoElem = document.getElementById(elemId + "_video");
+		if(videoElem.paused == true){ videoElem.play(); console.log("play"); }
+		else{ videoElem.pause(); console.log("pause"); }
+
 	}
-	*/
 	
 // 	function pointerScrollSelect(event, zoom){
 // 	    console.log("in pointer scroll select");
