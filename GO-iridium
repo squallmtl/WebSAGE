@@ -2,7 +2,7 @@
 
 tentakel pkill chrome -HUP
 
-global_param="--kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files --disable-translate"
+global_param="--window-size=1366,768 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files --disable-translate"
 
 UDD=$HOME/.config/chrome-nfs/orion00-0
 mkdir -p $UDD/Default

@@ -26,7 +26,7 @@ void draw(){
 
     sageBeforeDraw();
     
-    //if( goRedraw ){
+    if( goRedraw ){
     
         background(0);
         
@@ -34,10 +34,10 @@ void draw(){
                hoods[i].drawNeighborhood();
          }
 
-    //}
+    }
     
-    //if( remapped )
-     //   remapped = false;
+    if( remapped )
+        remapped = false;
     
     sageAfterDraw();
 }
@@ -193,7 +193,6 @@ class Neighborhood{
            coords[i].y = ( mapLat(latLon[i].y) );
            theColor = color(255, 0, 0);
       }
-      //remapped = false;
     //}
     
     fill( theColor);
@@ -217,6 +216,9 @@ class Neighborhood{
     }
 
     endShape(); 
+    
+    fill(0,0,255);
+    rect(width/2, height/2, 100, 100);
 
   }
   
@@ -294,7 +296,8 @@ void resizeSketch(int newWidth, int newHeight){
     size( newWidth, newHeight ); 
     windowWidth = newWidth;
     windowHeight = newHeight; 
-    remapped = true;
+//    remapped = true;
+
     
     //adjust sketch to new size....
    // for(int i =0 ; i< hoods.length; i++){
@@ -355,7 +358,7 @@ void sageBeforeDraw(){
     }
     if( handleResize ){
 
-        resizeSketch( 400, 400);//newWidth, newHeight );
+        resizeSketch(newWidth, newHeight );
         handleResize = false; 
 
     }
