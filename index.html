@@ -88,7 +88,7 @@
 				var img = document.createElement("img");
 				img.id = elem_data.id + "_img";
 				img.className = "sageItem";
-				img.aspectRatio = elem_data.aspectRatio;
+				img.aspectRatio = elem_data.aspect;
 				img.width = elem_data.width;
 				img.height = elem_data.height;
 				img.src = elem_data.src;
@@ -100,7 +100,7 @@
 				var pdf = document.createElement("img");
 				pdf.id = elem_data.id + "_pdf"
 				pdf.className = "sageItem";
-				pdf.aspectRatio = elem_data.aspectRatio;
+				pdf.aspectRatio = elem_data.aspect;
 				pdf.width = elem_data.width;
 				pdf.height = elem_data.height;
 				
@@ -114,7 +114,7 @@
 				var canvas = document.createElement("canvas");
 				canvas.id = elem_data.id + "_canvas"
 				canvas.className = "sageItem";
-				canvas.aspectRatio = elem_data.aspectRatio;
+				canvas.aspectRatio = elem_data.aspect;
 				canvas.width = elem_data.width;
 				canvas.height = elem_data.height;
 			
@@ -136,7 +136,7 @@
 				var kineticjs = document.createElement("div");
 				kineticjs.id = elem_data.id + "_kineticjs"
 				kineticjs.className = "sageItem";
-				kineticjs.aspectRatio = elem_data.aspectRatio;
+				kineticjs.aspectRatio = elem_data.aspect;
 				kineticjs.width = elem_data.width;
 				kineticjs.height = elem_data.height;
 			
@@ -157,7 +157,7 @@
 				var threejs = document.createElement("div");
 				threejs.id = elem_data.id + "_threejs"
 				threejs.className = "sageItem";
-				threejs.aspectRatio = elem_data.aspectRatio;
+				threejs.aspectRatio = elem_data.aspect;
 				threejs.width = elem_data.width;
 				threejs.height = elem_data.height;
 			
@@ -178,10 +178,11 @@
 				var vid = document.createElement("video");
 				vid.id = elem_data.id + "_video";
 				vid.className = "sageItem";
-				vid.aspectRatio = elem_data.aspectRatio;
+				vid.aspectRatio = elem_data.aspect;
 				vid.width = elem_data.width;
 				vid.height = elem_data.height;
 				vid.controls = false;
+				vid.muted = true;
 				vid.style.backgroundColor = "#333333";
 				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
@@ -287,9 +288,11 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 		
 			if(keypress_data.keyCode == "32"){ // spacebar
+				/*
 				if(child[0].id.substring(child[0].id.length - 5) == "video"){
 					playPauseVideo(keypress_data.elemId);
 				}
+				*/
 			}
 			else if(keypress_data.keyCode == "37"){ // left arrow
 				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
@@ -301,6 +304,18 @@
 					pdfItems[child[0].id].goNext();
 				}
 			}
+		});
+		
+		socket.on('updateVideoItemTime', function(video_data) {
+			var selectedElem = document.getElementById(video_data.elemId);
+			
+			var child = selectedElem.getElementsByClassName("sageItem");
+			child[0].currentTime = video_data.time;
+			
+			console.log(video_data.time);
+			
+			if(video_data.play && child[0].paused) child[0].play();
+			else if(!video_data.play) child[0].pause();
 		});
 		
 		socket.on('animateCanvas', function(animate_data) {

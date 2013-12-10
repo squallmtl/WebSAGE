@@ -209,6 +209,10 @@ sio.sockets.on('connection', function(socket) {
 			sio.sockets.emit('keypressItem', keypress_data);
 		}
 	});
+	
+	socket.on('updateVideoTime', function(video_data) {
+		sio.sockets.emit('updateVideoItemTime', video_data);
+	});
 });
 
 app.post('/upload', function(request, response) {
