@@ -45,10 +45,10 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-var file = 'config/iridiumX-cfg.json';
+//var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {

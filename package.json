@@ -1,0 +1,66 @@
+{
+  "name": "webSAGE",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A cluster-based html viewer used for displaying elements across multiple browser windows",
+  "keywords": [
+    "SAGE",
+    "browser",
+    "collaboration"
+  ],
+  "author": "Thomas Marrinan <thomas.j.marrinan@gmail.com>",
+  "contributors": [ 
+    {
+      "name": "Jillian Aurisano",
+      "email": "jillian.aurisano@gmail.com"
+    },
+    {
+      "name": "Arthur Nishimoto",
+      "email": "arthur.nishimoto@gmail.com"
+    },
+    {
+      "name": "Luc Renambot",
+      "email": "leluc@mac.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tmarrinan/WebSAGE"
+  },
+  "dependencies": {
+      "decompress-zip": "latest",
+      "express": "latest",
+      "gm": "latest",
+      "imageinfo": "latest",
+      "node-ffprobe": "latest",
+      "pdfutils": "latest",
+      "request": "latest",
+      "socket.io": "latest",
+      "ytdl": "latest"
+  },
+  "bundledDependencies": [
+      "decompress-zip",
+      "express",
+      "gm",
+      "imageinfo",
+      "node-ffprobe",
+      "pdfutils",
+      "request",
+      "socket.io",
+      "ytdl"
+  ],
+  "devDependencies": {
+  },
+  "engines": {
+    "node": ">=0.6.x"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "licenses": [
+    {
+      "type": "BSD",
+      "url": "http://opensource.org/licenses/BSD-3-Clause"
+    }
+  ]
+}
