@@ -45,10 +45,10 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
+var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -94,6 +94,8 @@ sio.sockets.on('connection', function(socket) {
 	socket.on('startSagePointer', function(pointer_data) {
 		console.log("starting pointer: " + address)
 		if(address in sagePointers){
+			sagePointers[address].label = pointer_data.label;
+			sagePointers[address].color = pointer_data.color;
 			sagePointers[address].left = 0;
 			sagePointers[address].top = 0;
 			sio.sockets.emit('showPointer', sagePointers[address]);
