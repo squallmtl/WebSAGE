@@ -61,7 +61,8 @@
 		socket.on('createPointer', function(pointer_data){
             var main = document.getElementById("main");
             
-            console.log("creating pointer");
+            console.log("creating pointer: " + pointerWidth + "x" + pointerHeight);
+            console.log(pointer_data.id, pointer_data.label, pointer_data.color)
             
             var pointerElem = document.createElement("canvas");
             pointerElem.id = pointer_data.id; 
@@ -83,6 +84,8 @@
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "block";
+        	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";
+            pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
         });
         
         socket.on('hidePointer', function(pointer_data){

@@ -45,10 +45,10 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
+var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -73,8 +73,9 @@ var sagePointers = {}
 
 sio.sockets.on('connection', function(socket) {
 	var i;
-	var address = socket.handshake.address;
-	console.log("New connection from " + address.address + ":" + address.port);
+	var address = socket.handshake.address.address;
+	var port = socket.handshake.address.port;
+	console.log("New connection from " + address + ":" + port);
 	
 	var cDate = new Date();
 
@@ -91,6 +92,7 @@ sio.sockets.on('connection', function(socket) {
 	//socket.emit('createPointer', {id: "pointer0", left: 0, top: 0, label: "Megatron", color: [235, 80, 20]});
 	
 	socket.on('startSagePointer', function(pointer_data) {
+		console.log("starting pointer: " + address)
 		if(address in sagePointers){
 			sagePointers[address].left = 0;
 			sagePointers[address].top = 0;
@@ -103,7 +105,7 @@ sio.sockets.on('connection', function(socket) {
 		}
 	});
 	
-	socket.on('startSagePointer', function(pointer_data) {
+	socket.on('stopSagePointer', function(pointer_data) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
 	});
 	
