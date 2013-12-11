@@ -45,10 +45,10 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-var file = 'config/iridiumX-cfg.json';
+//var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -84,12 +84,12 @@ sio.sockets.on('connection', function(socket) {
 	socket.emit('setupDisplayConfiguration', config);
 
 	/* adding new elements */
+	for(var key in sagePointers){
+		sio.sockets.emit('createPointer', sagePointers[key]);
+	}
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
-	
-	// TEST
-	//socket.emit('createPointer', {id: "pointer0", left: 0, top: 0, label: "Megatron", color: [235, 80, 20]});
 	
 	socket.on('startSagePointer', function(pointer_data) {
 		console.log("starting pointer: " + address)

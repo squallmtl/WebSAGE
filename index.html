@@ -26,6 +26,7 @@
 	
 	var itemCount = 0;
 	var pdfItems = {};
+	var pointerItems = {};
 	var canvasItems = {};
 	
 	function init() {
@@ -78,6 +79,8 @@
             var ptr = new pointer(); 
             ptr.init(pointerElem.id, pointer_data.label, pointer_data.color) ;
             ptr.draw();
+            
+            pointerItems[pointerElem.id] = ptr;
         });
         
         socket.on('showPointer', function(pointer_data){
@@ -86,6 +89,10 @@
         	pointerElem.style.display = "block";
         	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";
             pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+            
+            pointerItems[pointerElem.id].setLabel(pointer_data.label);
+            pointerItems[pointerElem.id].setColor(pointer_data.color);
+            pointerItems[pointerElem.id].draw();
         });
         
         socket.on('hidePointer', function(pointer_data){

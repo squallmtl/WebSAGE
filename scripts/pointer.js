@@ -19,7 +19,7 @@ function pointer(){
 	}
 	
 	this.setColor = function(color){
-	    this.givenColor = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)"; 
+	    this.givenColor = "rgba(" + color[0].toString() + "," + color[1].toString() + "," + color[2].toString() + ",1.0)";
 	}
 	
 	this.setLabel = function(label){
@@ -28,7 +28,6 @@ function pointer(){
 	
 	this.changeMode = function(mode){
 	    this.drawMode = mode;
-	    console.log("draw mode = " + this.drawMode);
 	}
 	
 	this.draw = function() {

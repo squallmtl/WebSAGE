@@ -14,6 +14,11 @@ p {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
 	font-size: 12px;
 }
+
+label {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 12px;
+}
 	
 #wrapper {
 	width: 80%;
@@ -33,17 +38,32 @@ p {
 
 #fileDrop {
 	float: left;
-	width: 300px;
-	height: 62px;
-	line-height: 62px;
+	width: 250px;
+	height: 76px;
+	line-height: 76px;
 	border: dashed 3px #54C238;
 }
 
 #sagePointer {
-	margin-left: 320px;
+	margin-left: 275px;
 	padding: 5px;
-	width: 300px;
-	height: 56px;
+	width: 250px;
+	height: 70px;
 	text-align: left;
 	border: solid 1px #000000;
+}
+
+#sagePointerLabel {
+	width: 120px;
+}
+
+#sagePointerColor {
+	width: 60px;
+}
+
+.sageLabel {
+	display:inline-block;
+    width:100px;
+    text-align: right;
+    padding: 3px 5px 0px 0px;
 }
