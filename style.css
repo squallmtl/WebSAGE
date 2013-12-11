@@ -45,6 +45,11 @@ body {
 	overflow: hidden;
 }
 
+.pointerItem {
+	position:absolute;
+	display: block;
+}
+
 .sageItem {
 	display: block;
 }

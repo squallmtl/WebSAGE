@@ -61,11 +61,15 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 	config.totalHeight = config.resolution.height * config.layout.rows;
 	config.titleBarHeight = Math.round(0.025 * config.totalHeight);
 	config.titleTextSize = Math.round(0.015 * config.totalHeight);
+	config.pointerWidth = Math.round(0.20 * config.totalHeight)
+	config.pointerHeight = Math.round(0.05 * config.totalHeight)
 	console.log(config);
 });
 
 var itemCount = 0;
 var items = [];
+var pointerCount = 0;
+var sagePointers = {}
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -82,6 +86,32 @@ sio.sockets.on('connection', function(socket) {
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
+	
+	// TEST
+	//socket.emit('createPointer', {id: "pointer0", left: 0, top: 0, label: "Megatron", color: [235, 80, 20]});
+	
+	socket.on('startSagePointer', function(pointer_data) {
+		if(address in sagePointers){
+			sagePointers[address].left = 0;
+			sagePointers[address].top = 0;
+			sio.sockets.emit('showPointer', sagePointers[address]);
+		}
+		else{
+			sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: pointer_data.label, color: pointer_data.color};
+			pointerCount++;
+			sio.sockets.emit('createPointer', sagePointers[address]);
+		}
+	});
+	
+	socket.on('startSagePointer', function(pointer_data) {
+		sio.sockets.emit('hidePointer', sagePointers[address]);
+	});
+	
+	socket.on('moveSagePointer', function(pointer_data) {
+		sagePointers[address].left += pointer_data.deltaX;
+		sagePointers[address].top += pointer_data.deltaY;
+		sio.sockets.emit('updatePointer', sagePointers[address]);
+	});
 	
 	socket.on('addNewWebElement', function(elem_data) {
 		if(elem_data.type == "img"){

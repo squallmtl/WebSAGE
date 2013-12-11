@@ -4,6 +4,7 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
 <script type="text/javascript" src="scripts/pdf_canvas.js"></script>
 <script type="text/javascript" src="scripts/videoControls.js"></script>
@@ -17,6 +18,8 @@
 	var offsetY;
 	var titleBarHeight;
 	var titleTextSize;
+	var pointerWidth;
+	var pointerHeight;
 
 	var url;
 	var socket;
@@ -43,6 +46,8 @@
 			offsetY = json_cfg.displays[clientID].row * json_cfg.resolution.height;
 			titleBarHeight = json_cfg.titleBarHeight;
 			titleTextSize = json_cfg.titleTextSize;
+			pointerWidth = json_cfg.pointerWidth;
+			pointerHeight = json_cfg.pointerHeight;
 			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
@@ -52,6 +57,48 @@
   			js.src = source;
   			document.head.appendChild(js);
 		});
+		
+		socket.on('createPointer', function(pointer_data){
+            var main = document.getElementById("main");
+            
+            console.log("creating pointer");
+            
+            var pointerElem = document.createElement("canvas");
+            pointerElem.id = pointer_data.id; 
+            pointerElem.className = "pointerItem";
+            pointerElem.width = pointerWidth;
+            pointerElem.height = pointerHeight;
+            pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";
+            pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+            pointerElem.style.zIndex = "10000"; 
+
+            main.appendChild(pointerElem); 
+
+            var ptr = new pointer(); 
+            ptr.init(pointerElem.id, pointer_data.label, pointer_data.color) ;
+            ptr.draw();
+        });
+        
+        socket.on('showPointer', function(pointer_data){
+        	var pointerElem = document.getElementById(pointer_data.id);
+        	
+        	pointerElem.style.display = "block";
+        });
+        
+        socket.on('hidePointer', function(pointer_data){
+        	var pointerElem = document.getElementById(pointer_data.id);
+        	
+        	pointerElem.style.display = "none";
+        });
+        
+        socket.on('updatePointer', function(pointer_data){
+        	var pointerElem = document.getElementById(pointer_data.id);
+        	
+        	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";;
+        	pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+        	
+        	console.log("pointer pos: " + pointer_data.left + ", " + pointer_data.top);
+        });
 		
 		socket.on('addNewElement', function(elem_data) {
 			var date = new Date(elem_data.date);

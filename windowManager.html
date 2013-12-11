@@ -10,10 +10,18 @@
 	var socket;
 	var winMgr;
 	
+	var name = "Testing";
+	var col = [180, 40, 235];
+	
 	function init() {
 		url = window.location.origin;
 		socket = io.connect(url);
 		console.log("Connected to server: ", url);
+		
+		
+		document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
 		
 		var fileDrop = document.getElementById("fileDrop");
 		fileDrop.addEventListener('dragover', preventFileOpen, false);
@@ -23,6 +31,9 @@
 		window.addEventListener('dragover', preventFileOpen, false);
 		window.addEventListener('dragend', preventFileOpen, false);
 		window.addEventListener('drop', preventFileOpen, false);
+		
+		var sagePointerBtn = document.getElementById("sagePointerBtn");
+		sagePointerBtn.addEventListener('click', startSagePointer, false);
 		
 		winMgr = new windowManager('winMgr', socket);
 		winMgr.draw();
@@ -50,6 +61,47 @@
 		socket.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
+	}
+	
+	function startSagePointer(event) {
+		pointerBtn = document.getElementById("sagePointerBtn");
+		
+		pointerBtn.requestPointerLock = pointerBtn.requestPointerLock ||
+										pointerBtn.mozRequestPointerLock ||
+										pointerBtn.webkitRequestPointerLock;
+
+		// Ask the browser to lock the pointer)
+		pointerBtn.requestPointerLock();
+	}
+	
+	function pointerLockChange() {
+		pointerBtn = document.getElementById("sagePointerBtn");
+	
+		if(document.pointerLockElement === pointerBtn ||
+		   document.mozPointerLockElement === pointerBtn ||
+		   document.webkitPointerLockElement === pointerBtn){
+			socket.emit('startSagePointer', {label: name, color: col});
+			document.addEventListener("mousemove", pointerMove, false);
+		}
+		else{
+			socket.emit('stopSagePointer', {label: name, color: col});
+			document.removeEventListener("mousemove", pointerMove, false);
+		}
+	}
+	
+	function pointerMove(event) {
+		var movementX = event.movementX ||
+						event.mozMovementX ||
+						event.webkitMovementX ||
+						0;
+
+        var movementY = event.movementY ||
+						event.mozMovementY ||
+						event.webkitMovementY ||
+						0;
+		
+		socket.emit('moveSagePointer', {label: name, color: col, deltaX: movementX, deltaY: movementY});	
+		console.log("Move: " + movementX + ", " + movementY);
 	}
 	
 	function preventFileOpen(event) {
@@ -104,11 +156,16 @@
 <body onload="init()" onresize="winMgr.resize()">
 	<div id="wrapper">
 		<div id="window">
-			<canvas id="winMgr" style="width: 80%;">HTML5 canvas element not supported</canvas>
+			<canvas id="winMgr" style="width: 100%;">HTML5 canvas element not supported</canvas>
 		</div>
-		<div id="fileDrop">
-			<p id="fileDropText">Drag files here to upload</p>
-		</div>
+		<div id="extraIntercation">
+			<div id="fileDrop">
+				<p id="fileDropText">Drag files here to upload</p>
+			</div>
+			<div id="sagePointer">
+				<button id="sagePointerBtn" type="button">SAGE Pointer</button>
+			</div>
+		<div>
 	</div>
 </body>
 </html>

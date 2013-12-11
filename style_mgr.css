@@ -16,6 +16,7 @@ p {
 }
 	
 #wrapper {
+	width: 80%;
 	margin: 0 auto;
 	text-align: center;
 	background-color: #FFFFFF;
@@ -25,10 +26,24 @@ p {
 	margin: 20px 0px 20px 0px;
 }
 
+#extraInteraction {
+	width: 100%;
+	overflow: hidden;
+}
+
 #fileDrop {
-	margin-left: 10%;
+	float: left;
 	width: 300px;
 	height: 62px;
 	line-height: 62px;
 	border: dashed 3px #54C238;
+}
+
+#sagePointer {
+	margin-left: 320px;
+	padding: 5px;
+	width: 300px;
+	height: 56px;
+	text-align: left;
+	border: solid 1px #000000;
 }
