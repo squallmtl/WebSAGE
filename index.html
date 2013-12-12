@@ -20,6 +20,8 @@
 	var titleTextSize;
 	var pointerWidth;
 	var pointerHeight;
+	var pointerOffsetX; 
+	var pointerOffsetY;
 
 	var url;
 	var socket;
@@ -49,6 +51,8 @@
 			titleTextSize = json_cfg.titleTextSize;
 			pointerWidth = json_cfg.pointerWidth;
 			pointerHeight = json_cfg.pointerHeight;
+			pointerOffsetX = Math.round(0.025384*pointerHeight); 
+			pointerOffsetY = Math.round(0.060805*pointerHeight);
 			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
@@ -70,8 +74,8 @@
             pointerElem.className = "pointerItem";
             pointerElem.width = pointerWidth;
             pointerElem.height = pointerHeight;
-            pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";
-            pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+            pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";
+            pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
             pointerElem.style.zIndex = "10000"; 
 
             main.appendChild(pointerElem); 
@@ -87,8 +91,8 @@
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "block";
-        	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";
-            pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+        	pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";
+            pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
             
             pointerItems[pointerElem.id].setLabel(pointer_data.label);
             pointerItems[pointerElem.id].setColor(pointer_data.color);
@@ -104,8 +108,8 @@
         socket.on('updatePointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
-        	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";;
-        	pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
+        	pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";;
+        	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
 		
 		socket.on('addNewElement', function(elem_data) {

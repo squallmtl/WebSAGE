@@ -5,8 +5,6 @@ function pointer(){
 	this.givenColor = "rgba(255, 255, 255, 1.0)";
 	this.drawMode = null; 
 	
-	this.pointerOffset = null;
-	
 	this.init = function(id, label, color) {
 		this.element = document.getElementById(id);
 		this.ctx = this.element.getContext("2d");
@@ -35,9 +33,6 @@ function pointer(){
 		this.ctx.clearRect(0,0, this.element.width, this.element.height);
 		
 		var minDim = Math.min(this.element.width, this.element.height);
-		
-		this.pointerOffset[0] = Math.round(0.025384*minDim); 
-		this.pointerOffset[1] = Math.round(0.060805*minDim);
 		
 		// pointer
 		this.ctx.lineWidth = (3.0/100.0) * minDim;

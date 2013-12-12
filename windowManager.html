@@ -12,7 +12,8 @@
 	
 	var name = "Default";
 	var col = [180, 180, 180];
-	var isLocked = false;
+	
+	var sensitivity;
 	
 	function init() {
 		url = window.location.origin;
@@ -44,6 +45,9 @@
 		
 		socket.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
+			displayMin = Math.min(config.totalWidth, config.totalHeight);
+			thisMin = Math.min(screen.width, screen.height);
+			sensitivity = displayMin/thisMin;
 		});
 		
 		socket.on('addNewElement', function(elem_data) {
@@ -98,16 +102,14 @@
 		if(document.pointerLockElement === pointerBtn ||
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
-			if(!isLocked){
-				socket.emit('startSagePointer', {label: name, color: col});
-				document.addEventListener("mousemove", pointerMove, false);
-				isLocked = true;
-			}
+			socket.emit('startSagePointer', {label: name, color: col});
+			document.addEventListener("mousemove", pointerMove, false);
+			pointerBtn.disabled = true;
 		}
 		else{
 			socket.emit('stopSagePointer', {label: name, color: col});
 			document.removeEventListener("mousemove", pointerMove, false);
-			isLocked = false;
+			pointerBtn.disabled = false;
 		}
 	}
 	
@@ -122,7 +124,7 @@
 						event.webkitMovementY ||
 						0;
 		
-		socket.emit('moveSagePointer', {label: name, color: col, deltaX: movementX, deltaY: movementY});	
+		socket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
 	}
 	
 	function preventFileOpen(event) {

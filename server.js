@@ -61,8 +61,8 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 	config.totalHeight = config.resolution.height * config.layout.rows;
 	config.titleBarHeight = Math.round(0.025 * config.totalHeight);
 	config.titleTextSize = Math.round(0.015 * config.totalHeight);
-	config.pointerWidth = Math.round(0.20 * config.totalHeight)
-	config.pointerHeight = Math.round(0.05 * config.totalHeight)
+	config.pointerWidth = Math.round(0.20 * config.totalHeight);
+	config.pointerHeight = Math.round(0.05 * config.totalHeight);
 	console.log(config);
 });
 
@@ -114,6 +114,11 @@ sio.sockets.on('connection', function(socket) {
 	socket.on('moveSagePointer', function(pointer_data) {
 		sagePointers[address].left += pointer_data.deltaX;
 		sagePointers[address].top += pointer_data.deltaY;
+		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+		
 		sio.sockets.emit('updatePointer', sagePointers[address]);
 	});
 	
