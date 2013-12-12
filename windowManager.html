@@ -25,13 +25,13 @@
         document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
 		
 		var fileDrop = document.getElementById("fileDrop");
-		fileDrop.addEventListener('dragover', preventFileOpen, false);
-		fileDrop.addEventListener('dragend', preventFileOpen, false);
+		fileDrop.addEventListener('dragover', preventDefault, false);
+		fileDrop.addEventListener('dragend', preventDefault, false);
 		fileDrop.addEventListener('drop', uploadFileToServer, false);
 		
-		window.addEventListener('dragover', preventFileOpen, false);
-		window.addEventListener('dragend', preventFileOpen, false);
-		window.addEventListener('drop', preventFileOpen, false);
+		window.addEventListener('dragover', preventDefault, false);
+		window.addEventListener('dragend', preventDefault, false);
+		window.addEventListener('drop', preventDefault, false);
 		
 		var pointerBtn = document.getElementById("sagePointerBtn");
 		var pointerLabel = document.getElementById("sagePointerLabel");
@@ -103,14 +103,30 @@
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
 			socket.emit('startSagePointer', {label: name, color: col});
-			document.addEventListener("mousemove", pointerMove, false);
-			pointerBtn.disabled = true;
+			document.addEventListener('mousedown', pointerPress, false);
+			document.addEventListener('mousemove', pointerMove, false);
+			document.addEventListener('mouseup', pointerRelease, false);
+			document.addEventListener('mousewheel', pointerScroll, false);
+			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
+			pointerBtn.removeEventListener('click', startSagePointer, false);
 		}
 		else{
 			socket.emit('stopSagePointer', {label: name, color: col});
-			document.removeEventListener("mousemove", pointerMove, false);
-			pointerBtn.disabled = false;
+			document.removeEventListener('mousedown', pointerPress, false);
+			document.removeEventListener('mousemove', pointerMove, false);
+			document.removeEventListener('mouseup', pointerRelease, false);
+			document.removeEventListener('mousewheel', pointerScroll, false);
+			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
+			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
+	}
+	
+	function pointerPress(event) {
+		socket.emit('selectElementWithPointer');
+	}
+	
+	function pointerRelease(event) {
+		socket.emit('releaseSelectedElement');
 	}
 	
 	function pointerMove(event) {
@@ -127,7 +143,22 @@
 		socket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
 	}
 	
-	function preventFileOpen(event) {
+	function pointerScroll(event) {
+		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
+		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		socket.emit('selectScrollElementWithPointer');
+		socket.emit('scrollSelectedElement', scale);
+	}
+	
+	function pointerScrollFF(event) {
+		var wheelDelta = -120*event.detail;
+		var scale = 1.0 + Math.abs(wheelDelta)/256;
+		if(wheelDelta < 0) scale = 1.0 / scale;
+		socket.emit('selectScrollElementWithPointer');
+		socket.emit('scrollSelectedElement', scale);
+	}
+	
+	function preventDefault(event) {
 		event.preventDefault();
 	}
 	

@@ -45,10 +45,10 @@ sio.configure('development', function () {
 
 var initDate = new Date();
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
+var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 var config;
 fs.readFile(file, 'utf8', function(err, json_str) {
@@ -69,13 +69,16 @@ fs.readFile(file, 'utf8', function(err, json_str) {
 var itemCount = 0;
 var items = [];
 var pointerCount = 0;
-var sagePointers = {}
+var sagePointers = {};
+var interaction = {};
 
 sio.sockets.on('connection', function(socket) {
 	var i;
 	var address = socket.handshake.address.address;
 	var port = socket.handshake.address.port;
 	console.log("New connection from " + address + ":" + port);
+	
+	interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
 	
 	var cDate = new Date();
 
@@ -109,17 +112,6 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('stopSagePointer', function(pointer_data) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
-	});
-	
-	socket.on('moveSagePointer', function(pointer_data) {
-		sagePointers[address].left += pointer_data.deltaX;
-		sagePointers[address].top += pointer_data.deltaY;
-		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-		
-		sio.sockets.emit('updatePointer', sagePointers[address]);
 	});
 	
 	socket.on('addNewWebElement', function(elem_data) {
@@ -175,64 +167,113 @@ sio.sockets.on('connection', function(socket) {
 		}
 	});
 
-	/* user-interaction methods */
-	var selectedMoveItem;
-	var selectedScrollItem;
-	var selectOffsetX;
-	var selectOffsetY;
-	var selectTimeId = {};
-
 	socket.on('selectElementById', function(select_data) {
-		selectedMoveItem = findItemById(select_data.elemId);
-		selectedScrollItem = null;
-		selectOffsetX = select_data.eventOffsetX;
-		selectOffsetY = select_data.eventOffsetY;
+		interaction[address].selectedMoveItem = findItemById(select_data.elemId);
+		interaction[address].selectedScrollItem = null;
+		interaction[address].selectOffsetX = select_data.eventOffsetX;
+		interaction[address].selectOffsetY = select_data.eventOffsetY;
 		
-		var newOrder = moveItemToFront(selectedMoveItem.id);
+		var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 		sio.sockets.emit('updateItemOrder', newOrder);
+	});
+	
+	socket.on('selectElementWithPointer', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		
+		for(var i=items.length-1; i>=0; i--){
+			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+				interaction[address].selectedMoveItem = findItemById(items[i].id);
+				interaction[address].selectedScrollItem = null;
+				interaction[address].selectOffsetX = items[i].left - pointerX;
+				interaction[address].selectOffsetY = items[i].top - pointerY;
+				break;
+			}
+		}
+		
+		if(interaction[address].selectedMoveItem != null){
+			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
+			sio.sockets.emit('updateItemOrder', newOrder);
+		}
 	});
 	
 	socket.on('releaseSelectedElement', function() {
-		selectedMoveItem = null;
-		selectedScrollItem = null;
+		interaction[address].selectedMoveItem = null;
+		interaction[address].selectedScrollItem = null;
 	});
 	
 	socket.on('moveSelectedElement', function(move_data) {
-		if(selectedMoveItem == null) return;
-		selectedMoveItem.left = move_data.eventX + selectOffsetX;
-		selectedMoveItem.top = move_data.eventY + selectOffsetY;
+		if(interaction[address].selectedMoveItem == null) return;
+		interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
+		interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
 		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: selectedMoveItem.id, elemLeft: selectedMoveItem.left, elemTop: selectedMoveItem.top, elemWidth: selectedMoveItem.width, elemHeight: selectedMoveItem.height, date: now});
+		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+	});
+	
+	socket.on('moveSagePointer', function(pointer_data) {
+		sagePointers[address].left += pointer_data.deltaX;
+		sagePointers[address].top += pointer_data.deltaY;
+		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+		
+		sio.sockets.emit('updatePointer', sagePointers[address]);
+		
+		if(interaction[address].selectedMoveItem == null) return;
+		interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+		interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+		var now = new Date();
+		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
-		selectedScrollItem = findItemById(elemId);
-		selectedMoveItem = null;
+		interaction[address].selectedScrollItem = findItemById(elemId);
+		interaction[address].selectedMoveItem = null;
 		
-		var newOrder = moveItemToFront(selectedScrollItem.id);
+		var newOrder = moveItemToFront(interaction[address].selectedScrollItem.id);
 		sio.sockets.emit('updateItemOrder', newOrder);
 	});
 	
+	socket.on('selectScrollElementWithPointer', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		
+		for(var i=items.length-1; i>=0; i--){
+			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+				interaction[address].selectedScrollItem = findItemById(items[i].id);
+				interaction[address].selectedMoveItem = null;
+				break;
+			}
+		}
+		
+		if(interaction[address].selectedScrollItem != null){
+			var newOrder = moveItemToFront(interaction[address].selectedScrollItem.id);
+			sio.sockets.emit('updateItemOrder', newOrder);
+		}
+	});
+	
 	socket.on('scrollSelectedElement', function(scale) {
-		if(selectedScrollItem == null) return;
-		var iWidth = selectedScrollItem.width * scale;
-		var iHeight = iWidth / selectedScrollItem.aspect;
-		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/selectedScrollItem.aspect; }
-		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*selectedScrollItem.aspect; }
-		var iCenterX = selectedScrollItem.left + (selectedScrollItem.width/2);
-		var iCenterY = selectedScrollItem.top + (selectedScrollItem.height/2);
-		selectedScrollItem.left = iCenterX - (iWidth/2);
-		selectedScrollItem.top = iCenterY - (iHeight/2);
-		selectedScrollItem.width = iWidth;
-		selectedScrollItem.height = iHeight;
+		if(interaction[address].selectedScrollItem == null) return;
+		var iWidth = interaction[address].selectedScrollItem.width * scale;
+		var iHeight = iWidth / interaction[address].selectedScrollItem.aspect;
+		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/interaction[address].selectedScrollItem.aspect; }
+		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*interaction[address].selectedScrollItem.aspect; }
+		var iCenterX = interaction[address].selectedScrollItem.left + (interaction[address].selectedScrollItem.width/2);
+		var iCenterY = interaction[address].selectedScrollItem.top + (interaction[address].selectedScrollItem.height/2);
+		interaction[address].selectedScrollItem.left = iCenterX - (iWidth/2);
+		interaction[address].selectedScrollItem.top = iCenterY - (iHeight/2);
+		interaction[address].selectedScrollItem.width = iWidth;
+		interaction[address].selectedScrollItem.height = iHeight;
 		var now = new Date();
-		sio.sockets.emit('setItemPositionAndSize', {elemId: selectedScrollItem.id, elemLeft: selectedScrollItem.left, elemTop: selectedScrollItem.top, elemWidth: selectedScrollItem.width, elemHeight: selectedScrollItem.height, date: now});
+		sio.sockets.emit('setItemPositionAndSize', {elemId: interaction[address].selectedScrollItem.id, elemLeft: interaction[address].selectedScrollItem.left, elemTop: interaction[address].selectedScrollItem.top, elemWidth: interaction[address].selectedScrollItem.width, elemHeight: interaction[address].selectedScrollItem.height, date: now});
 		
-		var elemId = selectedScrollItem.id;
-		if(elemId in selectTimeId) clearTimeout(selectTimeId[elemId]);
+		var elemId = interaction[address].selectedScrollItem.id;
+		if(elemId in interaction[address].selectTimeId) clearTimeout(interaction[address].selectTimeId[elemId]);
 		
-		selectTimeId[elemId] = setTimeout(function() {
+		interaction[address].selectTimeId[elemId] = setTimeout(function() {
 			sio.sockets.emit('finishedResize', elemId);
+			interaction[address].selectedScrollItem = null;
 		}, 500);
 	});
 	
