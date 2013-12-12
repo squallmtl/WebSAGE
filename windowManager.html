@@ -12,6 +12,7 @@
 	
 	var name = "Default";
 	var col = [180, 180, 180];
+	var isLocked = false;
 	
 	function init() {
 		url = window.location.origin;
@@ -97,12 +98,16 @@
 		if(document.pointerLockElement === pointerBtn ||
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
-			socket.emit('startSagePointer', {label: name, color: col});
-			document.addEventListener("mousemove", pointerMove, false);
+			if(!isLocked){
+				socket.emit('startSagePointer', {label: name, color: col});
+				document.addEventListener("mousemove", pointerMove, false);
+				isLocked = true;
+			}
 		}
 		else{
 			socket.emit('stopSagePointer', {label: name, color: col});
 			document.removeEventListener("mousemove", pointerMove, false);
+			isLocked = false;
 		}
 	}
 	
@@ -118,7 +123,6 @@
 						0;
 		
 		socket.emit('moveSagePointer', {label: name, color: col, deltaX: movementX, deltaY: movementY});	
-		console.log("Move: " + movementX + ", " + movementY);
 	}
 	
 	function preventFileOpen(event) {

@@ -106,8 +106,6 @@
         	
         	pointerElem.style.left = (pointer_data.left-offsetX).toString() + "px";;
         	pointerElem.style.top = (pointer_data.top-offsetY).toString() + "px";
-        	
-        	console.log("pointer pos: " + pointer_data.left + ", " + pointer_data.top);
         });
 		
 		socket.on('addNewElement', function(elem_data) {
