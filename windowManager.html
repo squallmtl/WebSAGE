@@ -189,15 +189,21 @@
 			xhr.send(formdata);
 		}
 		else if(url != null || text != null){
-			var dataUrl = (url.length > text.length) ? url : text;
+			var dataUrl;
+			if(url == null) dataUrl = text;
+			else if(text == null) dataUrl = url;
+			else dataUrl = (url.length > text.length) ? url : text;
 			var urlType = "";
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(ext.length > 3) ext = ext.substring(0,3);
 			if(youtube >= 0) urlType = "youtube";
-			else if(ext == "jpg" || ext == "png" || ext == "bmp") urlType = "img";
+			else if(ext == "jpg" || ext == "png") urlType = "img";
+			else if(ext == "mp4") urlType = "video";
+			else if(ext == "pdf") urlType = "pdf";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
-			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			
+			if(urlType != "") socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
 	}
 	

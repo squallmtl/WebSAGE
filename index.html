@@ -165,8 +165,9 @@
 				
 				windowItem.appendChild(pdf);
 				
+				var pdfData = base64ToUint8Array(elem_data.src);
 				var pdfObj = new pdf_canvas();
-				pdfObj.init(elem_data.id + "_pdf", elem_data.src);
+				pdfObj.init(elem_data.id + "_pdf", pdfData);
 				pdfItems[elem_data.id + "_pdf"] = pdfObj;
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
@@ -402,6 +403,16 @@
 		}
 	}
 
+	function base64ToUint8Array(base64) {
+        var raw = atob(base64); //This is a native function that decodes a base64-encoded string.
+        var uint8Array = new Uint8Array(new ArrayBuffer(raw.length));
+        for (var i = 0; i < raw.length; i++) {
+            uint8Array[i] = raw.charCodeAt(i);
+        }
+
+        return uint8Array;
+    }
+    
 	function getParameterByName(name) {
 		name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
 		var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),

@@ -137,6 +137,26 @@ sio.sockets.on('connection', function(socket) {
 				itemCount++;
 			});
 		}
+		else if(elem_data.type == "video"){
+			ffprobe(elem_data.src, function(err, data){
+				if(err) throw err;
+			
+				for(var i=0; i<data.streams.length; i++){
+					if(data.streams[i].codec_type == "video"){
+						var itemId = "item"+itemCount.toString();
+						var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+						var aspect = data.streams[i].width / data.streams[i].height;
+						var now = new Date();
+						var newItem = new item("video", title, itemId, elem_data.src, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
+			});
+		}
 		else if(elem_data.type == "youtube"){
 			ytdl.getInfo(elem_data.src, function(err, info){
 				if(err) throw err;
@@ -168,6 +188,25 @@ sio.sockets.on('connection', function(socket) {
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
+			});
+		}
+		else if(elem_data.type == "pdf"){
+			request({url:elem_data.src, encoding:null}, function(err, response, body) {
+				if(err) throw err;
+			
+				pdfutils(body, function(err, doc) {
+					if(err) throw err;
+					
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, body.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
 			});
 		}
 	});
@@ -325,6 +364,8 @@ app.post('/upload', function(request, response) {
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
+					
+					savedFiles["image"].push(path.basename(finalPath));
 				});
 			});
 		}
@@ -347,7 +388,9 @@ app.post('/upload', function(request, response) {
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
-						
+							
+							savedFiles["video"].push(path.basename(finalPath));
+							
 							break;
 						}
 					}
@@ -359,17 +402,23 @@ app.post('/upload', function(request, response) {
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
+				
+				fs.readFile(finalPath, function (err, data) {	
+					pdfutils(data, function(err, doc) {
+						if(err) throw err;
 					
-				pdfutils(finalPath, function(err, doc) {
-					// grab size of first page
-					var itemId = "item"+itemCount.toString();
-					var title = path.basename(finalPath);
-					var aspect = doc[0].width/doc[0].height;
-					var now = new Date();
-					var newItem = new item("pdf", title, itemId, localPath, 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
-					itemCount++;
+						// grab size of first page
+						var itemId = "item"+itemCount.toString();
+						var title = path.basename(finalPath);
+						var aspect = doc[0].width/doc[0].height;
+						var now = new Date();
+						var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+					
+						savedFiles["pdf"].push(path.basename(finalPath));
+					});
 				});
 			});
 		}
@@ -409,6 +458,8 @@ app.post('/upload', function(request, response) {
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
+							
+							savedFiles["app"].push(zipName);
 				
 							// set interval timer if specified
 							if(instructions.animation == "timer"){
