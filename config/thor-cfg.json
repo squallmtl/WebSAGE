@@ -1,5 +1,6 @@
 {
 	"config": "thor",
+	"port": 9090,
 	"resolution": {
 		"width": 1366,
 		"height": 768

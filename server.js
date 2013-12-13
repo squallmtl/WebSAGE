@@ -1,19 +1,47 @@
-var express = require("express");
-var http = require('http');
-var request = require('request');
-var fs = require('fs');
-var path = require('path');
-var pdfutils = require('pdfutils').pdfutils;
 var decompresszip = require('decompress-zip');
+var express = require("express");
+var fs = require('fs');
 var gm = require('gm');
+var http = require('http');
 var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
+var path = require('path');
+var pdfutils = require('pdfutils').pdfutils;
+var request = require('request');
+var io = require('socket.io');
 var ytdl = require('ytdl');
 
-var app = express();
-var hport = 9090;
+
+var file = 'config/desktop-cfg.json';
+//var file = 'config/thor-cfg.json';
+//var file = 'config/iridium-cfg.json';
+//var file = 'config/iridiumX-cfg.json';
+//var file = 'config/lyra-cfg.json';
+
+var json_str = fs.readFileSync(file, 'utf8');
+var config = JSON.parse(json_str);
+config.totalWidth = config.resolution.width * config.layout.columns;
+config.totalHeight = config.resolution.height * config.layout.rows;
+config.titleBarHeight = Math.round(0.025 * config.totalHeight);
+config.titleTextSize = Math.round(0.015 * config.totalHeight);
+config.pointerWidth = Math.round(0.20 * config.totalHeight);
+config.pointerHeight = Math.round(0.05 * config.totalHeight);
+console.log(config);
 
 var uploadsFolder = __dirname + "/uploads";
+
+var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
+var uploadedImages = fs.readdirSync(uploadsFolder+"/images");
+var uploadedVideos = fs.readdirSync(uploadsFolder+"/videos");
+var uploadedPdfs = fs.readdirSync(uploadsFolder+"/pdfs");
+var uploadedApps = fs.readdirSync(uploadsFolder+"/apps");
+for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImages[i]);
+for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
+for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
+for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
+console.log(savedFiles);
+
+var app = express();
 
 app.configure(function(){
 	app.use(express.methodOverride());
@@ -29,8 +57,6 @@ var server = http.createServer(app);
 // Setup the websocket
 // ---------------------------------------------
 // To talk to the web clients
-var io = require('socket.io');
-
 var sio = io.listen(server);
 
 sio.configure(function () {
@@ -39,32 +65,11 @@ sio.configure(function () {
 });
 
 sio.configure('development', function () {
-	sio.set('transports', ['websocket' ]);
+	sio.set('transports', ['websocket']);
 	sio.disable('log');
 });
 
 var initDate = new Date();
-
-//var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
-var file = 'config/iridiumX-cfg.json';
-//var file = 'config/lyra-cfg.json';
-var config;
-fs.readFile(file, 'utf8', function(err, json_str) {
-	if(err){
-		console.log('Error: ' + err);
-		return;
-	}
-	config = JSON.parse(json_str);
-	config.totalWidth = config.resolution.width * config.layout.columns;
-	config.totalHeight = config.resolution.height * config.layout.rows;
-	config.titleBarHeight = Math.round(0.025 * config.totalHeight);
-	config.titleTextSize = Math.round(0.015 * config.totalHeight);
-	config.pointerWidth = Math.round(0.20 * config.totalHeight);
-	config.pointerHeight = Math.round(0.05 * config.totalHeight);
-	console.log(config);
-});
 
 var itemCount = 0;
 var items = [];
@@ -299,20 +304,20 @@ app.post('/upload', function(request, response) {
 	var fileKeys = Object.keys(request.files);
 	fileKeys.forEach(function(key) {
 		var uploadPath = path.dirname(request.files[key].path);
-		var finalPath = path.join(uploadPath, request.files[key].name);
-		fs.rename(request.files[key].path, finalPath, function(err) {
-			if(err) throw err;
-			
-			var localPath = finalPath.substring(__dirname.length+1);
-			console.log(localPath);
 		
-			if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
-				fs.readFile(localPath, function (err, data) {
-					if(err) throw err;
+		if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
+			var finalPath = path.join(uploadPath+"/images", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			console.log(finalPath);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
 				
+				fs.readFile(finalPath, function (err, data) {
+					if(err) throw err;
+					
 					var info = imageinfo(data);
 					var itemId = "item"+itemCount.toString();
-					var title = path.basename(localPath);
+					var title = path.basename(finalPath);
 					var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
 					var aspect = info.width / info.height;
 					var now = new Date();
@@ -321,18 +326,24 @@ app.post('/upload', function(request, response) {
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				});
-			}
-			else if(request.files[key].type == "video/mp4"){
-				ffprobe(localPath, function(err, data){
+			});
+		}
+		else if(request.files[key].type == "video/mp4"){
+			var finalPath = path.join(uploadPath+"/videos", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+		
+				ffprobe(finalPath, function(err, data){
 					if(err) throw err;
 				
 					for(var i=0; i<data.streams.length; i++){
 						if(data.streams[i].codec_type == "video"){
 							var itemId = "item"+itemCount.toString();
-							var title = data.filename;
+							var title = path.basename(finalPath);
 							var aspect = data.streams[i].width / data.streams[i].height;
 							var now = new Date();
-							var newItem = new item("video", title, itemId, data.file, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+							var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
@@ -341,12 +352,18 @@ app.post('/upload', function(request, response) {
 						}
 					}
 				});
-			}
-			else if(request.files[key].type == "application/pdf"){
-				pdfutils(localPath, function(err, doc) {
+			});
+		}
+		else if(request.files[key].type == "application/pdf"){
+			var finalPath = path.join(uploadPath+"/pdfs", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+					
+				pdfutils(finalPath, function(err, doc) {
 					// grab size of first page
 					var itemId = "item"+itemCount.toString();
-					var title = path.basename(localPath);
+					var title = path.basename(finalPath);
 					var aspect = doc[0].width/doc[0].height;
 					var now = new Date();
 					var newItem = new item("pdf", title, itemId, localPath, 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
@@ -354,12 +371,18 @@ app.post('/upload', function(request, response) {
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				});
-			}
-			else if(request.files[key].type == "application/zip"){
+			});
+		}
+		else if(request.files[key].type == "application/zip"){
+			var finalPath = path.join(uploadPath+"/apps", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+				
 				var zipFolder = localPath.substring(0, localPath.length-4);
-				var zipName = request.files[key].name.substring(0, request.files[key].name.length-4);
+				var zipName = path.basename(localPath, ".zip");
 			
-				var unzipper = new decompresszip(localPath);
+				var unzipper = new decompresszip(finalPath);
 				unzipper.on('extract', function(log) {
 					// read instructions for how to handle
 					var instuctionsFile = zipFolder + "/instructions.json";
@@ -403,16 +426,21 @@ app.post('/upload', function(request, response) {
 					});
 				});
 				unzipper.extract({
-					path: uploadsFolder,
+					path: uploadsFolder+"/apps",
 					filter: function(file) {
-						return file.type !== "SymbolicLink";
+						if(file.type === "SymbolicLink") return false;
+						if(file.filename === "__MACOSX") return false;
+						if(file.filename.substring(0,1) == ".") return false;
+						if(file.parent.length >= 8 && file.parent.substring(0,8) == "__MACOSX") return false;
+						
+						return true;
 					}
 				});
-			}
-			else{
-				console.log("Unknown type: " + request.files[key].type);
-			}
-		});
+			});
+		}
+		else{
+			console.log("Unknown type: " + request.files[key].type);
+		}
 	});
 	
 	response.end("upload complete");
@@ -422,9 +450,9 @@ app.post('/upload', function(request, response) {
 
 
 // Start the http server
-server.listen(hport);
+server.listen(config.port);
 
-console.log('Now serving the app at http://localhost:' + hport);
+console.log('Now serving the app at http://localhost:' + config.port);
 
 
 function findItemById(id) {

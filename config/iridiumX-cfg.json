@@ -1,5 +1,6 @@
 {
 	"config": "iridiumX",
+	"port": 9090,
 	"resolution": {
 		"width": 4098,
 		"height": 768
