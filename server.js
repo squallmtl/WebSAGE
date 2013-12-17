@@ -14,10 +14,10 @@ var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
+var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyra-cfg.json';
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -54,8 +54,11 @@ app.configure(function(){
 });
 
 var options = {
-  key: fs.readFileSync("keys/privatekey.pem"),
-  cert: fs.readFileSync("keys/certificate.pem")
+	key: fs.readFileSync("keys/server.key"),
+	cert: fs.readFileSync("keys/server.crt"),
+	ca: fs.readFileSync("keys/ca.crt"),
+	requestCert: true,
+	rejectUnauthorized: false
 };
 
 //var server = http.createServer(app);
