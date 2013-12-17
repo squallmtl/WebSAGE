@@ -3,12 +3,14 @@ var express = require("express");
 var fs = require('fs');
 var gm = require('gm');
 var http = require('http');
+var https = require('https');
 var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
 var path = require('path');
 var pdfutils = require('pdfutils').pdfutils;
 var request = require('request');
 var io = require('socket.io');
+var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 
@@ -51,7 +53,16 @@ app.configure(function(){
 	app.use(app.router);
 });
 
-var server = http.createServer(app);
+var options = {
+  key: fs.readFileSync("keys/privatekey.pem"),
+  cert: fs.readFileSync("keys/certificate.pem")
+};
+
+//var server = http.createServer(app);
+var server = https.createServer(options, app);
+var wsserver = http.createServer(app);
+
+var webRTC = webRTCio.listen(wsserver);
 
 // ---------------------------------------------
 // Setup the websocket
@@ -117,6 +128,15 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('stopSagePointer', function(pointer_data) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
+	});
+	
+	socket.on('addNewSharedScreen', function(screen_data) {
+		console.log("Added shared screen");
+		var now = new Date();
+		var newItem = new item("screen", screen_data.title, screen_data.id, null, 0, 0, screen_data.width, screen_data.height, screen_data.aspect, now, null, null);
+		items.push(newItem);
+		sio.sockets.emit('addNewElement', newItem);
+		itemCount++;
 	});
 	
 	socket.on('addNewWebElement', function(elem_data) {
@@ -500,10 +520,11 @@ app.post('/upload', function(request, response) {
 /////////////////////////////////////////////////////////////////////////
 
 
-// Start the http server
+// Start the https server
 server.listen(config.port);
+wsserver.listen(config.port+1);
 
-console.log('Now serving the app at http://localhost:' + config.port);
+console.log('Now serving the app at https://localhost:' + config.port);
 
 
 function findItemById(id) {

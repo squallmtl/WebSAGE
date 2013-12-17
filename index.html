@@ -4,6 +4,7 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/webrtc.io.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
 <script type="text/javascript" src="scripts/pdf_canvas.js"></script>
@@ -38,6 +39,80 @@
 		
 		clientID = parseInt(getParameterByName("clientID"));
 		console.log(clientID);
+		
+		
+		/* screen sharing */
+		var room = window.location.hash.slice(1);
+		
+		var wsport = parseInt(window.location.port) + 1;
+		var websocketURL = "ws:" + window.location.hostname + ":" + wsport.toString() + "/";
+		
+		rtc.connect(websocketURL, room);
+		
+		rtc.on('add remote stream', function(stream, socketId) {
+			console.log("add remote stream: " + socketId);
+			var elemId = "screen" + socketId;
+			
+			var main = document.getElementById("main");
+			
+			var windowTitle = document.createElement("div");
+			windowTitle.id = elemId + "_title";
+			windowTitle.className = "windowTitle";
+			//windowTitle.style.width = elem_data.width.toString() + "px";
+			//windowTitle.style.height = titleBarHeight.toString() + "px";
+			windowTitle.style.left = (0-offsetX).toString() + "px";
+			windowTitle.style.top = (0-offsetY).toString() + "px";
+			windowTitle.style.zIndex = itemCount.toString();
+			main.appendChild(windowTitle);
+			
+			var titleText = document.createElement("p");
+			titleText.style.lineHeight = Math.round(titleBarHeight) + "px";
+			titleText.style.fontSize = Math.round(titleTextSize) + "px";
+			titleText.style.color = "#FFFFFF";
+			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
+			titleText.textContent = "screen[" + socketId + "]";
+			windowTitle.appendChild(titleText);
+			
+			var windowItem = document.createElement("div");
+			windowItem.id = elemId;
+			windowItem.className = "windowItem";
+			windowItem.style.left = (0-offsetX).toString() + "px";
+			windowItem.style.top = (0+titleBarHeight-offsetY).toString() + "px";
+			windowItem.style.zIndex = (itemCount+1).toString();
+			main.appendChild(windowItem);
+			
+			var remote = document.createElement("video");
+			remote.id = elemId + "_screen";
+			remote.className = "sageItem";
+			remote.autoplay = "autoplay";
+			remote.addEventListener('loadedmetadata', function() {
+				remote.width = remote.videoWidth;
+				remote.height = remote.videoHeight;
+				remote.aspectRatio = remote.width / remote.height;
+				
+				windowTitle.style.width = remote.width.toString() + "px";
+				windowTitle.style.height = titleBarHeight.toString() + "px";
+				
+				if(clientID == 0) socket.emit('addNewSharedScreen', {id: elemId, title: "screen[" + socketId + "]", width: remote.width, height: remote.height, aspect: remote.aspectRatio});
+			}, false);
+			
+			windowItem.appendChild(remote);
+		
+			rtc.attachStream(stream, remote.id);
+			
+			itemCount += 2;
+		});
+	
+		rtc.on('disconnect stream', function(data) {
+			var elemId = "screen" + data;
+			console.log("remove stream: " + elemId);
+			
+			var title = document.getElementById(elemId + "_title")
+			var screen = document.getElementById(elemId);
+			title.parentNode.removeChild(title);
+			screen.parentNode.removeChild(screen);
+		});
+		/* ************** */
 		
 		socket.on('setSystemTime', function(time_ms) {
 			sysTime = time_ms;
@@ -113,6 +188,8 @@
         });
 		
 		socket.on('addNewElement', function(elem_data) {
+			if(elem_data.type == "screen") return;
+		
 			var date = new Date(elem_data.date);
 		
 			var main = document.getElementById("main");
@@ -427,6 +504,7 @@
 
 <body onload="init()">
 	<div id="main">
+		<video id="local" autoplay="autoplay">
 	</div>
 </body>
 </html>

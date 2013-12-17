@@ -45,7 +45,18 @@ label {
 }
 
 #sagePointer {
-	margin-left: 275px;
+	float: left;
+	margin-left: 20px;
+	padding: 5px;
+	width: 250px;
+	height: 70px;
+	text-align: left;
+	border: solid 1px #000000;
+}
+
+#screenShare {
+	float: left;
+	margin-left: 20px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
