@@ -133,7 +133,7 @@
 		
 		
 		if(PeerConnection){
-			var media = {video: {mandatory: {chromeMediaSource: 'screen', maxWidth: screen.width, maxHeight: screen.height}, optional: []}, audio: false};
+			var media = {video: {mandatory: {chromeMediaSource: 'screen', maxWidth: 1280, maxHeight: 720, minFrameRate: 30}, optional: [{bandwidth: 10000}]}, audio: false};
 			rtc.createStream(media, function(stream) {
 				var elemId = "screen" + stream.id;
 				var elemTitle = "Screen-Capture [" + name + "]";

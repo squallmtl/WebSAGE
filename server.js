@@ -14,11 +14,10 @@ var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 
-var file = 'config/desktop-cfg.json';
+//var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
-//var file = 'config/lyra-cfg.json';
+var file = 'config/iridiumX-cfg.json';
+//var file = 'config/lyraX-cfg.json';
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);

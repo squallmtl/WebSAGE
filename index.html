@@ -49,6 +49,8 @@
 		
 		rtc.connect(websocketURL, room);
 		
+		console.log(rtc);
+		
 		rtc.on('add remote stream', function(stream, socketId) {
 			var main = document.getElementById("main");
 			
