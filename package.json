@@ -33,7 +33,7 @@
       "gm": "latest",
       "imageinfo": "latest",
       "node-ffprobe": "latest",
-      "pdfutils": "latest",
+
       "request": "latest",
       "socket.io": "latest",
       "ytdl": "latest"
@@ -44,7 +44,7 @@
       "gm",
       "imageinfo",
       "node-ffprobe",
-      "pdfutils",
+
       "request",
       "socket.io",
       "ytdl"
