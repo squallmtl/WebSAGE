@@ -54,8 +54,11 @@ app.configure(function(){
 });
 
 var options = {
-  key: fs.readFileSync("keys/privatekey.pem"),
-  cert: fs.readFileSync("keys/certificate.pem")
+  key: fs.readFileSync("keys/server.key"),
+  cert: fs.readFileSync("keys/server.crt"),
+  ca: fs.readFileSync("keys/ca.crt"),
+  requestCert: true,
+  rejectUnauthorized: false
 };
 
 //var server = http.createServer(app);
@@ -351,6 +354,31 @@ sio.sockets.on('connection', function(socket) {
 			var newOrder = moveItemToFront(keypressItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
 			sio.sockets.emit('keypressItem', keypress_data);
+		}
+	});
+	
+	socket.on('keypressElementWithPointer', function(code) {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		
+		var keypressItem = null;
+		for(var i=items.length-1; i>=0; i--){
+			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+				keypressItem = findItemById(items[i].id);
+				break;
+			}
+		}
+		
+		if(keypressItem != null){
+			if(code == "8" || code == "46"){ // backspace or delete
+				removeItemById(keypressItem.id);
+				sio.sockets.emit('deleteElement', keypressItem.id);
+			}
+			else{
+				var newOrder = moveItemToFront(keypressItem.id);
+				sio.sockets.emit('updateItemOrder', newOrder);
+				sio.sockets.emit('keypressItem', {elemId: keypressItem.id, keyCode: code});
+			}
 		}
 	});
 	

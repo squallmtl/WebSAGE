@@ -140,6 +140,7 @@ function windowManager(id, sock) {
 				break;
 			}
 		}
+		event.preventDefault();
 	};
 	
 	this.mouseMove = function(event) {
@@ -149,10 +150,12 @@ function windowManager(id, sock) {
 		var globalX = this.mouseX / this.scale;
 		var globalY = this.mouseY / this.scale;
 		this.socket.emit('moveSelectedElement', {eventX: globalX, eventY: globalY});
+		event.preventDefault();
 	};
 	
 	this.mouseRelease = function(event) {
 		this.socket.emit('releaseSelectedElement');
+		event.preventDefault();
 	};
 	
 	this.mouseScroll = function(event) {
@@ -174,6 +177,7 @@ function windowManager(id, sock) {
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
 		this.socket.emit('scrollSelectedElement', scale);
+		event.preventDefault();
 	};
 	
 	this.mouseScrollFF = function(event) {
@@ -196,6 +200,7 @@ function windowManager(id, sock) {
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
 		this.socket.emit('scrollSelectedElement', scale);
+		event.preventDefault();
 	};
 	
 	this.keyPress = function(event) {
@@ -210,6 +215,7 @@ function windowManager(id, sock) {
 				break;
 			}
 		}
+		event.preventDefault();
 	};
 	
 	this.addNewElement = function(elem_data) {

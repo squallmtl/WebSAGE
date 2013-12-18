@@ -1,0 +1,10 @@
+{
+	"main_script": "clock.js",
+	"type": "canvas",
+	"width": 600,
+	"height": 600,
+	"animation": "timer",
+	"interval": 1000,
+	"resources": [
+	]
+}

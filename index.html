@@ -50,28 +50,9 @@
 		rtc.connect(websocketURL, room);
 		
 		rtc.on('add remote stream', function(stream, socketId) {
-			console.log("add remote stream: " + socketId);
-			var elemId = "screen" + socketId;
-			
 			var main = document.getElementById("main");
 			
-			var windowTitle = document.createElement("div");
-			windowTitle.id = elemId + "_title";
-			windowTitle.className = "windowTitle";
-			//windowTitle.style.width = elem_data.width.toString() + "px";
-			//windowTitle.style.height = titleBarHeight.toString() + "px";
-			windowTitle.style.left = (0-offsetX).toString() + "px";
-			windowTitle.style.top = (0-offsetY).toString() + "px";
-			windowTitle.style.zIndex = itemCount.toString();
-			main.appendChild(windowTitle);
-			
-			var titleText = document.createElement("p");
-			titleText.style.lineHeight = Math.round(titleBarHeight) + "px";
-			titleText.style.fontSize = Math.round(titleTextSize) + "px";
-			titleText.style.color = "#FFFFFF";
-			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
-			titleText.textContent = "screen[" + socketId + "]";
-			windowTitle.appendChild(titleText);
+			var elemId = "screen" + stream.id;
 			
 			var windowItem = document.createElement("div");
 			windowItem.id = elemId;
@@ -89,11 +70,6 @@
 				remote.width = remote.videoWidth;
 				remote.height = remote.videoHeight;
 				remote.aspectRatio = remote.width / remote.height;
-				
-				windowTitle.style.width = remote.width.toString() + "px";
-				windowTitle.style.height = titleBarHeight.toString() + "px";
-				
-				if(clientID == 0) socket.emit('addNewSharedScreen', {id: elemId, title: "screen[" + socketId + "]", width: remote.width, height: remote.height, aspect: remote.aspectRatio});
 			}, false);
 			
 			windowItem.appendChild(remote);
@@ -104,13 +80,15 @@
 		});
 	
 		rtc.on('disconnect stream', function(data) {
-			var elemId = "screen" + data;
+			// do nothing
+			
+			/*var elemId = "screen" + data;
 			console.log("remove stream: " + elemId);
 			
 			var title = document.getElementById(elemId + "_title")
 			var screen = document.getElementById(elemId);
 			title.parentNode.removeChild(title);
-			screen.parentNode.removeChild(screen);
+			screen.parentNode.removeChild(screen);*/
 		});
 		/* ************** */
 		
@@ -187,9 +165,7 @@
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
 		
-		socket.on('addNewElement', function(elem_data) {
-			if(elem_data.type == "screen") return;
-		
+		socket.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
 		
 			var main = document.getElementById("main");
@@ -211,6 +187,8 @@
 			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
 			titleText.textContent = elem_data.title;
 			windowTitle.appendChild(titleText);
+			
+			if(elem_data.type == "screen") return;
 			
 			var windowItem = document.createElement("div");
 			windowItem.id = elem_data.id;
@@ -425,11 +403,7 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 		
 			if(keypress_data.keyCode == "32"){ // spacebar
-				/*
-				if(child[0].id.substring(child[0].id.length - 5) == "video"){
-					playPauseVideo(keypress_data.elemId);
-				}
-				*/
+				
 			}
 			else if(keypress_data.keyCode == "37"){ // left arrow
 				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
@@ -504,7 +478,6 @@
 
 <body onload="init()">
 	<div id="main">
-		<video id="local" autoplay="autoplay">
 	</div>
 </body>
 </html>
