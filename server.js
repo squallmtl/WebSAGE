@@ -61,7 +61,6 @@ var options = {
   rejectUnauthorized: false
 };
 
-//var server = http.createServer(app);
 var server = https.createServer(options, app);
 var wsserver = http.createServer(app);
 
