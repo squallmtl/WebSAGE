@@ -215,6 +215,7 @@ function windowManager(id, sock) {
 				break;
 			}
 		}
+		console.log("winMgr keypress");
 		event.preventDefault();
 	};
 	
@@ -314,11 +315,4 @@ function windowManager(id, sock) {
 		}
 		this.draw();
 	};
-	
-	this.element.addEventListener('mousedown', this.mousePress.bind(this), false);
-	this.element.addEventListener('mousemove', this.mouseMove.bind(this), false);
-	this.element.addEventListener('mouseup', this.mouseRelease.bind(this), false);
-	this.element.addEventListener('mousewheel', this.mouseScroll.bind(this), false);
-	this.element.addEventListener('DOMMouseScroll', this.mouseScrollFF.bind(this), false);
-	window.addEventListener('keydown', this.keyPress.bind(this), false);
 }

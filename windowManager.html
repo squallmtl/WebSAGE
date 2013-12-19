@@ -11,10 +11,15 @@
 	var socket;
 	var winMgr;
 	
+	var canvasKeyEvents = false;
+	var canvasKeyFunc = null;
+	
 	var name = "Default";
 	var col = [180, 180, 180];
 	
 	var sensitivity;
+	
+	var selectedFile = null;
 	
 	var PeerConnection = window.PeerConnection || 
 						 window.webkitPeerConnection00 || 
@@ -41,6 +46,13 @@
 		window.addEventListener('dragend', preventDefault, false);
 		window.addEventListener('drop', preventDefault, false);
 		
+		var serverUploadBtn = document.getElementById("serverUploadBtn");
+		var fileOKBtn = document.getElementById("fileOKBtn");
+		var fileCloseBtn = document.getElementById("fileCloseBtn");
+		serverUploadBtn.addEventListener('click', openServerFileBrowser, false);
+		fileOKBtn.addEventListener('click', selectServerFiles, false);
+		fileCloseBtn.addEventListener('click', closeServerFileBrowser, false);
+		
 		var pointerBtn = document.getElementById("sagePointerBtn");
 		var pointerLabel = document.getElementById("sagePointerLabel");
 		var pointerColor = document.getElementById("sagePointerColor");
@@ -54,14 +66,16 @@
 		winMgr = new windowManager('winMgr', socket);
 		winMgr.draw();
 		
+		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
+		
 		var winMgrCanvas = document.getElementById("winMgr");
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousemove', winMgr.mouseMove.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mouseup', winMgr.mouseRelease.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousewheel', winMgr.mouseScroll.bind(winMgr), false);
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
-		window.addEventListener('keydown', winMgr.keyPress.bind(winMgr), false);
-		
+		document.addEventListener('mousemove', updateTarget, false);
+				
 		socket.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
 			var displayMin = Math.min(config.totalWidth, config.totalHeight);
@@ -91,9 +105,103 @@
 		
 		socket.on('storedFileList', function(files) {
 			console.log(files);
+			
+			var i;
+			
+			document.getElementById("lb_fade").style.display="block";
+			document.getElementById("lb_light").style.display="block";
+			
+			document.getElementById("apps-dir").checked = false;
+			document.getElementById("images-dir").checked = false;;
+			document.getElementById("pdfs-dir").checked = false;;
+			document.getElementById("videos-dir").checked = false;;
+			
+			var appsDir = document.getElementById("apps");
+			var imagesDir = document.getElementById("images");
+			var pdfsDir = document.getElementById("pdfs");
+			var videosDir = document.getElementById("videos");
+			
+			removeAllChildren(appsDir);
+			removeAllChildren(imagesDir);
+			removeAllChildren(pdfsDir);
+			removeAllChildren(videosDir);
+			
+			for(i=0; i<files["app"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["app"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				appsDir.appendChild(listElem);
+			}
+			for(i=0; i<files["image"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["image"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				imagesDir.appendChild(listElem);
+			}
+			for(i=0; i<files["pdf"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["pdf"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				pdfsDir.appendChild(listElem);
+			}
+			for(i=0; i<files["video"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["video"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				videosDir.appendChild(listElem);
+			}
+			
+			selectedFile = null;
 		});
+	}
+	
+	function updateTarget(event) {
+		var winMgrCanvas = document.getElementById("winMgr");
 		
+		if(event.target == winMgrCanvas && !canvasKeyEvents){
+			document.addEventListener('keydown', canvasKeyFunc, false);
+			canvasKeyEvents = true;
+		}
+		else if(event.target != winMgrCanvas && canvasKeyEvents){
+			document.removeEventListener('keydown', canvasKeyFunc, false);
+			canvasKeyEvents = false;
+		}
+	}
+	
+	function removeAllChildren(node) {
+		while (node.lastChild) {
+    		node.removeChild(node.lastChild);
+		}
+	}
+	
+	function openServerFileBrowser(event) {
 		socket.emit('requestStoredFiles');
+	}
+	
+	function closeServerFileBrowser(event) {
+		document.getElementById("lb_fade").style.display="none";
+		document.getElementById("lb_light").style.display="none";
+	}
+	
+	function selectServerFiles(event) {
+		var directory = selectedFile.parentNode.id
+		var fileName = selectedFile.innerHTML;
+		
+		socket.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
+		console.log("load: " + fileName);
+		
+		closeServerFileBrowser(event);
+	}
+	
+	function selectFile(event) {
+		if(selectedFile != null) selectedFile.style.backgroundColor = "transparent";
+		
+		selectedFile = event.target;
+		selectedFile.style.backgroundColor = "#B9D3FF";
 	}
 	
 	function startSagePointer(event) {
@@ -164,6 +272,7 @@
 		if(document.pointerLockElement === pointerBtn ||
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
+			console.log("pointer lock enabled");
 			socket.emit('startSagePointer', {label: name, color: col});
 			
 			document.addEventListener('mousedown', pointerPress, false);
@@ -171,10 +280,10 @@
 			document.addEventListener('mouseup', pointerRelease, false);
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
-			window.addEventListener('keydown', pointerKeyPress, false);
+			document.addEventListener('keydown', pointerKeyPress, false);
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
-			window.removeEventListener('keydown', winMgr.keyPress.bind(winMgr), false);
+			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
 		}
 		else{
 			socket.emit('stopSagePointer', {label: name, color: col});
@@ -184,9 +293,9 @@
 			document.removeEventListener('mouseup', pointerRelease, false);
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
+			document.removeEventListener('keydown', pointerKeyPress, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
-			window.addEventListener('keydown', winMgr.keyPress.bind(winMgr), false);
 		}
 	}
 	
@@ -298,8 +407,11 @@
 			<canvas id="winMgr" style="width: 100%;">HTML5 canvas element not supported</canvas>
 		</div>
 		<div id="extraIntercation">
-			<div id="fileDrop">
-				<p id="fileDropText">Drag files here to upload</p>
+			<div id="fileUpload">
+				<div id="fileDrop">
+					<p id="fileDropText">Drag files here to upload</p>
+				</div>
+				<label class="fileLabel">Load from Server:</label><button id="serverUploadBtn" type="button">Select Files</button>
 			</div>
 			<div id="sagePointer">
 				<label class="sageLabel">Click to start:</label><button id="sagePointerBtn" type="button">SAGE Pointer</button><br />
@@ -312,6 +424,31 @@
 				<canvas id="screenCanvas" style="display: none;"></canvas>
 			</div>
 		<div>
+	</div>
+	
+	<div class="clear"></div>
+	
+	<div id="lb_fade" class="lb_blackoverlay"></div>
+	<div id="lb_light" class="lb_whiteboxcontainer">
+		<div id="fileTreeList" class="lb_whitecontent">
+			<div class="css-treeview">
+				<ul>
+        			<li><input type="checkbox" id="apps-dir" /><label for="apps-dir">Apps</label>
+        			<ul id="apps"></ul>
+        			<li><input type="checkbox" id="images-dir" /><label for="images-dir">Images</label>
+        			<ul id="images"></ul>
+        			<li><input type="checkbox" id="pdfs-dir" /><label for="pdfs-dir">PDFs</label>
+        			<ul id="pdfs"></ul>
+        			<li><input type="checkbox" id="videos-dir" /><label for="videos-dir">Videos</label>
+        			<ul id="videos"></ul>
+        		</ul>
+			</div>
+		</div>
+		<div class="clear"></div>
+		<div id="fileButtons">
+			<button id="fileOKBtn" type="button">OK</button>
+			<button id="fileCloseBtn" type="button">Close</button>
+		</div>
 	</div>
 </body>
 </html>

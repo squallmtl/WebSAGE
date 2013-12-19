@@ -14,9 +14,9 @@ var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 
-//var file = 'config/desktop-cfg.json';
+var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
-var file = 'config/iridiumX-cfg.json';
+//var file = 'config/iridiumX-cfg.json';
 //var file = 'config/lyraX-cfg.json';
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -234,6 +234,10 @@ sio.sockets.on('connection', function(socket) {
 				});
 			});
 		}
+	});
+	
+	socket.on('addNewElementFromStoredFiles', function(file) {
+		console.log(file);
 	});
 
 	socket.on('selectElementById', function(select_data) {
