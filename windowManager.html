@@ -126,6 +126,7 @@
 			removeAllChildren(pdfsDir);
 			removeAllChildren(videosDir);
 			
+			files["app"].sort();
 			for(i=0; i<files["app"].length; i++){
 				var listElem = document.createElement("li");
 				listElem.innerHTML = files["app"][i];
@@ -133,6 +134,7 @@
 							
 				appsDir.appendChild(listElem);
 			}
+			files["image"].sort();
 			for(i=0; i<files["image"].length; i++){
 				var listElem = document.createElement("li");
 				listElem.innerHTML = files["image"][i];
@@ -140,6 +142,7 @@
 							
 				imagesDir.appendChild(listElem);
 			}
+			files["pdf"].sort();
 			for(i=0; i<files["pdf"].length; i++){
 				var listElem = document.createElement("li");
 				listElem.innerHTML = files["pdf"][i];
@@ -147,6 +150,7 @@
 							
 				pdfsDir.appendChild(listElem);
 			}
+			files["video"].sort();
 			for(i=0; i<files["video"].length; i++){
 				var listElem = document.createElement("li");
 				listElem.innerHTML = files["video"][i];
