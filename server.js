@@ -238,6 +238,104 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('addNewElementFromStoredFiles', function(file) {
 		console.log(file);
+		
+		if(file.dir == "images"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			fs.readFile(localPath, function (err, data) {
+				if(err) throw err;
+				
+				var info = imageinfo(data);
+				var itemId = "item"+itemCount.toString();
+				var title = path.basename(localPath);
+				var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
+				var aspect = info.width / info.height;
+				var now = new Date();
+				var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
+				items.push(newItem);
+				sio.sockets.emit('addNewElement', newItem);
+				itemCount++;
+			});
+		}
+		else if(file.dir == "videos"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			ffprobe(localPath, function(err, data){
+				if(err) throw err;
+			
+				for(var i=0; i<data.streams.length; i++){
+					if(data.streams[i].codec_type == "video"){
+						var itemId = "item"+itemCount.toString();
+						var title = path.basename(localPath);
+						var aspect = data.streams[i].width / data.streams[i].height;
+						var now = new Date();
+						var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
+			});
+		}
+		else if(file.dir == "pdfs"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			fs.readFile(localPath, function (err, data) {	
+				pdfutils(data, function(err, doc) {
+					if(err) throw err;
+				
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = path.basename(localPath);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
+			});
+		}
+		else if(file.dir == "apps"){
+			var zipFolder = path.join("uploads", file.dir, file.name);
+			var instuctionsFile = path.join(zipFolder , "instructions.json");
+			
+			fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
+				if(err) throw err;
+			
+				var instructions = JSON.parse(json_str);
+			
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
+					}
+				}
+			
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					var itemId = "item"+itemCount.toString();
+					var title = file.name;
+					var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
+					var now = new Date();
+					var aspect = instructions.width / instructions.height;
+					var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+		
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
+			});
+		}
 	});
 
 	socket.on('selectElementById', function(select_data) {
@@ -399,7 +497,7 @@ app.post('/upload', function(request, response) {
 		var uploadPath = path.dirname(request.files[key].path);
 		
 		if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
-			var finalPath = path.join(uploadPath+"/images", request.files[key].name);
+			var finalPath = path.join(uploadPath, "images", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			console.log(finalPath);
 			fs.rename(request.files[key].path, finalPath, function(err) {
@@ -424,7 +522,7 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "video/mp4"){
-			var finalPath = path.join(uploadPath+"/videos", request.files[key].name);
+			var finalPath = path.join(uploadPath, "videos", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
@@ -452,7 +550,7 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "application/pdf"){
-			var finalPath = path.join(uploadPath+"/pdfs", request.files[key].name);
+			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
@@ -477,7 +575,7 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "application/zip"){
-			var finalPath = path.join(uploadPath+"/apps", request.files[key].name);
+			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
@@ -488,7 +586,7 @@ app.post('/upload', function(request, response) {
 				var unzipper = new decompresszip(finalPath);
 				unzipper.on('extract', function(log) {
 					// read instructions for how to handle
-					var instuctionsFile = zipFolder + "/instructions.json";
+					var instuctionsFile = path.join(zipFolder, "/instructions.json");
 					fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 						if(err) throw err;
 					
@@ -497,7 +595,7 @@ app.post('/upload', function(request, response) {
 						// add resource scripts to clients
 						for(var i=0; i<instructions.resources.length; i++){
 							if(instructions.resources[i].type == "script"){
-								sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
+								sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
 							}
 						}
 					
@@ -508,7 +606,7 @@ app.post('/upload', function(request, response) {
 							var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 							var now = new Date();
 							var aspect = instructions.width / instructions.height;
-							var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
+							var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
