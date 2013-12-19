@@ -444,7 +444,9 @@ var udp = undefined;
 // Green table
 //var tserver   = "midori.evl.uic.edu";
 // Icelab
-var tserver   = "omgtracker.evl.uic.edu";
+//var tserver   = "omgtracker.evl.uic.edu";
+// Arthur Touchscreen
+var tserver   = "131.193.77.211";
 
 var tport     = 28000;
 var pdataPort = 9123;
@@ -508,10 +510,18 @@ var ptrs    = {};
                         var r_roll  = Math.asin(2.0*e.orx*e.ory + 2.0*e.orz*e.orw);
                         var r_yaw   = Math.atan2(2.0*e.ory*e.orw-2.0*e.orx*e.orz , 1.0 - 2.0*e.ory*e.ory - 2.0*e.orz*e.orz);
                         var r_pitch = Math.atan2(2.0*e.orx*e.orw-2.0*e.ory*e.orz , 1.0 - 2.0*e.orx*e.orx - 2.0*e.orz*e.orz);
-
+						
+						var posX = e.posx * config.totalWidth;
+						var posY = e.posy*config.totalHeight;
+						var sourceID = e.sourceId;
+						
+						// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
+						var serviceID = e.serviceId;
+						
                         if (e.serviceType == 0) {  // ServiceTypePointer
-                                //console.log("pointer event! type: " + e.type  );
-                                //console.log("ServiceTypePointer> source ", e.sourceId);
+                                console.log("pointer event! type: " + e.type  );
+                                console.log("ServiceTypePointer> source ", e.sourceId);
+								console.log("ServiceTypePointer> serviceID ", e.serviceId);
                                 if (e.type == 3) { // update
                                          if( e.sourceId in ptrs )
                                              return;
@@ -528,32 +538,29 @@ var ptrs    = {};
                                         }
                                 }
                                 else if (e.type == 4) { // move
-                                        //console.log("\t move ", e.posx, e.posy);
-                                        if (e.sourceId in ptrs) {
-                                           sio.sockets.emit( 'movePointer',{elemId: e.sourceId, elemLeft: e.posx, elemTop: e.posy});
-                                           ptrs[e.sourceId].position = [e.posx, e.posy];
-
-                                           if( ptrs[e.sourceId].mouse[0] == 1 )
-                                           {
-                                                console.log("Drag");
-                                                handleSagePointerDrag( e.posx * config.totalWidth, e.posy*config.totalHeight, ptrs[e.sourceId].mode );
-                                            }
-                                        }
-//                                         else{
-//                                             console.log("need to create pointer");
-//                                               colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
-//                                                 if (offset < msg.length) {
-//                                                    if (e.extraDataType == 4 && e.extraDataItems > 0) {
-//                                                             console.log("create pointer"); 
-//                                                             e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
-//                                                             ptrinfo = e.extraString.split(" ");
-//                                                             offset += e.extraDataItems;
-//                                                             ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0]};
-//                                                             sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
-//                                                     }
-//                                             }  
-//                                         }
-                                        
+								
+									/*
+									sagePointers[address].left += pointer_data.deltaX;
+									sagePointers[address].top += pointer_data.deltaY;
+									if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+									if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+									if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+									if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+									
+									sio.sockets.emit('updatePointer', sagePointers[address]);
+									
+									if(interaction[address].selectedMoveItem == null) return;
+									interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+									interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+									var now = new Date();
+									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+									*/ 
+									var address = tserver;
+									if(address in sagePointers){
+										sagePointers[address].left = posX;
+										sagePointers[address].top = posY;
+										sio.sockets.emit("updatePointer", sagePointers[address]);
+									}									
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
@@ -579,38 +586,31 @@ var ptrs    = {};
                                         }
                                 }
                                 else if (e.type == 5) { // button down
-                                        //console.log("\t down , flags ", e.flags);
-                                        if (e.sourceId in ptrs) {
-                                                ptrs[e.sourceId].position = [e.posx, e.posy];
-                                                
-                                                var counter, i;
-                                                for(counter=0; counter < 3; counter++)
-                                                { 
-                                                        i = Math.pow(2, counter);
-                                                        if (e.flags & i)
-                                                                ptrs[e.sourceId].mouse[counter] = 1;
-                                                        else
-                                                                ptrs[e.sourceId].mouse[counter] = 0;
-
-                                                }
-
-                                                //if( ptrs[e.sourceId].mouse[0] == 1 )
-                                                //{
-                                                    console.log("Click");
-                                                    handleSagePointerClick( e.posx * config.totalWidth, e.posy*config.totalHeight, e.sourceId, ptrs[e.sourceId].mode );
-                                                //}
-                                        }
+                                        console.log("\t down , flags ", e.flags);
+										
+										var address = tserver;
+										console.log("starting pointer: " + address)
+										if(address in sagePointers){
+											sagePointers[address].label = "Touch: " + sourceID;
+											sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+											sagePointers[address].left = posX;
+											sagePointers[address].top = posY;
+											sio.sockets.emit('showPointer', sagePointers[address]);
+										}
+										else{
+											sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
+											sagePointers[address].label = "Touch: " + sourceID;
+											sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+											sagePointers[address].left = posX;
+											sagePointers[address].top = posY;
+											
+											pointerCount++;
+											sio.sockets.emit('createPointer', sagePointers[address]);
+										}
                                 }
-                                else if (e.type == 6) { // button up
-                                        //console.log("\t up , flags ", e.flags);
-                                        if (e.sourceId in ptrs) {
-                                           ptrs[e.sourceId].position = [e.posx, e.posy];
-                                                        
-                                            ptrs[e.sourceId].mouse[0] = 0;
-                                            ptrs[e.sourceId].mouse[1] = 0;
-                                            ptrs[e.sourceId].mouse[2] = 0;
-                                            releaseSelectedMoveItem(); 
-                                        }
+                                else if (e.type == 6) { // button up	
+									var address = tserver;
+                                    sio.sockets.emit('hidePointer', sagePointers[address]);
                                 }
                                 else {
                                         console.log("\t UNKNOWN event type ", e.type);                                        
