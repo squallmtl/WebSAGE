@@ -112,6 +112,10 @@ sio.sockets.on('connection', function(socket) {
 		socket.emit('addNewElement', items[i]);
 	}
 	
+	socket.on('requestStoredFiles', function() {
+		socket.emit('storedFileList', savedFiles);
+	});
+	
 	socket.on('startSagePointer', function(pointer_data) {
 		console.log("starting pointer: " + address)
 		if(address in sagePointers){

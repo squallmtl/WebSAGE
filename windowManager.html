@@ -88,6 +88,12 @@
 		socket.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
+		
+		socket.on('storedFileList', function(files) {
+			console.log(files);
+		});
+		
+		socket.emit('requestStoredFiles');
 	}
 	
 	function startSagePointer(event) {
