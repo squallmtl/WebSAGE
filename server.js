@@ -191,13 +191,16 @@ sio.sockets.on('connection', function(socket) {
 			}
 		}
 		
+		
 		if(interaction[address].selectedMoveItem != null){
 			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
+			console.log("Pointer select");
 		}
 	});
 	
 	socket.on('releaseSelectedElement', function() {
+		console.log("Pointer release selected");
 		interaction[address].selectedMoveItem = null;
 		interaction[address].selectedScrollItem = null;
 	});
@@ -207,6 +210,7 @@ sio.sockets.on('connection', function(socket) {
 		interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
 		interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
 		var now = new Date();
+		
 		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 	});
 	
@@ -225,6 +229,7 @@ sio.sockets.on('connection', function(socket) {
 		interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
 		var now = new Date();
 		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+		console.log("Pointer move selected");
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
@@ -518,17 +523,21 @@ var ptrs    = {};
 						// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
 						var serviceID = e.serviceId;
 						
+						// Appending sourceID to pointer address ID
+						var address = tserver+":"+sourceID;
+															
                         if (e.serviceType == 0) {  // ServiceTypePointer
-                                console.log("pointer event! type: " + e.type  );
-                                console.log("ServiceTypePointer> source ", e.sourceId);
-								console.log("ServiceTypePointer> serviceID ", e.serviceId);
+								//console.log("pointer ID "+ sourceID +" event! type: " + e.type  );
+                                //console.log("pointer event! type: " + e.type  );
+                                //console.log("ServiceTypePointer> source ", e.sourceId);
+								//console.log("ServiceTypePointer> serviceID ", e.serviceId);
                                 if (e.type == 3) { // update
                                          if( e.sourceId in ptrs )
                                              return;
                                         colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
                                         if (offset < msg.length) {
                                                 if (e.extraDataType == 4 && e.extraDataItems > 0) {
-                                                        console.log("create pointer"); 
+                                                        console.log("create touch pointer"); 
                                                         e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
                                                         ptrinfo = e.extraString.split(" ");
                                                         offset += e.extraDataItems;
@@ -555,12 +564,19 @@ var ptrs    = {};
 									var now = new Date();
 									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 									*/ 
-									var address = tserver;
 									if(address in sagePointers){
 										sagePointers[address].left = posX;
 										sagePointers[address].top = posY;
 										sio.sockets.emit("updatePointer", sagePointers[address]);
-									}									
+									}
+									
+									if(interaction[address].selectedMoveItem == null) return;
+									interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+									interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+									var now = new Date();
+									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+									console.log("Touch move selected");
+		
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
@@ -586,9 +602,7 @@ var ptrs    = {};
                                         }
                                 }
                                 else if (e.type == 5) { // button down
-                                        console.log("\t down , flags ", e.flags);
-										
-										var address = tserver;
+                                        //console.log("\t down , flags ", e.flags);
 										console.log("starting pointer: " + address)
 										if(address in sagePointers){
 											sagePointers[address].label = "Touch: " + sourceID;
@@ -596,8 +610,7 @@ var ptrs    = {};
 											sagePointers[address].left = posX;
 											sagePointers[address].top = posY;
 											sio.sockets.emit('showPointer', sagePointers[address]);
-										}
-										else{
+										}else{
 											sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
 											sagePointers[address].label = "Touch: " + sourceID;
 											sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
@@ -606,11 +619,36 @@ var ptrs    = {};
 											
 											pointerCount++;
 											sio.sockets.emit('createPointer', sagePointers[address]);
+											
+											interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
+											
+											var pointerX = posX;
+											var pointerY = posY;
+											
+											for(var i=items.length-1; i>=0; i--){
+												if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+													interaction[address].selectedMoveItem = findItemById(items[i].id);
+													interaction[address].selectedScrollItem = null;
+													interaction[address].selectOffsetX = items[i].left - pointerX;
+													interaction[address].selectOffsetY = items[i].top - pointerY;
+													break;
+												}
+											}
+											
+											
+											if(interaction[address].selectedMoveItem != null){
+												var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
+												sio.sockets.emit('updateItemOrder', newOrder);
+												console.log("Touch select");
+											}
 										}
                                 }
                                 else if (e.type == 6) { // button up	
-									var address = tserver;
                                     sio.sockets.emit('hidePointer', sagePointers[address]);
+									
+									console.log("Touch release");
+									interaction[address].selectedMoveItem = null;
+									interaction[address].selectedScrollItem = null;
                                 }
                                 else {
                                         console.log("\t UNKNOWN event type ", e.type);                                        
