@@ -519,18 +519,36 @@ var ptrs    = {};
 						var posX = e.posx * config.totalWidth;
 						var posY = e.posy*config.totalHeight;
 						var sourceID = e.sourceId;
-						
+
 						// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
 						var serviceID = e.serviceId;
 						
 						// Appending sourceID to pointer address ID
 						var address = tserver+":"+sourceID;
-															
+												
                         if (e.serviceType == 0) {  // ServiceTypePointer
 								//console.log("pointer ID "+ sourceID +" event! type: " + e.type  );
                                 //console.log("pointer event! type: " + e.type  );
                                 //console.log("ServiceTypePointer> source ", e.sourceId);
 								//console.log("ServiceTypePointer> serviceID ", e.serviceId);
+								
+								// TouchGestureManager Flags:
+								// 1 << 17 = User flag start (as of 12/20/13)
+								// User << 1 = Unprocessed
+								// User << 2 = Single touch
+								// User << 3 = Big touch
+								// User << 4 = 5-finger hold
+								// User << 5 = 5-finger swipe
+								// User << 6 = 3-finger hold
+								var User = 1 << 17;
+								
+								var FLAG_SINGLE_TOUCH = User << 2;
+								var FLAG_BIG_TOUCH = User << 3;
+								var FLAG_FIVE_FINGER_HOLD = User << 4;
+								var FLAG_FIVE_FINGER_SWIPE = User << 5;
+								var FLAG_THREE_FINGER_HOLD = User << 6;
+								
+								//console.log( e.flags );
                                 if (e.type == 3) { // update
                                          if( e.sourceId in ptrs )
                                              return;
@@ -564,19 +582,21 @@ var ptrs    = {};
 									var now = new Date();
 									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 									*/ 
-									if(address in sagePointers){
-										sagePointers[address].left = posX;
-										sagePointers[address].top = posY;
-										sio.sockets.emit("updatePointer", sagePointers[address]);
+									if( e.flags == FLAG_SINGLE_TOUCH )
+									{
+										if(address in sagePointers){
+											sagePointers[address].left = posX;
+											sagePointers[address].top = posY;
+											sio.sockets.emit("updatePointer", sagePointers[address]);
+										}
+										
+										if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
+										interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+										interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+										var now = new Date();
+										sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+										console.log("Touch move selected");
 									}
-									
-									if(interaction[address].selectedMoveItem == null) return;
-									interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-									interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-									var now = new Date();
-									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-									console.log("Touch move selected");
-		
                                 }
                                 else if (e.type == 15) { // zoom
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
@@ -603,52 +623,67 @@ var ptrs    = {};
                                 }
                                 else if (e.type == 5) { // button down
                                         //console.log("\t down , flags ", e.flags);
-										console.log("starting pointer: " + address)
-										if(address in sagePointers){
-											sagePointers[address].label = "Touch: " + sourceID;
-											sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-											sagePointers[address].left = posX;
-											sagePointers[address].top = posY;
-											sio.sockets.emit('showPointer', sagePointers[address]);
-										}else{
-											sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
-											sagePointers[address].label = "Touch: " + sourceID;
-											sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-											sagePointers[address].left = posX;
-											sagePointers[address].top = posY;
-											
-											pointerCount++;
-											sio.sockets.emit('createPointer', sagePointers[address]);
-											
-											interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
-											
-											var pointerX = posX;
-											var pointerY = posY;
-											
-											for(var i=items.length-1; i>=0; i--){
-												if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-													interaction[address].selectedMoveItem = findItemById(items[i].id);
-													interaction[address].selectedScrollItem = null;
-													interaction[address].selectOffsetX = items[i].left - pointerX;
-													interaction[address].selectOffsetY = items[i].top - pointerY;
-													break;
+										
+										if( e.flags == FLAG_SINGLE_TOUCH )
+										{
+											console.log("starting pointer: " + address)
+											if(address in sagePointers){
+												sagePointers[address].label = "Touch: " + sourceID;
+												sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+												sagePointers[address].left = posX;
+												sagePointers[address].top = posY;
+												sio.sockets.emit('showPointer', sagePointers[address]);
+											}else{
+												sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
+												sagePointers[address].label = "Touch: " + sourceID;
+												sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+												sagePointers[address].left = posX;
+												sagePointers[address].top = posY;
+												
+												pointerCount++;
+												sio.sockets.emit('createPointer', sagePointers[address]);
+												
+												interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
+												
+												var pointerX = posX;
+												var pointerY = posY;
+												
+												for(var i=items.length-1; i>=0; i--){
+													if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+														interaction[address].selectedMoveItem = findItemById(items[i].id);
+														interaction[address].selectedScrollItem = null;
+														interaction[address].selectOffsetX = items[i].left - pointerX;
+														interaction[address].selectOffsetY = items[i].top - pointerY;
+														break;
+													}
+												}
+												
+												
+												if(interaction[address].selectedMoveItem != null){
+													var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
+													sio.sockets.emit('updateItemOrder', newOrder);
+													console.log("Touch select");
 												}
 											}
-											
-											
-											if(interaction[address].selectedMoveItem != null){
-												var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
-												sio.sockets.emit('updateItemOrder', newOrder);
-												console.log("Touch select");
-											}
+										}
+										else if( e.flags == FLAG_FIVE_FINGER_HOLD )
+										{
+											if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
+
+											removeItemById( interaction[address].selectedMoveItem.id );
+											sio.sockets.emit('deleteElement', interaction[address].selectedMoveItem.id );
 										}
                                 }
-                                else if (e.type == 6) { // button up	
-                                    sio.sockets.emit('hidePointer', sagePointers[address]);
-									
-									console.log("Touch release");
-									interaction[address].selectedMoveItem = null;
-									interaction[address].selectedScrollItem = null;
+                                else if (e.type == 6) { // button up
+									if( e.flags == FLAG_SINGLE_TOUCH )
+									{
+										sio.sockets.emit('hidePointer', sagePointers[address]);
+										
+										console.log("Touch release");
+										if( interaction[address] == null ) return;
+										interaction[address].selectedMoveItem = null;
+										interaction[address].selectedScrollItem = null;
+									}
                                 }
                                 else {
                                         console.log("\t UNKNOWN event type ", e.type);                                        
