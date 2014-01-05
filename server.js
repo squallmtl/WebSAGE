@@ -13,7 +13,7 @@ var io = require('socket.io');
 var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
-
+// CONFIG FILE
 var file = 'config/desktop-cfg.json';
 //var file = 'config/thor-cfg.json';
 //var file = 'config/iridiumX-cfg.json';
