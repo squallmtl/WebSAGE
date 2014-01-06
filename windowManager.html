@@ -4,16 +4,29 @@
 <meta charset="utf-,8">
 <title>Window Manager</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="scripts/webrtc.io.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
 	var url;
 	var socket;
 	var winMgr;
 	
+	var canvasKeyEvents = false;
+	var canvasKeyFunc = null;
+	
 	var name = "Default";
 	var col = [180, 180, 180];
 	
 	var sensitivity;
+	
+	var selectedFile = null;
+	
+	var PeerConnection = window.PeerConnection || 
+						 window.webkitPeerConnection00 || 
+						 window.webkitRTCPeerConnection || 
+						 window.mozRTCPeerConnection || 
+						 window.RTCPeerConnection;
+	
 	
 	function init() {
 		url = window.location.origin;
@@ -33,6 +46,13 @@
 		window.addEventListener('dragend', preventDefault, false);
 		window.addEventListener('drop', preventDefault, false);
 		
+		var serverUploadBtn = document.getElementById("serverUploadBtn");
+		var fileOKBtn = document.getElementById("fileOKBtn");
+		var fileCloseBtn = document.getElementById("fileCloseBtn");
+		serverUploadBtn.addEventListener('click', openServerFileBrowser, false);
+		fileOKBtn.addEventListener('click', selectServerFiles, false);
+		fileCloseBtn.addEventListener('click', closeServerFileBrowser, false);
+		
 		var pointerBtn = document.getElementById("sagePointerBtn");
 		var pointerLabel = document.getElementById("sagePointerLabel");
 		var pointerColor = document.getElementById("sagePointerColor");
@@ -40,13 +60,26 @@
 		if(localStorage["WebSAGE_ptrName"] != null) pointerLabel.value = localStorage["WebSAGE_ptrName"];
 		if(localStorage["WebSAGE_ptrColor"] != null) pointerColor.value = localStorage["WebSAGE_ptrColor"];
 		
+		var screenShareBtn = document.getElementById("screenShareBtn");
+		screenShareBtn.addEventListener('click', startScreenShare, false);
+		
 		winMgr = new windowManager('winMgr', socket);
 		winMgr.draw();
 		
+		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
+		
+		var winMgrCanvas = document.getElementById("winMgr");
+		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
+		winMgrCanvas.addEventListener('mousemove', winMgr.mouseMove.bind(winMgr), false);
+		winMgrCanvas.addEventListener('mouseup', winMgr.mouseRelease.bind(winMgr), false);
+		winMgrCanvas.addEventListener('mousewheel', winMgr.mouseScroll.bind(winMgr), false);
+		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
+		document.addEventListener('mousemove', updateTarget, false);
+				
 		socket.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
-			displayMin = Math.min(config.totalWidth, config.totalHeight);
-			thisMin = Math.min(screen.width, screen.height);
+			var displayMin = Math.min(config.totalWidth, config.totalHeight);
+			var thisMin = Math.min(screen.width, screen.height);
 			sensitivity = displayMin/thisMin;
 		});
 		
@@ -69,6 +102,110 @@
 		socket.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
+		
+		socket.on('storedFileList', function(files) {
+			console.log(files);
+			
+			var i;
+			
+			document.getElementById("lb_fade").style.display="block";
+			document.getElementById("lb_light").style.display="block";
+			
+			document.getElementById("apps-dir").checked = false;
+			document.getElementById("images-dir").checked = false;;
+			document.getElementById("pdfs-dir").checked = false;;
+			document.getElementById("videos-dir").checked = false;;
+			
+			var appsDir = document.getElementById("apps");
+			var imagesDir = document.getElementById("images");
+			var pdfsDir = document.getElementById("pdfs");
+			var videosDir = document.getElementById("videos");
+			
+			removeAllChildren(appsDir);
+			removeAllChildren(imagesDir);
+			removeAllChildren(pdfsDir);
+			removeAllChildren(videosDir);
+			
+			files["app"].sort();
+			for(i=0; i<files["app"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["app"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				appsDir.appendChild(listElem);
+			}
+			files["image"].sort();
+			for(i=0; i<files["image"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["image"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				imagesDir.appendChild(listElem);
+			}
+			files["pdf"].sort();
+			for(i=0; i<files["pdf"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["pdf"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				pdfsDir.appendChild(listElem);
+			}
+			files["video"].sort();
+			for(i=0; i<files["video"].length; i++){
+				var listElem = document.createElement("li");
+				listElem.innerHTML = files["video"][i];
+				listElem.addEventListener('click', selectFile, false);
+							
+				videosDir.appendChild(listElem);
+			}
+			
+			selectedFile = null;
+		});
+	}
+	
+	function updateTarget(event) {
+		var winMgrCanvas = document.getElementById("winMgr");
+		
+		if(event.target == winMgrCanvas && !canvasKeyEvents){
+			document.addEventListener('keydown', canvasKeyFunc, false);
+			canvasKeyEvents = true;
+		}
+		else if(event.target != winMgrCanvas && canvasKeyEvents){
+			document.removeEventListener('keydown', canvasKeyFunc, false);
+			canvasKeyEvents = false;
+		}
+	}
+	
+	function removeAllChildren(node) {
+		while (node.lastChild) {
+    		node.removeChild(node.lastChild);
+		}
+	}
+	
+	function openServerFileBrowser(event) {
+		socket.emit('requestStoredFiles');
+	}
+	
+	function closeServerFileBrowser(event) {
+		document.getElementById("lb_fade").style.display="none";
+		document.getElementById("lb_light").style.display="none";
+	}
+	
+	function selectServerFiles(event) {
+		var directory = selectedFile.parentNode.id
+		var fileName = selectedFile.innerHTML;
+		
+		socket.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
+		console.log("load: " + fileName);
+		
+		closeServerFileBrowser(event);
+	}
+	
+	function selectFile(event) {
+		if(selectedFile != null) selectedFile.style.backgroundColor = "transparent";
+		
+		selectedFile = event.target;
+		selectedFile.style.backgroundColor = "#B9D3FF";
 	}
 	
 	function startSagePointer(event) {
@@ -96,37 +233,84 @@
 		pointerBtn.requestPointerLock();
 	}
 	
+	function startScreenShare(event) {
+		var pointerLabel = document.getElementById("sagePointerLabel");
+		var pointerColor = document.getElementById("sagePointerColor");
+		
+		if(pointerLabel.value != ""){
+			name = pointerLabel.value;
+		}
+		if(pointerColor.value != ""){
+			col[0] = parseInt(pointerColor.value.substring(1,3), 16);
+			col[1] = parseInt(pointerColor.value.substring(3,5), 16);
+			col[2] = parseInt(pointerColor.value.substring(5,7), 16);
+		}
+		
+		localStorage["WebSAGE_ptrName"] = pointerLabel.value;
+		localStorage["WebSAGE_ptrColor"] = pointerColor.value;
+		
+		
+		if(PeerConnection){
+			var media = {video: {mandatory: {chromeMediaSource: 'screen', maxWidth: 1280, maxHeight: 720, minFrameRate: 30}, optional: [{bandwidth: 10000}]}, audio: false};
+			rtc.createStream(media, function(stream) {
+				var elemId = "screen" + stream.id;
+				var elemTitle = "Screen-Capture [" + name + "]";
+				socket.emit('addNewSharedScreen', {id: elemId, title: elemTitle, width: screen.width, height: screen.height, aspect: screen.width/screen.height});
+			});
+		}
+		else {
+			alert("Your browser is not supported or you have to turn on flags. In Chrome you go to chrome://flags and turn on Enable PeerConnection and Enable Screen Capture. Remember to restart Chrome");
+		}
+		
+		var room = window.location.hash.slice(1);
+		
+		var wsport = parseInt(window.location.port) + 1;
+		var websocketURL = "ws:" + window.location.hostname + ":" + wsport.toString() + "/";
+		
+		rtc.connect(websocketURL, room);
+	}
+	
 	function pointerLockChange() {
 		pointerBtn = document.getElementById("sagePointerBtn");
 	
 		if(document.pointerLockElement === pointerBtn ||
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
+			console.log("pointer lock enabled");
 			socket.emit('startSagePointer', {label: name, color: col});
+			
 			document.addEventListener('mousedown', pointerPress, false);
 			document.addEventListener('mousemove', pointerMove, false);
 			document.addEventListener('mouseup', pointerRelease, false);
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
+			document.addEventListener('keydown', pointerKeyPress, false);
+			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
+			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
 		}
 		else{
 			socket.emit('stopSagePointer', {label: name, color: col});
+			
 			document.removeEventListener('mousedown', pointerPress, false);
 			document.removeEventListener('mousemove', pointerMove, false);
 			document.removeEventListener('mouseup', pointerRelease, false);
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
+			document.removeEventListener('keydown', pointerKeyPress, false);
+			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
 	}
 	
 	function pointerPress(event) {
 		socket.emit('selectElementWithPointer');
+		preventDefault(event);
 	}
 	
 	function pointerRelease(event) {
 		socket.emit('releaseSelectedElement');
+		preventDefault(event);
 	}
 	
 	function pointerMove(event) {
@@ -141,6 +325,7 @@
 						0;
 		
 		socket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
+		preventDefault(event);
 	}
 	
 	function pointerScroll(event) {
@@ -148,6 +333,7 @@
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
 		socket.emit('selectScrollElementWithPointer');
 		socket.emit('scrollSelectedElement', scale);
+		preventDefault(event);
 	}
 	
 	function pointerScrollFF(event) {
@@ -156,6 +342,12 @@
 		if(wheelDelta < 0) scale = 1.0 / scale;
 		socket.emit('selectScrollElementWithPointer');
 		socket.emit('scrollSelectedElement', scale);
+		preventDefault(event);
+	}
+	
+	function pointerKeyPress(event) {
+		socket.emit('keypressElementWithPointer', event.keyCode);
+		preventDefault(event);
 	}
 	
 	function preventDefault(event) {
@@ -189,15 +381,21 @@
 			xhr.send(formdata);
 		}
 		else if(url != null || text != null){
-			var dataUrl = (url.length > text.length) ? url : text;
+			var dataUrl;
+			if(url == null) dataUrl = text;
+			else if(text == null) dataUrl = url;
+			else dataUrl = (url.length > text.length) ? url : text;
 			var urlType = "";
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(ext.length > 3) ext = ext.substring(0,3);
 			if(youtube >= 0) urlType = "youtube";
-			else if(ext == "jpg" || ext == "png" || ext == "bmp") urlType = "img";
+			else if(ext == "jpg" || ext == "png") urlType = "img";
+			else if(ext == "mp4") urlType = "video";
+			else if(ext == "pdf") urlType = "pdf";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
-			socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			
+			if(urlType != "") socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
 	}
 	
@@ -213,15 +411,48 @@
 			<canvas id="winMgr" style="width: 100%;">HTML5 canvas element not supported</canvas>
 		</div>
 		<div id="extraIntercation">
-			<div id="fileDrop">
-				<p id="fileDropText">Drag files here to upload</p>
+			<div id="fileUpload">
+				<div id="fileDrop">
+					<p id="fileDropText">Drag files here to upload</p>
+				</div>
+				<label class="fileLabel">Load from Server:</label><button id="serverUploadBtn" type="button">Select Files</button>
 			</div>
 			<div id="sagePointer">
 				<label class="sageLabel">Click to start:</label><button id="sagePointerBtn" type="button">SAGE Pointer</button><br />
 				<label class="sageLabel">Pointer name:</label><input id="sagePointerLabel" type="text"></input><br />
 				<label class="sageLabel">Pointer color:</label><input id="sagePointerColor" type="color"></input>
 			</div>
+			<div id="screenShare">
+				<label class="sageLabel">Click to start:</label><button id="screenShareBtn" type="button">Share Screen</button>
+				<video id="screenVideo" style="display: none;"></video>
+				<canvas id="screenCanvas" style="display: none;"></canvas>
+			</div>
 		<div>
+	</div>
+	
+	<div class="clear"></div>
+	
+	<div id="lb_fade" class="lb_blackoverlay"></div>
+	<div id="lb_light" class="lb_whiteboxcontainer">
+		<div id="fileTreeList" class="lb_whitecontent">
+			<div class="css-treeview">
+				<ul>
+        			<li><input type="checkbox" id="apps-dir" /><label for="apps-dir">Apps</label>
+        			<ul id="apps"></ul>
+        			<li><input type="checkbox" id="images-dir" /><label for="images-dir">Images</label>
+        			<ul id="images"></ul>
+        			<li><input type="checkbox" id="pdfs-dir" /><label for="pdfs-dir">PDFs</label>
+        			<ul id="pdfs"></ul>
+        			<li><input type="checkbox" id="videos-dir" /><label for="videos-dir">Videos</label>
+        			<ul id="videos"></ul>
+        		</ul>
+			</div>
+		</div>
+		<div class="clear"></div>
+		<div id="fileButtons">
+			<button id="fileOKBtn" type="button">OK</button>
+			<button id="fileCloseBtn" type="button">Close</button>
+		</div>
 	</div>
 </body>
 </html>

@@ -14,4 +14,5 @@ For Mac OSX
 brew install ffmpeg 
 brew install graphicsmagick 
 brew install poppler --with-glib
+export PKG_CONFIG_PATH=/usr/X11/lib/pkgconfig
 ```

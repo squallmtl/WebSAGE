@@ -2,40 +2,40 @@
 
 tentakel pkill -HUP chrome
 
-global_param="--window-size=4098,768 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
+global_param="--window-size=4098,768 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files --enable-usermedia-screen-capturing"
 
-UDD=$HOME/.config/chrome-nfs/orion00
+UDD="$HOME/.config/chrome-nfs/orion00"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-00 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=0'" &
+ssh -fx orion-00 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=0'" &
 ssh -fx orion-00 "sleep 5; ./move_mouse" &
 
-UDD=$HOME/.config/chrome-nfs/orion01
+UDD="$HOME/.config/chrome-nfs/orion01"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-01 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=1'" &
+ssh -fx orion-01 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=1'" &
 ssh -fx orion-01 "sleep 5; ./move_mouse" &
 
-UDD=$HOME/.config/chrome-nfs/orion02
+UDD="$HOME/.config/chrome-nfs/orion02"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-02 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=2'" &
+ssh -fx orion-02 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=2'" &
 ssh -fx orion-02 "sleep 5; ./move_mouse" &
 
-UDD=$HOME/.config/chrome-nfs/orion03
+UDD="$HOME/.config/chrome-nfs/orion03"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-03 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=3'" &
+ssh -fx orion-03 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=3'" &
 ssh -fx orion-03 "sleep 5; ./move_mouse" &
 
-UDD=$HOME/.config/chrome-nfs/orion04
+UDD="$HOME/.config/chrome-nfs/orion04"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-04 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=4'" &
+ssh -fx orion-04 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=4'" &
 ssh -fx orion-04 "sleep 5; ./move_mouse" &
 
-UDD=$HOME/.config/chrome-nfs/orion05
+UDD="$HOME/.config/chrome-nfs/orion05"
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
-ssh -fx orion-05 "env DISPLAY=:0.0 google-chrome $param 'http://10.0.8.100:9090?clientID=5'" &
+ssh -fx orion-05 "env DISPLAY=:0.0 google-chrome $param 'https://iridium.evl.uic.edu:9090?clientID=5'" &
 ssh -fx orion-05 "sleep 5; ./move_mouse" &

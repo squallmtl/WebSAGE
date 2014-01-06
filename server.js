@@ -1,19 +1,48 @@
-var express = require("express");
-var http = require('http');
-var request = require('request');
-var fs = require('fs');
-var path = require('path');
-//var pdfutils = require('pdfutils').pdfutils;
 var decompresszip = require('decompress-zip');
+var express = require("express");
+var fs = require('fs');
 var gm = require('gm');
+var http = require('http');
+var https = require('https');
 var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
+var path = require('path');
+//var pdfutils = require('pdfutils').pdfutils;
+var request = require('request');
+var io = require('socket.io');
+var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
-var app = express();
-var hport = 9090;
+// CONFIG FILE
+var file = 'config/desktop-cfg.json';
+//var file = 'config/thor-cfg.json';
+//var file = 'config/iridiumX-cfg.json';
+//var file = 'config/lyraX-cfg.json';
+
+var json_str = fs.readFileSync(file, 'utf8');
+var config = JSON.parse(json_str);
+config.totalWidth = config.resolution.width * config.layout.columns;
+config.totalHeight = config.resolution.height * config.layout.rows;
+config.titleBarHeight = Math.round(0.025 * config.totalHeight);
+config.titleTextSize = Math.round(0.015 * config.totalHeight);
+config.pointerWidth = Math.round(0.20 * config.totalHeight);
+config.pointerHeight = Math.round(0.05 * config.totalHeight);
+console.log(config);
 
 var uploadsFolder = __dirname + "/uploads";
+
+var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
+var uploadedImages = fs.readdirSync(uploadsFolder+"/images");
+var uploadedVideos = fs.readdirSync(uploadsFolder+"/videos");
+var uploadedPdfs = fs.readdirSync(uploadsFolder+"/pdfs");
+var uploadedApps = fs.readdirSync(uploadsFolder+"/apps");
+for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImages[i]);
+for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
+for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
+for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
+console.log(savedFiles);
+
+var app = express();
 
 app.configure(function(){
 	app.use(express.methodOverride());
@@ -23,14 +52,23 @@ app.configure(function(){
 	app.use(app.router);
 });
 
-var server = http.createServer(app);
+var options = {
+  key: fs.readFileSync("keys/server.key"),
+  cert: fs.readFileSync("keys/server.crt"),
+  ca: fs.readFileSync("keys/ca.crt"),
+  requestCert: true,
+  rejectUnauthorized: false
+};
+
+var server = https.createServer(options, app);
+var wsserver = http.createServer(app);
+
+var webRTC = webRTCio.listen(wsserver);
 
 // ---------------------------------------------
 // Setup the websocket
 // ---------------------------------------------
 // To talk to the web clients
-var io = require('socket.io');
-
 var sio = io.listen(server);
 
 sio.configure(function () {
@@ -39,32 +77,11 @@ sio.configure(function () {
 });
 
 sio.configure('development', function () {
-	sio.set('transports', ['websocket' ]);
+	sio.set('transports', ['websocket']);
 	sio.disable('log');
 });
 
 var initDate = new Date();
-
-var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-//var file = 'config/iridium-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
-//var file = 'config/lyra-cfg.json';
-var config;
-fs.readFile(file, 'utf8', function(err, json_str) {
-	if(err){
-		console.log('Error: ' + err);
-		return;
-	}
-	config = JSON.parse(json_str);
-	config.totalWidth = config.resolution.width * config.layout.columns;
-	config.totalHeight = config.resolution.height * config.layout.rows;
-	config.titleBarHeight = Math.round(0.025 * config.totalHeight);
-	config.titleTextSize = Math.round(0.015 * config.totalHeight);
-	config.pointerWidth = Math.round(0.20 * config.totalHeight);
-	config.pointerHeight = Math.round(0.05 * config.totalHeight);
-	console.log(config);
-});
 
 var itemCount = 0;
 var items = [];
@@ -94,6 +111,10 @@ sio.sockets.on('connection', function(socket) {
 		socket.emit('addNewElement', items[i]);
 	}
 	
+	socket.on('requestStoredFiles', function() {
+		socket.emit('storedFileList', savedFiles);
+	});
+	
 	socket.on('startSagePointer', function(pointer_data) {
 		console.log("starting pointer: " + address)
 		if(address in sagePointers){
@@ -114,6 +135,15 @@ sio.sockets.on('connection', function(socket) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
 	});
 	
+	socket.on('addNewSharedScreen', function(screen_data) {
+		console.log("Added shared screen");
+		var now = new Date();
+		var newItem = new item("screen", screen_data.title, screen_data.id, null, 0, 0, screen_data.width, screen_data.height, screen_data.aspect, now, null, null);
+		items.push(newItem);
+		sio.sockets.emit('addNewElement', newItem);
+		itemCount++;
+	});
+	
 	socket.on('addNewWebElement', function(elem_data) {
 		if(elem_data.type == "img"){
 			request({url:elem_data.src, encoding:null}, function(err, response, body) {
@@ -130,6 +160,26 @@ sio.sockets.on('connection', function(socket) {
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
+			});
+		}
+		else if(elem_data.type == "video"){
+			ffprobe(elem_data.src, function(err, data){
+				if(err) throw err;
+			
+				for(var i=0; i<data.streams.length; i++){
+					if(data.streams[i].codec_type == "video"){
+						var itemId = "item"+itemCount.toString();
+						var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+						var aspect = data.streams[i].width / data.streams[i].height;
+						var now = new Date();
+						var newItem = new item("video", title, itemId, elem_data.src, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
 			});
 		}
 		else if(elem_data.type == "youtube"){
@@ -163,6 +213,127 @@ sio.sockets.on('connection', function(socket) {
 				items.push(newItem);
 				sio.sockets.emit('addNewElement', newItem);
 				itemCount++;
+			});
+		}
+		else if(elem_data.type == "pdf"){
+			request({url:elem_data.src, encoding:null}, function(err, response, body) {
+				if(err) throw err;
+			
+				pdfutils(body, function(err, doc) {
+					if(err) throw err;
+					
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, body.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
+			});
+		}
+	});
+	
+	socket.on('addNewElementFromStoredFiles', function(file) {
+		console.log(file);
+		
+		if(file.dir == "images"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			fs.readFile(localPath, function (err, data) {
+				if(err) throw err;
+				
+				var info = imageinfo(data);
+				var itemId = "item"+itemCount.toString();
+				var title = path.basename(localPath);
+				var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
+				var aspect = info.width / info.height;
+				var now = new Date();
+				var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
+				items.push(newItem);
+				sio.sockets.emit('addNewElement', newItem);
+				itemCount++;
+			});
+		}
+		else if(file.dir == "videos"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			ffprobe(localPath, function(err, data){
+				if(err) throw err;
+			
+				for(var i=0; i<data.streams.length; i++){
+					if(data.streams[i].codec_type == "video"){
+						var itemId = "item"+itemCount.toString();
+						var title = path.basename(localPath);
+						var aspect = data.streams[i].width / data.streams[i].height;
+						var now = new Date();
+						var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+						
+						break;
+					}
+				}
+			});
+		}
+		else if(file.dir == "pdfs"){
+			var localPath = path.join("uploads", file.dir, file.name);
+			
+			fs.readFile(localPath, function (err, data) {	
+				pdfutils(data, function(err, doc) {
+					if(err) throw err;
+				
+					// grab size of first page
+					var itemId = "item"+itemCount.toString();
+					var title = path.basename(localPath);
+					var aspect = doc[0].width/doc[0].height;
+					var now = new Date();
+					var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+				});
+			});
+		}
+		else if(file.dir == "apps"){
+			var zipFolder = path.join("uploads", file.dir, file.name);
+			var instuctionsFile = path.join(zipFolder , "instructions.json");
+			
+			fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
+				if(err) throw err;
+			
+				var instructions = JSON.parse(json_str);
+			
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
+					}
+				}
+			
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					var itemId = "item"+itemCount.toString();
+					var title = file.name;
+					var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
+					var now = new Date();
+					var aspect = instructions.width / instructions.height;
+					var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
+					items.push(newItem);
+					sio.sockets.emit('addNewElement', newItem);
+					itemCount++;
+		
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
 			});
 		}
 	});
@@ -295,6 +466,31 @@ sio.sockets.on('connection', function(socket) {
 		}
 	});
 	
+	socket.on('keypressElementWithPointer', function(code) {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		
+		var keypressItem = null;
+		for(var i=items.length-1; i>=0; i--){
+			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+				keypressItem = findItemById(items[i].id);
+				break;
+			}
+		}
+		
+		if(keypressItem != null){
+			if(code == "8" || code == "46"){ // backspace or delete
+				removeItemById(keypressItem.id);
+				sio.sockets.emit('deleteElement', keypressItem.id);
+			}
+			else{
+				var newOrder = moveItemToFront(keypressItem.id);
+				sio.sockets.emit('updateItemOrder', newOrder);
+				sio.sockets.emit('keypressItem', {elemId: keypressItem.id, keyCode: code});
+			}
+		}
+	});
+	
 	socket.on('updateVideoTime', function(video_data) {
 		sio.sockets.emit('updateVideoItemTime', video_data);
 	});
@@ -304,20 +500,20 @@ app.post('/upload', function(request, response) {
 	var fileKeys = Object.keys(request.files);
 	fileKeys.forEach(function(key) {
 		var uploadPath = path.dirname(request.files[key].path);
-		var finalPath = path.join(uploadPath, request.files[key].name);
-		fs.rename(request.files[key].path, finalPath, function(err) {
-			if(err) throw err;
-			
-			var localPath = finalPath.substring(__dirname.length+1);
-			console.log(localPath);
 		
-			if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
-				fs.readFile(localPath, function (err, data) {
-					if(err) throw err;
+		if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
+			var finalPath = path.join(uploadPath, "images", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			console.log(finalPath);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
 				
+				fs.readFile(finalPath, function (err, data) {
+					if(err) throw err;
+					
 					var info = imageinfo(data);
 					var itemId = "item"+itemCount.toString();
-					var title = path.basename(localPath);
+					var title = path.basename(finalPath);
 					var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
 					var aspect = info.width / info.height;
 					var now = new Date();
@@ -325,52 +521,79 @@ app.post('/upload', function(request, response) {
 					items.push(newItem);
 					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
+					
+					savedFiles["image"].push(path.basename(finalPath));
 				});
-			}
-			else if(request.files[key].type == "video/mp4"){
-				ffprobe(localPath, function(err, data){
+			});
+		}
+		else if(request.files[key].type == "video/mp4"){
+			var finalPath = path.join(uploadPath, "videos", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+		
+				ffprobe(finalPath, function(err, data){
 					if(err) throw err;
 				
 					for(var i=0; i<data.streams.length; i++){
 						if(data.streams[i].codec_type == "video"){
 							var itemId = "item"+itemCount.toString();
-							var title = data.filename;
+							var title = path.basename(finalPath);
 							var aspect = data.streams[i].width / data.streams[i].height;
 							var now = new Date();
-							var newItem = new item("video", title, itemId, data.file, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
+							var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
-						
+							
+							savedFiles["video"].push(path.basename(finalPath));
+							
 							break;
 						}
 					}
 				});
-			}
-			else if(request.files[key].type == "application/pdf"){
-				console.log("Warning - PDF disabled");
-				/*
-				pdfutils(localPath, function(err, doc) {
-					// grab size of first page
-					var itemId = "item"+itemCount.toString();
-					var title = path.basename(localPath);
-					var aspect = doc[0].width/doc[0].height;
-					var now = new Date();
-					var newItem = new item("pdf", title, itemId, localPath, 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
-					itemCount++;
+			});
+		}
+		else if(request.files[key].type == "application/pdf"){
+			/*
+			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+				
+				fs.readFile(finalPath, function (err, data) {	
+					pdfutils(data, function(err, doc) {
+						if(err) throw err;
+					
+						// grab size of first page
+						var itemId = "item"+itemCount.toString();
+						var title = path.basename(finalPath);
+						var aspect = doc[0].width/doc[0].height;
+						var now = new Date();
+						var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+						items.push(newItem);
+						sio.sockets.emit('addNewElement', newItem);
+						itemCount++;
+					
+						savedFiles["pdf"].push(path.basename(finalPath));
+					});
 				});
-				*/
-			}
-			else if(request.files[key].type == "application/zip"){
+			});
+			*/
+		}
+		else if(request.files[key].type == "application/zip"){
+			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
+			var localPath = finalPath.substring(__dirname.length+1);
+			fs.rename(request.files[key].path, finalPath, function(err) {
+				if(err) throw err;
+				
 				var zipFolder = localPath.substring(0, localPath.length-4);
-				var zipName = request.files[key].name.substring(0, request.files[key].name.length-4);
+				var zipName = path.basename(localPath, ".zip");
 			
-				var unzipper = new decompresszip(localPath);
+				var unzipper = new decompresszip(finalPath);
 				unzipper.on('extract', function(log) {
 					// read instructions for how to handle
-					var instuctionsFile = zipFolder + "/instructions.json";
+					var instuctionsFile = path.join(zipFolder, "/instructions.json");
 					fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
 						if(err) throw err;
 					
@@ -379,7 +602,7 @@ app.post('/upload', function(request, response) {
 						// add resource scripts to clients
 						for(var i=0; i<instructions.resources.length; i++){
 							if(instructions.resources[i].type == "script"){
-								sio.sockets.emit('addScript', zipFolder+"/"+instructions.resources[i].src);
+								sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
 							}
 						}
 					
@@ -390,10 +613,12 @@ app.post('/upload', function(request, response) {
 							var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
 							var now = new Date();
 							var aspect = instructions.width / instructions.height;
-							var newItem = new item(instructions.type, title, itemId, zipFolder+"/"+instructions.main_script, 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+"/", objName);
+							var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
 							items.push(newItem);
 							sio.sockets.emit('addNewElement', newItem);
 							itemCount++;
+							
+							savedFiles["app"].push(zipName);
 				
 							// set interval timer if specified
 							if(instructions.animation == "timer"){
@@ -411,16 +636,21 @@ app.post('/upload', function(request, response) {
 					});
 				});
 				unzipper.extract({
-					path: uploadsFolder,
+					path: uploadsFolder+"/apps",
 					filter: function(file) {
-						return file.type !== "SymbolicLink";
+						if(file.type === "SymbolicLink") return false;
+						if(file.filename === "__MACOSX") return false;
+						if(file.filename.substring(0,1) == ".") return false;
+						if(file.parent.length >= 8 && file.parent.substring(0,8) == "__MACOSX") return false;
+						
+						return true;
 					}
 				});
-			}
-			else{
-				console.log("Unknown type: " + request.files[key].type);
-			}
-		});
+			});
+		}
+		else{
+			console.log("Unknown type: " + request.files[key].type);
+		}
 	});
 	
 	response.end("upload complete");
@@ -449,16 +679,16 @@ var udp = undefined;
 // Green table
 //var tserver   = "midori.evl.uic.edu";
 // Icelab
-//var tserver   = "omgtracker.evl.uic.edu";
+var tserver   = "omgtracker.evl.uic.edu";
 // Arthur Touchscreen
-var tserver   = "131.193.77.211";
+//var tserver   = "localhost";
 
 var tport     = 28000;
 var pdataPort = 9123;
 
 var ptrs    = {};
 
-		console.log('Connecting to Omicron server: ', tserver, tport);
+	console.log('Connecting to Omicron server: ', tserver, tport);
 		var client = net.connect(tport, tserver,  function() { //'connect' listener
         console.log('Connected to: ', tserver, tport);
 
@@ -759,11 +989,12 @@ var ptrs    = {};
 
 /////////////////////////////////////////////////////////////////////////
 
+// Start the https server
+server.listen(config.port);
+wsserver.listen(config.port+1);
+var net = require('net');
 
-// Start the http server
-server.listen(hport);
-
-console.log('Now serving the app at http://localhost:' + hport);
+console.log('Now serving the app at https://localhost:' + config.port);
 
 
 function findItemById(id) {
