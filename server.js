@@ -1,8 +1,7 @@
 var decompresszip = require('decompress-zip');
-var express = require("express");
+var express = require('express');
 var fs = require('fs');
 var gm = require('gm');
-var http = require('http');
 var https = require('https');
 var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
@@ -10,14 +9,13 @@ var path = require('path');
 var pdfutils = require('pdfutils').pdfutils;
 var request = require('request');
 var io = require('socket.io');
-var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 // CONFIG FILE
-var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
-//var file = 'config/lyraX-cfg.json';
+var file = "config/desktop-cfg.json";
+//var file = "config/thor-cfg.json";
+//var file = "config/iridiumX-cfg.json";
+//var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -29,13 +27,13 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
-var uploadsFolder = __dirname + "/uploads";
+var uploadsFolder = path.join(__dirname, "uploads");
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
-var uploadedImages = fs.readdirSync(uploadsFolder+"/images");
-var uploadedVideos = fs.readdirSync(uploadsFolder+"/videos");
-var uploadedPdfs = fs.readdirSync(uploadsFolder+"/pdfs");
-var uploadedApps = fs.readdirSync(uploadsFolder+"/apps");
+var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
+var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
+var uploadedPdfs = fs.readdirSync(path.join(uploadsFolder, "pdfs"));
+var uploadedApps = fs.readdirSync(path.join(uploadsFolder, "apps"));
 for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImages[i]);
 for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
@@ -48,27 +46,19 @@ app.configure(function(){
 	app.use(express.methodOverride());
 	app.use(express.bodyParser({uploadDir: uploadsFolder, limit: '250mb'}));
 	app.use(express.multipart());
-	app.use(express.static(__dirname + '/'));
+	app.use(express.static(__dirname + path.sep));
 	app.use(app.router);
 });
 
 var options = {
-  key: fs.readFileSync("keys/server.key"),
-  cert: fs.readFileSync("keys/server.crt"),
-  ca: fs.readFileSync("keys/ca.crt"),
+  key: fs.readFileSync(path.join("keys", "server.key")),
+  cert: fs.readFileSync(path.join("keys", "server.crt")),
+  ca: fs.readFileSync(path.join("keys", "ca.crt")),
   requestCert: true,
   rejectUnauthorized: false
 };
 
 var server = https.createServer(options, app);
-var wsserver = http.createServer(app);
-
-var webRTC = webRTCio.listen(wsserver);
-
-// ---------------------------------------------
-// Setup the websocket
-// ---------------------------------------------
-// To talk to the web clients
 var sio = io.listen(server);
 
 sio.configure(function () {
@@ -81,13 +71,12 @@ sio.configure('development', function () {
 	sio.disable('log');
 });
 
-var initDate = new Date();
-
 var itemCount = 0;
 var items = [];
 var pointerCount = 0;
 var sagePointers = {};
 var interaction = {};
+var stream = {};
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -97,11 +86,8 @@ sio.sockets.on('connection', function(socket) {
 	
 	interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
 	
-	var cDate = new Date();
-
-	console.log(cDate.getTime()-initDate.getTime());
-	socket.emit('setSystemTime', cDate.getTime()-initDate.getTime());
 	socket.emit('setupDisplayConfiguration', config);
+	socket.emit('initialize', address + "." + port);
 
 	/* adding new elements */
 	for(var key in sagePointers){
@@ -135,13 +121,21 @@ sio.sockets.on('connection', function(socket) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
 	});
 	
-	socket.on('addNewSharedScreen', function(screen_data) {
+	socket.on('startNewScreenShare', function(screen_data) {
 		console.log("Added shared screen");
-		var now = new Date();
-		var newItem = new item("screen", screen_data.title, screen_data.id, null, 0, 0, screen_data.width, screen_data.height, screen_data.aspect, now, null, null);
-		items.push(newItem);
-		sio.sockets.emit('addNewElement', newItem);
-		itemCount++;
+		stream[screen_data.id] = initializeArray(config.displays.length, false);
+		sio.sockets.emit('joinNewScreenShare', screen_data);
+	});
+	
+	socket.on('streamAdded', function(stream_data) {
+		stream[stream_data.id][stream_data.client] = true;
+		if(allTrue(stream[stream_data.id])){
+			var now = new Date();
+			var newItem = new item("screen", stream_data.title, stream_data.id, null, 0, 0, stream_data.width, stream_data.height, stream_data.aspect, now, null, null);
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+		}
 	});
 	
 	socket.on('addNewWebElement', function(elem_data) {
@@ -448,6 +442,11 @@ sio.sockets.on('connection', function(socket) {
 		}, 500);
 	});
 	
+	socket.on('deleteElementById', function(id) {
+		removeItemById(id);
+		sio.sockets.emit('deleteElement', id);
+	});
+	
 	socket.on('keypressElementById', function(keypress_data) {
 		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
 			removeItemById(keypress_data.elemId);
@@ -654,10 +653,24 @@ app.post('/upload', function(request, response) {
 
 // Start the https server
 server.listen(config.port);
-wsserver.listen(config.port+1);
 
 console.log('Now serving the app at https://localhost:' + config.port);
 
+function initializeArray(length, value) {
+	var arr = new Array(length);
+	for(var i=0; i<length; i++){
+		arr[i] = value;
+	}
+	
+	return arr;
+}
+
+function allTrue(boolArr) {
+	for(var i=0; i<boolArr.length; i++){
+		if(!boolArr[i]) return false;
+	}
+	return true;
+}
 
 function findItemById(id) {
 	for(var i=0; i<items.length; i++){

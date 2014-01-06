@@ -4,11 +4,12 @@
 <meta charset="utf-,8">
 <title>Window Manager</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="scripts/webrtc.io.js"></script>
+<script type="text/javascript" src="scripts/firebase.js"></script>
+<script type="text/javascript" src="scripts/RTCMultiConnection-v1.5.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
 	var url;
-	var socket;
+	var wmSocket;
 	var winMgr;
 	
 	var canvasKeyEvents = false;
@@ -21,16 +22,13 @@
 	
 	var selectedFile = null;
 	
-	var PeerConnection = window.PeerConnection || 
-						 window.webkitPeerConnection00 || 
-						 window.webkitRTCPeerConnection || 
-						 window.mozRTCPeerConnection || 
-						 window.RTCPeerConnection;
-	
+	var channelId;
+	var roomId;
+	var connection;
 	
 	function init() {
 		url = window.location.origin;
-		socket = io.connect(url);
+		wmSocket = io.connect(url);
 		console.log("Connected to server: ", url);
 		
 		document.addEventListener('pointerlockchange', pointerLockChange, false);
@@ -63,7 +61,7 @@
 		var screenShareBtn = document.getElementById("screenShareBtn");
 		screenShareBtn.addEventListener('click', startScreenShare, false);
 		
-		winMgr = new windowManager('winMgr', socket);
+		winMgr = new windowManager('winMgr', wmSocket);
 		winMgr.draw();
 		
 		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
@@ -76,34 +74,52 @@
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
 		document.addEventListener('mousemove', updateTarget, false);
 				
-		socket.on('setupDisplayConfiguration', function(config) {
+		wmSocket.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
 			var displayMin = Math.min(config.totalWidth, config.totalHeight);
 			var thisMin = Math.min(screen.width, screen.height);
 			sensitivity = displayMin/thisMin;
 		});
 		
-		socket.on('addNewElement', function(elem_data) {
+		wmSocket.on('initialize', function(address) {
+			channelId = address.replace(/\./g, '');
+			roomId = address.replace(/\./g, '');
+		
+			connection = new RTCMultiConnection(channelId);
+			connection.session = {audio: false, video: false, screen: true, data: false};
+			connection.direction = "one-way";
+			connection.onstream = function(stream) {
+				if(stream.type === "local"){
+					stream.stream.onended = function() {
+						connection.close();
+						screenShareBtn.disabled = false;
+						wmSocket.emit('deleteElementById', roomId);
+					}
+				}
+			};
+		});
+		
+		wmSocket.on('addNewElement', function(elem_data) {
 			winMgr.addNewElement(elem_data);
 		});
 		
-		socket.on('deleteElement', function(elemId) {
+		wmSocket.on('deleteElement', function(elemId) {
 			winMgr.deleteElement(elemId);
 		});
 		
-		socket.on('updateItemOrder', function(idList) {
+		wmSocket.on('updateItemOrder', function(idList) {
 			winMgr.updateItemOrder(idList);
 		});
 		
-		socket.on('setItemPosition', function(position_data) {
+		wmSocket.on('setItemPosition', function(position_data) {
 			winMgr.setItemPosition(position_data);
 		});
 		
-		socket.on('setItemPositionAndSize', function(position_data) {
+		wmSocket.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
 		
-		socket.on('storedFileList', function(files) {
+		wmSocket.on('storedFileList', function(files) {
 			console.log(files);
 			
 			var i;
@@ -183,7 +199,7 @@
 	}
 	
 	function openServerFileBrowser(event) {
-		socket.emit('requestStoredFiles');
+		wmSocket.emit('requestStoredFiles');
 	}
 	
 	function closeServerFileBrowser(event) {
@@ -195,7 +211,7 @@
 		var directory = selectedFile.parentNode.id
 		var fileName = selectedFile.innerHTML;
 		
-		socket.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
+		wmSocket.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
 		console.log("load: " + fileName);
 		
 		closeServerFileBrowser(event);
@@ -249,25 +265,12 @@
 		localStorage["WebSAGE_ptrName"] = pointerLabel.value;
 		localStorage["WebSAGE_ptrColor"] = pointerColor.value;
 		
-		
-		if(PeerConnection){
-			var media = {video: {mandatory: {chromeMediaSource: 'screen', maxWidth: 1280, maxHeight: 720, minFrameRate: 30}, optional: [{bandwidth: 10000}]}, audio: false};
-			rtc.createStream(media, function(stream) {
-				var elemId = "screen" + stream.id;
-				var elemTitle = "Screen-Capture [" + name + "]";
-				socket.emit('addNewSharedScreen', {id: elemId, title: elemTitle, width: screen.width, height: screen.height, aspect: screen.width/screen.height});
-			});
-		}
-		else {
-			alert("Your browser is not supported or you have to turn on flags. In Chrome you go to chrome://flags and turn on Enable PeerConnection and Enable Screen Capture. Remember to restart Chrome");
-		}
-		
-		var room = window.location.hash.slice(1);
-		
-		var wsport = parseInt(window.location.port) + 1;
-		var websocketURL = "ws:" + window.location.hostname + ":" + wsport.toString() + "/";
-		
-		rtc.connect(websocketURL, room);
+		// start screen share
+		console.log(roomId);
+		connection.open(roomId);
+		screenShareBtn.disabled = true;
+		console.log(wmSocket);
+		wmSocket.emit('startNewScreenShare', {id: roomId, title: "Shared Screen: " + name, width: screen.width, height: screen.height, aspect: screen.width/screen.height});
 	}
 	
 	function pointerLockChange() {
@@ -277,7 +280,7 @@
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
 			console.log("pointer lock enabled");
-			socket.emit('startSagePointer', {label: name, color: col});
+			wmSocket.emit('startSagePointer', {label: name, color: col});
 			
 			document.addEventListener('mousedown', pointerPress, false);
 			document.addEventListener('mousemove', pointerMove, false);
@@ -290,7 +293,7 @@
 			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
 		}
 		else{
-			socket.emit('stopSagePointer', {label: name, color: col});
+			wmSocket.emit('stopSagePointer', {label: name, color: col});
 			
 			document.removeEventListener('mousedown', pointerPress, false);
 			document.removeEventListener('mousemove', pointerMove, false);
@@ -304,12 +307,12 @@
 	}
 	
 	function pointerPress(event) {
-		socket.emit('selectElementWithPointer');
+		wmSocket.emit('selectElementWithPointer');
 		preventDefault(event);
 	}
 	
 	function pointerRelease(event) {
-		socket.emit('releaseSelectedElement');
+		wmSocket.emit('releaseSelectedElement');
 		preventDefault(event);
 	}
 	
@@ -324,15 +327,15 @@
 						event.webkitMovementY ||
 						0;
 		
-		socket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
+		wmSocket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
 		preventDefault(event);
 	}
 	
 	function pointerScroll(event) {
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
-		socket.emit('selectScrollElementWithPointer');
-		socket.emit('scrollSelectedElement', scale);
+		wmSocket.emit('selectScrollElementWithPointer');
+		wmSocket.emit('scrollSelectedElement', scale);
 		preventDefault(event);
 	}
 	
@@ -340,13 +343,13 @@
 		var wheelDelta = -120*event.detail;
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
-		socket.emit('selectScrollElementWithPointer');
-		socket.emit('scrollSelectedElement', scale);
+		wmSocket.emit('selectScrollElementWithPointer');
+		wmSocket.emit('scrollSelectedElement', scale);
 		preventDefault(event);
 	}
 	
 	function pointerKeyPress(event) {
-		socket.emit('keypressElementWithPointer', event.keyCode);
+		wmSocket.emit('keypressElementWithPointer', event.keyCode);
 		preventDefault(event);
 	}
 	
@@ -395,7 +398,7 @@
 			else if(ext == "pdf") urlType = "pdf";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			
-			if(urlType != "") socket.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			if(urlType != "") wmSocket.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
 	}
 	
@@ -424,8 +427,6 @@
 			</div>
 			<div id="screenShare">
 				<label class="sageLabel">Click to start:</label><button id="screenShareBtn" type="button">Share Screen</button>
-				<video id="screenVideo" style="display: none;"></video>
-				<canvas id="screenCanvas" style="display: none;"></canvas>
 			</div>
 		<div>
 	</div>
