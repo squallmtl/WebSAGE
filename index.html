@@ -4,12 +4,12 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="scripts/firebase.js"></script>
-<script type="text/javascript" src="scripts/RTCMultiConnection-v1.5.js"></script>
+<script type="text/javascript" src="lib/firebase.js"></script>
+<script type="text/javascript" src="lib/RTCPeerConnection-v1.5.js"></script>
+<script type="text/javascript" src="lib/broadcast.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
 <script type="text/javascript" src="scripts/pdf_canvas.js"></script>
-<script type="text/javascript" src="scripts/videoControls.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
@@ -25,23 +25,24 @@
 	var pointerOffsetY;
 
 	var url;
-	var dispSocket;
+	var socket_io;
 	
 	var itemCount = 0;
 	var pdfItems = {};
 	var pointerItems = {};
 	var canvasItems = {};
-	var connections = {};
+	var broadcastUI = {};
+	var rooms = {};
 	
 	function init() {
 		url = window.location.origin;
-		dispSocket = io.connect(url);
+		socket_io = io.connect(url);
 		console.log("Connected to server: ", url);
 		
 		clientID = parseInt(getParameterByName("clientID"));
 		console.log(clientID);
 
-		dispSocket.on('setupDisplayConfiguration', function(json_cfg) {
+		socket_io.on('setupDisplayConfiguration', function(json_cfg) {
 			offsetX = json_cfg.displays[clientID].column * json_cfg.resolution.width;
 			offsetY = json_cfg.displays[clientID].row * json_cfg.resolution.height;
 			titleBarHeight = json_cfg.titleBarHeight;
@@ -53,14 +54,77 @@
 			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
-		dispSocket.on('addScript', function(source) {
+		socket_io.on('newBroadcastClient', function(address) {
+			var origin = url.replace( /\/|:|#|%|\.|\[|\]/g , '');
+			var channel = address.replace( /\/|:|#|%|\.|\[|\]/g , '');
+		
+			var config = {
+				openSocket: function(config) {
+					var origin = config.channel || url.replace( /\/|:|#|%|\.|\[|\]/g , '');
+					var socket = new Firebase('https://chat.firebaseIO.com/' + origin + channel);
+					socket.channel = channel;
+					socket.on("child_added", function(data) {
+						config.onmessage && config.onmessage(data.val());
+					});
+					socket.send = function(data) {
+						this.push(data);
+					};
+					config.onopen && setTimeout(config.onopen, 1);
+					socket.onDisconnect().remove();
+					return socket;
+				},
+				onRemoteStream: function(htmlElement) {
+					var main = document.getElementById("main");
+                        
+					var id = channel;
+		
+					var windowItem = document.createElement("div");
+					windowItem.id = id;
+					windowItem.className = "windowItem";
+					windowItem.style.left = (0-offsetX).toString() + "px";
+					windowItem.style.top = (0+titleBarHeight-offsetY).toString() + "px";
+					windowItem.style.zIndex = (itemCount+1).toString();
+					main.appendChild(windowItem);
+				
+					htmlElement.id = id + "_screen";
+					htmlElement.className = "sageItem";
+					htmlElement.controls = false;
+					htmlElement.play();
+					windowItem.appendChild(htmlElement);
+					
+					socket_io.emit('streamAdded', {id: id, client: clientID});
+				},
+				onRoomFound: function(room) {
+					if(rooms[channel].indexOf(room.broadcaster) >= 0) return;
+		
+					console.log("found room: " + room.broadcaster + "(" + channel + ")");
+		
+					var broadcaster = room.broadcaster;
+					var roomToken = room.broadcaster;
+					broadcastUI[channel].joinRoom({
+						roomToken: roomToken,
+						joinUser: broadcaster
+					});
+		
+					rooms[channel].push(room.broadcaster);
+				},
+				onNewParticipant: function(numberOfViewers) {
+					// do nothing
+				}
+			};
+
+			broadcastUI[channel] = broadcast(config);
+			rooms[channel] = [];
+		});
+		
+		socket_io.on('addScript', function(source) {
 			var js = document.createElement('script')
   			js.type = "text/javascript";
   			js.src = source;
   			document.head.appendChild(js);
 		});
 		
-		dispSocket.on('createPointer', function(pointer_data){
+		socket_io.on('createPointer', function(pointer_data){
             var main = document.getElementById("main");
             
             console.log("creating pointer: " + pointerWidth + "x" + pointerHeight);
@@ -84,7 +148,7 @@
             pointerItems[pointerElem.id] = ptr;
         });
         
-        dispSocket.on('showPointer', function(pointer_data){
+        socket_io.on('showPointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "block";
@@ -96,61 +160,20 @@
             pointerItems[pointerElem.id].draw();
         });
         
-        dispSocket.on('hidePointer', function(pointer_data){
+        socket_io.on('hidePointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "none";
         });
         
-        dispSocket.on('updatePointer', function(pointer_data){
+        socket_io.on('updatePointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";;
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
 		
-		dispSocket.on('joinNewScreenShare', function(screen_data) {
-			var main = document.getElementById("main");
-                        
-			var id = screen_data.id;
-		
-			var windowItem = document.createElement("div");
-			windowItem.id = id;
-			windowItem.className = "windowItem";
-			windowItem.style.left = (0-offsetX).toString() + "px";
-			windowItem.style.top = (0+titleBarHeight-offsetY).toString() + "px";
-			windowItem.style.zIndex = (itemCount+1).toString();
-			main.appendChild(windowItem);
-			
-			var channelId = id;
-			var roomId = id;
-			
-			connections[id] = new RTCMultiConnection(channelId);
-			connections[id].session = {audio: false, video: false, screen: true, data: false};
-			connections[id].direction = "one-way";
-			connections[id].onstream = function(stream) {
-				console.log(stream);
-				if(stream.type === "remote"){
-					console.log("adding stream");
-					stream.mediaElement.id = id + "_screen";
-					stream.mediaElement.className = "sageItem";
-					stream.mediaElement.controls = false;
-					windowItem.appendChild(stream.mediaElement);
-					stream_data = screen_data;
-					stream_data.client = clientID;
-					dispSocket.emit('streamAdded', stream_data);
-				}
-			};
-			connections[id].onstreamended = function(stream) {
-				console.log(stream);
-			};
-			connections[id].onNewSession = function(session) {
-				connections[id].join(session);
-			};
-			connections[id].connect(roomId);
-		});
-		
-		dispSocket.on('addNewElement', function(elem_data) {		
+		socket_io.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
 		
 			var main = document.getElementById("main");
@@ -305,7 +328,7 @@
 			itemCount += 2;
 		});
 		
-		dispSocket.on('deleteElement', function(elemId) {
+		socket_io.on('deleteElement', function(elemId) {
 			var deleteElemTitle = document.getElementById(elemId + "_title");
 			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
 			
@@ -313,7 +336,7 @@
 			deleteElem.parentNode.removeChild(deleteElem);
 		});
 		
-		dispSocket.on('updateItemOrder', function(idList) {
+		socket_io.on('updateItemOrder', function(idList) {
 			var i;
 			var zval = 0;
 			for(i=0; i<idList.length; i++){
@@ -327,7 +350,7 @@
 			}
 		});
 		
-		dispSocket.on('setItemPosition', function(position_data) {
+		socket_io.on('setItemPosition', function(position_data) {
 			var date = new Date(position_data.date);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -342,7 +365,7 @@
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 		});
 		
-		dispSocket.on('setItemPositionAndSize', function(position_data) {
+		socket_io.on('setItemPositionAndSize', function(position_data) {
 			var date = new Date(position_data.date);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -372,7 +395,7 @@
 			}
 		});
 		
-		dispSocket.on('finishedResize', function(elemId) {
+		socket_io.on('finishedResize', function(elemId) {
 			var selectedElem = document.getElementById(elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -382,7 +405,7 @@
 			}
 		});
 		
-		dispSocket.on('keypressItem', function(keypress_data) {
+		socket_io.on('keypressItem', function(keypress_data) {
 			var selectedElem = document.getElementById(keypress_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -402,7 +425,7 @@
 			}
 		});
 		
-		dispSocket.on('updateVideoItemTime', function(video_data) {
+		socket_io.on('updateVideoItemTime', function(video_data) {
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -414,7 +437,7 @@
 			else if(!video_data.play) child[0].pause();
 		});
 		
-		dispSocket.on('animateCanvas', function(animate_data) {
+		socket_io.on('animateCanvas', function(animate_data) {
 			var date = new Date(animate_data.date);
 			
 			var canvasElem = document.getElementById(animate_data.elemId);

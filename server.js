@@ -77,6 +77,7 @@ var pointerCount = 0;
 var sagePointers = {};
 var interaction = {};
 var stream = {};
+var broadcastClients = [];
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -87,7 +88,10 @@ sio.sockets.on('connection', function(socket) {
 	interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
 	
 	socket.emit('setupDisplayConfiguration', config);
-	socket.emit('initialize', address + "." + port);
+	socket.emit('initialize', address + ":" + port);
+	for(var i=0; i<broadcastClients.length; i++){
+		sio.sockets.emit('newBroadcastClient', broadcastClients[i]);
+	}
 
 	/* adding new elements */
 	for(var key in sagePointers){
@@ -96,6 +100,13 @@ sio.sockets.on('connection', function(socket) {
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
+	
+	socket.on('addBroadcastClient', function(channel) {
+		if(broadcastClients.indexOf(channel) < 0){
+			broadcastClients.push(channel);
+			sio.sockets.emit('newBroadcastClient', channel);
+		}
+	});
 	
 	socket.on('requestStoredFiles', function() {
 		socket.emit('storedFileList', savedFiles);
@@ -123,15 +134,14 @@ sio.sockets.on('connection', function(socket) {
 	
 	socket.on('startNewScreenShare', function(screen_data) {
 		console.log("Added shared screen");
-		stream[screen_data.id] = initializeArray(config.displays.length, false);
-		sio.sockets.emit('joinNewScreenShare', screen_data);
+		stream[screen_data.id] = {clients: initializeArray(config.displays.length, false), title: screen_data.title, width: screen_data.width, height: screen_data.height, aspect: screen_data.aspect};
 	});
 	
 	socket.on('streamAdded', function(stream_data) {
-		stream[stream_data.id][stream_data.client] = true;
-		if(allTrue(stream[stream_data.id])){
+		stream[stream_data.id].clients[stream_data.client] = true;
+		if(allTrue(stream[stream_data.id].clients)){
 			var now = new Date();
-			var newItem = new item("screen", stream_data.title, stream_data.id, null, 0, 0, stream_data.width, stream_data.height, stream_data.aspect, now, null, null);
+			var newItem = new item("screen", stream[stream_data.id].title, stream_data.id, null, 0, 0, stream[stream_data.id].width, stream[stream_data.id].height, stream[stream_data.id].aspect, now, null, null);
 			items.push(newItem);
 			sio.sockets.emit('addNewElement', newItem);
 			itemCount++;

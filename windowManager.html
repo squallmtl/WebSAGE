@@ -4,12 +4,13 @@
 <meta charset="utf-,8">
 <title>Window Manager</title>
 <script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="scripts/firebase.js"></script>
-<script type="text/javascript" src="scripts/RTCMultiConnection-v1.5.js"></script>
+<script type="text/javascript" src="lib/firebase.js"></script>
+<script type="text/javascript" src="lib/RTCPeerConnection-v1.5.js"></script>
+<script type="text/javascript" src="lib/broadcast.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
 	var url;
-	var wmSocket;
+	var socket_io;
 	var winMgr;
 	
 	var canvasKeyEvents = false;
@@ -22,13 +23,16 @@
 	
 	var selectedFile = null;
 	
-	var channelId;
-	var roomId;
-	var connection;
+	var channel;
+	var origin;
+	var config;
+	var broadcastUI;
+	var streamWidth;
+	var streamHeight;
 	
 	function init() {
 		url = window.location.origin;
-		wmSocket = io.connect(url);
+		socket_io = io.connect(url);
 		console.log("Connected to server: ", url);
 		
 		document.addEventListener('pointerlockchange', pointerLockChange, false);
@@ -61,7 +65,7 @@
 		var screenShareBtn = document.getElementById("screenShareBtn");
 		screenShareBtn.addEventListener('click', startScreenShare, false);
 		
-		winMgr = new windowManager('winMgr', wmSocket);
+		winMgr = new windowManager('winMgr', socket_io);
 		winMgr.draw();
 		
 		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
@@ -74,52 +78,69 @@
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
 		document.addEventListener('mousemove', updateTarget, false);
 				
-		wmSocket.on('setupDisplayConfiguration', function(config) {
+		socket_io.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
 			var displayMin = Math.min(config.totalWidth, config.totalHeight);
 			var thisMin = Math.min(screen.width, screen.height);
 			sensitivity = displayMin/thisMin;
 		});
 		
-		wmSocket.on('initialize', function(address) {
-			channelId = address.replace(/\./g, '');
-			roomId = address.replace(/\./g, '');
+		socket_io.on('initialize', function(address) {
+			origin = url.replace( /\/|:|#|%|\.|\[|\]/g , '');
+			channel = address.replace( /\/|:|#|%|\.|\[|\]/g , '');
 		
-			connection = new RTCMultiConnection(channelId);
-			connection.session = {audio: false, video: false, screen: true, data: false};
-			connection.direction = "one-way";
-			connection.onstream = function(stream) {
-				if(stream.type === "local"){
-					stream.stream.onended = function() {
-						connection.close();
-						screenShareBtn.disabled = false;
-						wmSocket.emit('deleteElementById', roomId);
-					}
+			socket_io.emit('addBroadcastClient', channel);
+	
+			config = {
+				openSocket: function(config) {
+					var origin = config.channel || url.replace( /\/|:|#|%|\.|\[|\]/g , '');
+					var socket = new Firebase('https://chat.firebaseIO.com/' + origin + channel);
+					socket.channel = channel;
+					socket.on("child_added", function(data) {
+						config.onmessage && config.onmessage(data.val());
+					});
+					socket.send = function(data) {
+						this.push(data);
+					};
+					config.onopen && setTimeout(config.onopen, 1);
+					socket.onDisconnect().remove();
+					return socket;
+				},
+				onRemoteStream: function(htmlElement) {
+					// do nothing
+				},
+				onRoomFound: function(room) {
+					// do nothing
+				},
+				onNewParticipant: function(numberOfViewers) {
+					console.log("Viewers: " + numberOfViewers);
 				}
 			};
+		
+			broadcastUI = broadcast(config);
 		});
 		
-		wmSocket.on('addNewElement', function(elem_data) {
+		socket_io.on('addNewElement', function(elem_data) {
 			winMgr.addNewElement(elem_data);
 		});
 		
-		wmSocket.on('deleteElement', function(elemId) {
+		socket_io.on('deleteElement', function(elemId) {
 			winMgr.deleteElement(elemId);
 		});
 		
-		wmSocket.on('updateItemOrder', function(idList) {
+		socket_io.on('updateItemOrder', function(idList) {
 			winMgr.updateItemOrder(idList);
 		});
 		
-		wmSocket.on('setItemPosition', function(position_data) {
+		socket_io.on('setItemPosition', function(position_data) {
 			winMgr.setItemPosition(position_data);
 		});
 		
-		wmSocket.on('setItemPositionAndSize', function(position_data) {
+		socket_io.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
 		
-		wmSocket.on('storedFileList', function(files) {
+		socket_io.on('storedFileList', function(files) {
 			console.log(files);
 			
 			var i;
@@ -199,7 +220,7 @@
 	}
 	
 	function openServerFileBrowser(event) {
-		wmSocket.emit('requestStoredFiles');
+		socket_io.emit('requestStoredFiles');
 	}
 	
 	function closeServerFileBrowser(event) {
@@ -211,7 +232,7 @@
 		var directory = selectedFile.parentNode.id
 		var fileName = selectedFile.innerHTML;
 		
-		wmSocket.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
+		socket_io.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
 		console.log("load: " + fileName);
 		
 		closeServerFileBrowser(event);
@@ -266,11 +287,15 @@
 		localStorage["WebSAGE_ptrColor"] = pointerColor.value;
 		
 		// start screen share
-		console.log(roomId);
-		connection.open(roomId);
 		screenShareBtn.disabled = true;
-		console.log(wmSocket);
-		wmSocket.emit('startNewScreenShare', {id: roomId, title: "Shared Screen: " + name, width: screen.width, height: screen.height, aspect: screen.width/screen.height});
+
+		captureUserMedia(function() {
+			broadcastUI.createRoom({
+				roomName: channel,
+				isAudio: false
+			});
+			socket_io.emit('startNewScreenShare', {id: channel, title: name, width: streamWidth, height: streamHeight, aspect: streamWidth/streamHeight});
+		});
 	}
 	
 	function pointerLockChange() {
@@ -280,7 +305,7 @@
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
 			console.log("pointer lock enabled");
-			wmSocket.emit('startSagePointer', {label: name, color: col});
+			socket_io.emit('startSagePointer', {label: name, color: col});
 			
 			document.addEventListener('mousedown', pointerPress, false);
 			document.addEventListener('mousemove', pointerMove, false);
@@ -293,7 +318,7 @@
 			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
 		}
 		else{
-			wmSocket.emit('stopSagePointer', {label: name, color: col});
+			socket_io.emit('stopSagePointer', {label: name, color: col});
 			
 			document.removeEventListener('mousedown', pointerPress, false);
 			document.removeEventListener('mousemove', pointerMove, false);
@@ -307,12 +332,12 @@
 	}
 	
 	function pointerPress(event) {
-		wmSocket.emit('selectElementWithPointer');
+		socket_io.emit('selectElementWithPointer');
 		preventDefault(event);
 	}
 	
 	function pointerRelease(event) {
-		wmSocket.emit('releaseSelectedElement');
+		socket_io.emit('releaseSelectedElement');
 		preventDefault(event);
 	}
 	
@@ -327,15 +352,15 @@
 						event.webkitMovementY ||
 						0;
 		
-		wmSocket.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
+		socket_io.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
 		preventDefault(event);
 	}
 	
 	function pointerScroll(event) {
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
-		wmSocket.emit('selectScrollElementWithPointer');
-		wmSocket.emit('scrollSelectedElement', scale);
+		socket_io.emit('selectScrollElementWithPointer');
+		socket_io.emit('scrollSelectedElement', scale);
 		preventDefault(event);
 	}
 	
@@ -343,14 +368,33 @@
 		var wheelDelta = -120*event.detail;
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
-		wmSocket.emit('selectScrollElementWithPointer');
-		wmSocket.emit('scrollSelectedElement', scale);
+		socket_io.emit('selectScrollElementWithPointer');
+		socket_io.emit('scrollSelectedElement', scale);
 		preventDefault(event);
 	}
 	
 	function pointerKeyPress(event) {
-		wmSocket.emit('keypressElementWithPointer', event.keyCode);
+		socket_io.emit('keypressElementWithPointer', event.keyCode);
 		preventDefault(event);
+	}
+	
+	function captureUserMedia(callback) {
+		streamHeight = Math.min(720, screen.height);
+		streamWidth = screen.width/screen.height * streamHeight;
+		
+		var mediaConfig = {
+			video: null,
+			constraints: {video: {mandatory: {chromeMediaSource: "screen", maxWidth: streamWidth, maxHeight: streamHeight, minFrameRate: 24}, optional: []}, audio: false},
+			onsuccess: function(stream) {
+				config.attachStream = stream;
+				callback && callback();
+			},
+			onerror: function() {
+				alert('Unable to get access to your screen. Make sure screen capture is enabled (chrome://flags)');
+			}
+		};
+	
+		getUserMedia(mediaConfig);
 	}
 	
 	function preventDefault(event) {
@@ -398,7 +442,7 @@
 			else if(ext == "pdf") urlType = "pdf";
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			
-			if(urlType != "") wmSocket.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			if(urlType != "") socket_io.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
 	}
 	
