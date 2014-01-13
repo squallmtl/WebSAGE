@@ -238,6 +238,16 @@ sio.sockets.on('connection', function(socket) {
 				});
 			});
 		}
+		else if(elem_data.type = "site" ){
+		    console.log("adding a site" , elem_data.type, " " , elem_data.src);
+            var aspect = 1;
+            var now = new Date();
+            //function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
+            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 800, 800, aspect, now, "", ""); 
+            items.push(newItem);
+            sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
+            itemCount++;
+        }
 	});
 	
 	socket.on('addNewElementFromStoredFiles', function(file) {

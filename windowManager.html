@@ -440,6 +440,7 @@
 			else if(ext == "jpg" || ext == "png") urlType = "img";
 			else if(ext == "mp4") urlType = "video";
 			else if(ext == "pdf") urlType = "pdf";
+			else urlType = "site";  //if all else fails, will try to open in iframe as a webpage
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			
 			if(urlType != "") socket_io.emit('addNewWebElement', {type: urlType, src: dataUrl});

@@ -326,6 +326,16 @@
 				
 				windowItem.appendChild(vid);
 			}
+            else if(elem_data.type == "site"){       
+                var ifrm = document.createElement("IFRAME"); 
+                ifrm.id = elem_data.id + "_site"
+                ifrm.className = "sageItem";
+                ifrm.src = elem_data.src; 
+                ifrm.width =  elem_data.width;
+                ifrm.height = elem_data.height;
+                windowItem.appendChild(ifrm); 
+                console.log("iframe source:" + elem_data.src);
+            }
 			
 			itemCount += 2;
 		});
