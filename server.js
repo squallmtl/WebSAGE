@@ -76,6 +76,8 @@ var items = [];
 var pointerCount = 0;
 var sagePointers = {};
 var numberOfPointerModes = 2; //2 modes:  interact with window and interact in window
+var ON_WINDOW_MODE = 0;
+var IN_WINDOW_MODE = 1; 
 var interaction = {};
 var stream = {};
 var broadcastClients = [];
@@ -371,13 +373,15 @@ sio.sockets.on('connection', function(socket) {
 		
 		for(var i=items.length-1; i>=0; i--){
 			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				if( mode == 0 ){ //interact with window
+				if( mode == ON_WINDOW_MODE ){ //interact with window
                     interaction[address].selectedMoveItem = findItemById(items[i].id);
                     interaction[address].selectedScrollItem = null;
                     interaction[address].itemInteractInWindow = null; 
+                    interaction[address].itemScrollInWindow = null; 
                 }
-                else{ //interact in window
+                else if( mode == IN_WINDOW_MODE ) {//interact in window
                     interaction[address].itemInteractInWindow = findItemById(items[i].id);
+                    interaction[address].itemScrollInWindow = null; 
                     interaction[address].selectedMoveItem = null; 
                     interaction[address].selectedScrollItem = null;
                 }
@@ -387,37 +391,52 @@ sio.sockets.on('connection', function(socket) {
 			}
 		}
 		
-		if(interaction[address].selectedMoveItem != null && mode == 0 ){
+		if(interaction[address].selectedMoveItem != null && mode == ON_WINDOW_MODE ){
 			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
         }
-		else if( interaction[address].itemInteractInWindow != null && mode == 1 ){
-			//if click in window mode, 
-			    //emit a pointer click on item signal 
+		else if( interaction[address].itemInteractInWindow != null && mode == IN_WINDOW_MODE ){
+            var newOrder = moveItemToFront(interaction[address].itemInteractInWindow.id); //update order in this mode too
+			sio.sockets.emit('updateItemOrder', newOrder);
+
+            //emit a pointer click on item signal 
+            //sio.sockets.emit('pointerClickInItem', sagePointers[address], iteraction[address].itemInteractInWindow, address); 
 		}
 		else if(interaction[address].selectedMoveItem == null && interaction[address].itemInteractInWindow == null ) {//else change mode
 	        sagePointers[address].mode = sagePointers[address].mode + 1;
 	        if( sagePointers[address].mode == numberOfPointerModes ){
 	            sagePointers[address].mode = 0; 
 	        }
-	        sio.sockets.emit('pointerChangeMode', sagePointers[address] )
+	        sio.sockets.emit('pointerChangeMode', sagePointers[address] );
 	    }
-	});
+	});//end selectElementWithPointer
 	
 	socket.on('releaseSelectedElement', function() {
-		interaction[address].selectedMoveItem = null;
-		interaction[address].selectedScrollItem = null;
-	});
+        var mode = sagePointers[address].mode;
+
+        if( mode == ON_WINDOW_MODE ){
+            interaction[address].selectedMoveItem = null;
+            interaction[address].selectedScrollItem = null;
+		}
+		else if( mode == IN_WINDOW_MODE){
+		    interaction[address].itemInteractInWindow = null; 
+            interaction[address].itemScrollInWindow = null; 
+            //signal end mouse drag ... ?
+		}
+	});//end releaseSelectedElement
 	
 	socket.on('moveSelectedElement', function(move_data) {
-		if(interaction[address].selectedMoveItem == null) return;
-		interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
-		interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
-		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+        if(interaction[address].selectedMoveItem == null) return;
+        interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
+        interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
+        var now = new Date();
+        sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 	});
 	
 	socket.on('moveSagePointer', function(pointer_data) {
+	    var mode = sagePointers[address].mode;
+	    
+	    //update pointer position
 		sagePointers[address].left += pointer_data.deltaX;
 		sagePointers[address].top += pointer_data.deltaY;
 		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
@@ -427,11 +446,18 @@ sio.sockets.on('connection', function(socket) {
 		
 		sio.sockets.emit('updatePointer', sagePointers[address]);
 		
-		if(interaction[address].selectedMoveItem == null) return;
-		interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-		interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+		//move window as needed
+		if( mode == ON_WINDOW_MODE ){
+            if(interaction[address].selectedMoveItem == null) return;
+            interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+            interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+            var now = new Date();
+            sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+	    }
+	    else if( mode == IN_WINDOW_MODE ){
+	        if(interaction[address].itemInteractInWindow == null) return; //if nothing selected
+	        //emit drag event 
+	    }
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
@@ -445,43 +471,70 @@ sio.sockets.on('connection', function(socket) {
 	socket.on('selectScrollElementWithPointer', function() {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
+		var mode = sagePointers[address].mode;
 		
 		for(var i=items.length-1; i>=0; i--){
 			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				interaction[address].selectedScrollItem = findItemById(items[i].id);
-				interaction[address].selectedMoveItem = null;
-				break;
-			}
+                if( mode == ON_WINDOW_MODE ){ //interact with window
+                    interaction[address].selectedScrollItem = findItemById(items[i].id);
+                    interaction[address].selectedMoveItem = null;
+                    interaction[address].itemInteractInWindow = null; 
+                    interaction[address].itemScrollInWindow = null; 
+                }
+                else if( mode == IN_WINDOW_MODE ) {//interact in window
+                    interaction[address].itemScrollInWindow = findItemById(items[i].id);
+                    interaction[address].itemInteractInWindow = null;
+                    interaction[address].selectedMoveItem = null; 
+                    interaction[address].selectedScrollItem = null;
+                }
+                break;
+            }  
 		}
 		
-		if(interaction[address].selectedScrollItem != null){
+		if(interaction[address].selectedScrollItem != null && mode == ON_WINDOW_MODE ){
 			var newOrder = moveItemToFront(interaction[address].selectedScrollItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
+		}
+		else if( interaction[address].itemInteractInWindow != null && mode == IN_WINDOW_MODE ){
+            var newOrder = moveItemToFront(interaction[address].itemScrollInWindow.id);
+			sio.sockets.emit('updateItemOrder', newOrder);
+			
+			//do not emit scroll event here... 
 		}
 	});
 	
 	socket.on('scrollSelectedElement', function(scale) {
-		if(interaction[address].selectedScrollItem == null) return;
-		var iWidth = interaction[address].selectedScrollItem.width * scale;
-		var iHeight = iWidth / interaction[address].selectedScrollItem.aspect;
-		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/interaction[address].selectedScrollItem.aspect; }
-		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*interaction[address].selectedScrollItem.aspect; }
-		var iCenterX = interaction[address].selectedScrollItem.left + (interaction[address].selectedScrollItem.width/2);
-		var iCenterY = interaction[address].selectedScrollItem.top + (interaction[address].selectedScrollItem.height/2);
-		interaction[address].selectedScrollItem.left = iCenterX - (iWidth/2);
-		interaction[address].selectedScrollItem.top = iCenterY - (iHeight/2);
-		interaction[address].selectedScrollItem.width = iWidth;
-		interaction[address].selectedScrollItem.height = iHeight;
-		var now = new Date();
-		sio.sockets.emit('setItemPositionAndSize', {elemId: interaction[address].selectedScrollItem.id, elemLeft: interaction[address].selectedScrollItem.left, elemTop: interaction[address].selectedScrollItem.top, elemWidth: interaction[address].selectedScrollItem.width, elemHeight: interaction[address].selectedScrollItem.height, date: now});
+		var mode = sagePointers[address].mode;
 		
-		var elemId = interaction[address].selectedScrollItem.id;
-		if(elemId in interaction[address].selectTimeId) clearTimeout(interaction[address].selectTimeId[elemId]);
-		
-		interaction[address].selectTimeId[elemId] = setTimeout(function() {
-			sio.sockets.emit('finishedResize', elemId);
-			interaction[address].selectedScrollItem = null;
-		}, 500);
+		if( mode == ON_WINDOW_MODE ){
+            if(interaction[address].selectedScrollItem == null) return;
+            var iWidth = interaction[address].selectedScrollItem.width * scale;
+            var iHeight = iWidth / interaction[address].selectedScrollItem.aspect;
+            if(iWidth < 20){ iWidth = 20; iHeight = iWidth/interaction[address].selectedScrollItem.aspect; }
+            if(iHeight < 20){ iHeight = 20; iWidth = iHeight*interaction[address].selectedScrollItem.aspect; }
+            var iCenterX = interaction[address].selectedScrollItem.left + (interaction[address].selectedScrollItem.width/2);
+            var iCenterY = interaction[address].selectedScrollItem.top + (interaction[address].selectedScrollItem.height/2);
+            interaction[address].selectedScrollItem.left = iCenterX - (iWidth/2);
+            interaction[address].selectedScrollItem.top = iCenterY - (iHeight/2);
+            interaction[address].selectedScrollItem.width = iWidth;
+            interaction[address].selectedScrollItem.height = iHeight;
+            var now = new Date();
+            sio.sockets.emit('setItemPositionAndSize', {elemId: interaction[address].selectedScrollItem.id, elemLeft: interaction[address].selectedScrollItem.left, elemTop: interaction[address].selectedScrollItem.top, elemWidth: interaction[address].selectedScrollItem.width, elemHeight: interaction[address].selectedScrollItem.height, date: now});
+        
+            var elemId = interaction[address].selectedScrollItem.id;
+            if(elemId in interaction[address].selectTimeId) clearTimeout(interaction[address].selectTimeId[elemId]);
+        
+            interaction[address].selectTimeId[elemId] = setTimeout(function() {
+                sio.sockets.emit('finishedResize', elemId);
+                interaction[address].selectedScrollItem = null;
+            }, 500);
+		}
+		else if( mode == IN_WINDOW_MODE ){
+		    //implement scroll event in window
+
+		    
+		    
+		}
 	});
 	
 	socket.on('deleteElementById', function(id) {
