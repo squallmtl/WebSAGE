@@ -140,11 +140,13 @@
             pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";
             pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
             pointerElem.style.zIndex = "10000"; 
-
+            pointerElem.mode = pointer_data.mode; //mode indicates how pointer interacts w
+    
             main.appendChild(pointerElem); 
 
             var ptr = new pointer(); 
             ptr.init(pointerElem.id, pointer_data.label, pointer_data.color) ;
+            ptr.changeMode( pointerElem.mode ) 
             ptr.draw();
             
             pointerItems[pointerElem.id] = ptr;
@@ -173,6 +175,13 @@
         	
         	pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";;
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
+        });
+        
+        socket_io.on('pointerChangeMode', function(pointer_data){
+            var pointerElem = document.getElementById(pointer_data.id);
+        
+            pointerItems[pointerElem.id].changeMode(pointer_data.mode);
+            pointerItems[pointerElem.id].draw();
         });
 		
 		socket_io.on('addNewElement', function(elem_data) {		

@@ -75,6 +75,7 @@ var itemCount = 0;
 var items = [];
 var pointerCount = 0;
 var sagePointers = {};
+var numberOfPointerModes = 2; //2 modes:  interact with window and interact in window
 var interaction = {};
 var stream = {};
 var broadcastClients = [];
@@ -122,7 +123,7 @@ sio.sockets.on('connection', function(socket) {
 			sio.sockets.emit('showPointer', sagePointers[address]);
 		}
 		else{
-			sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: pointer_data.label, color: pointer_data.color};
+			sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: pointer_data.label, color: pointer_data.color, mode: 0}; //mode = 0 -> act on window, not in window
 			pointerCount++;
 			sio.sockets.emit('createPointer', sagePointers[address]);
 		}
@@ -350,6 +351,7 @@ sio.sockets.on('connection', function(socket) {
 				}, 1000);
 			});
 		}
+		//need to add sites
 	});
 
 	socket.on('selectElementById', function(select_data) {
@@ -365,21 +367,41 @@ sio.sockets.on('connection', function(socket) {
 	socket.on('selectElementWithPointer', function() {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
+		var mode = sagePointers[address].mode;
 		
 		for(var i=items.length-1; i>=0; i--){
 			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				interaction[address].selectedMoveItem = findItemById(items[i].id);
-				interaction[address].selectedScrollItem = null;
+				if( mode == 0 ){ //interact with window
+                    interaction[address].selectedMoveItem = findItemById(items[i].id);
+                    interaction[address].selectedScrollItem = null;
+                    interaction[address].itemInteractInWindow = null; 
+                }
+                else{ //interact in window
+                    interaction[address].itemInteractInWindow = findItemById(items[i].id);
+                    interaction[address].selectedMoveItem = null; 
+                    interaction[address].selectedScrollItem = null;
+                }
 				interaction[address].selectOffsetX = items[i].left - pointerX;
 				interaction[address].selectOffsetY = items[i].top - pointerY;
 				break;
 			}
 		}
 		
-		if(interaction[address].selectedMoveItem != null){
+		if(interaction[address].selectedMoveItem != null && mode == 0 ){
 			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
+        }
+		else if( interaction[address].itemInteractInWindow != null && mode == 1 ){
+			//if click in window mode, 
+			    //emit a pointer click on item signal 
 		}
+		else if(interaction[address].selectedMoveItem == null && interaction[address].itemInteractInWindow == null ) {//else change mode
+	        sagePointers[address].mode = sagePointers[address].mode + 1;
+	        if( sagePointers[address].mode == numberOfPointerModes ){
+	            sagePointers[address].mode = 0; 
+	        }
+	        sio.sockets.emit('pointerChangeMode', sagePointers[address] )
+	    }
 	});
 	
 	socket.on('releaseSelectedElement', function() {
