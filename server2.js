@@ -209,7 +209,14 @@ wsioServer.onconnection(function(wsio) {
 			}
 		}
 		
-		broadcast('startNewMediaStream', data, "display");
+		loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
+			broadcast('addNewElement', newItem);
+			
+			items.push(newItem);
+			itemCount++;
+		});
+		
+		//broadcast('startNewMediaStream', data, "display");
 	});
 	
 	wsio.on('updateMediaStreamFrame', function(data) {
@@ -225,11 +232,9 @@ wsioServer.onconnection(function(wsio) {
 		
 		if(allTrueDict(mediaStreams[data.id])){
 			var broadcastWS;
-			var broadcastAddress = data.id.substring(0, data.id.indexOf("_screen"));
-			console.log(broadcastAddress);
 			for(i=0; i<clients.length; i++){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				if(clientAddress == broadcastAddress) broadcastWS = clients[i];
+				if(clientAddress == data.id) broadcastWS = clients[i];
 			}
 			
 			broadcastWS.emit('requestNextFrame', null);

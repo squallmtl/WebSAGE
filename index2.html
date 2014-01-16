@@ -109,12 +109,17 @@
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
         
+        /*
         wsio.on('startNewMediaStream', function(data) {
 			wsio.emit('receivedMediaStreamFrame', {id: data.id});
 		});
+		*/
 		
 		wsio.on('updateMediaStreamFrame', function(data) {
 			wsio.emit('receivedMediaStreamFrame', {id: data.id});
+			
+			var screen = document.getElementById(data.id + "_screen");
+			screen.src = stringToBase64(data.src);
 		});
 		
 		wsio.on('addNewElement', function(elem_data) {		
@@ -139,8 +144,6 @@
 			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
 			titleText.textContent = elem_data.title;
 			windowTitle.appendChild(titleText);
-			
-			//if(elem_data.type == "screen") return;
 			
 			var windowItem = document.createElement("div");
 			windowItem.id = elem_data.id;
@@ -203,6 +206,20 @@
 				var pdfObj = new pdf_canvas();
 				pdfObj.init(elem_data.id + "_pdf", pdfData);
 				pdfItems[elem_data.id + "_pdf"] = pdfObj;
+			}
+			else if(elem_data.type == "screen"){
+				wsio.emit('receivedMediaStreamFrame', {id: elem_data.id});
+				
+				var screen = document.createElement("img");
+				screen.id = elem_data.id + "_screen";
+				screen.className = "sageItem";
+				screen.aspectRatio = elem_data.aspect;
+				screen.width = elem_data.width;
+				screen.height = elem_data.height;
+				screen.src = stringToBase64(elem_data.src);
+				screen.draggable = false;
+				
+				windowItem.appendChild(screen);
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
@@ -416,6 +433,14 @@
 		}
 	}
 
+	function stringToBase64(string) {
+		return decodeURIComponent(escape(atob(string)));
+	}
+
+	function base64ToString(base64) {
+		return btoa(unescape(encodeURIComponent(base64)));
+	}
+	
 	function base64ToUint8Array(base64) {
         var raw = atob(base64); //This is a native function that decodes a base64-encoded string.
         var uint8Array = new Uint8Array(new ArrayBuffer(raw.length));

@@ -109,6 +109,10 @@
 		mediaCtx = mediaCanvas.getContext('2d');
 		mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
 		mediaQuality = screenShareQuality.value;
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
 		broadcasting = false;
 		
 		appsDir = document.getElementById('apps');
@@ -172,7 +176,7 @@
 		wsio.on('requestNextFrame', function(data) {
 			if(broadcasting){
 				var frame = captureMediaFrame();
-				wsio.emit('updateMediaStreamFrame', {id: address+"_screen", src: base64ToString(frame)});
+				wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
 			}
 		});
 	}
@@ -274,10 +278,10 @@
 		// start screen share
 		screenShareBtn.disabled = true;
 		
-		mediaHeight = Math.min(mediaResolution, screen.height);
-		mediaWidth = screen.width/screen.height * mediaHeight;
+		var streamHeight = Math.min(1080, screen.height);
+		var streamWidth = screen.width/screen.height * mediaHeight;
 		
-		var constraints = {chromeMediaSource: 'screen', maxWidth: mediaWidth, maxHeight: mediaHeight};
+		var constraints = {chromeMediaSource: 'screen', maxWidth: streamWidth, maxHeight: streamHeight};
 		navigator.getUserMedia({video: {mandatory: constraints, optional: []}, audio: false}, streamSuccess, streamFail);
 	}
 	
@@ -294,7 +298,7 @@
 		mediaVideo.play();
 		
 		var frame = captureMediaFrame();
-		wsio.emit('startNewMediaStream', {id: address+"_screen", title: name+": Shared Screen", src: base64ToString(frame), width: mediaWidth, height: mediaHeight, aspect: mediaWidth/mediaHeight});
+		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
 		
 		broadcasting = true;
 	}
@@ -304,12 +308,16 @@
 	}
 	
 	function captureMediaFrame() {
-		mediaCtx.drawImage(mediaVideo, 0, 0);
+		mediaCtx.drawImage(mediaVideo, 0, 0, mediaWidth, mediaHeight);
 		return mediaCanvas.toDataURL("image/jpeg", mediaQuality);
 	}
 	
 	function changeScreenShareResolution(event) {
 		mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
 		console.log("select: " + mediaResolution);
 	}
 	
