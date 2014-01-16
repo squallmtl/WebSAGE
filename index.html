@@ -177,6 +177,24 @@
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
         
+        socket_io.on('pointerClickInItem', function( click_data ) { 
+            var ptr_id = click_data.ptr_id;
+            var globalX = click_data.globalX;
+            var globalY = click_data.globalY;
+            var itemRelativeX = click_data.itemRelativeX;
+            var itemRelativeY = click_data.itemRelativeY - titleBarHeight;   
+                        
+            var selectedElem = document.getElementById(click_data.elemId);
+            var child = selectedElem.getElementsByClassName("sageItem");
+            
+            console.log(click_data.elemId, " " , itemRelativeX, " ", itemRelativeY, " ", child[0].tagName.toLowerCase() );
+            if(child[0].tagName.toLowerCase() == "iframe"){
+                console.log(child[0]);
+                child[0].contentWindow.postMessage('pointerClick x ' + itemRelativeX + " y " + itemRelativeY, '*');  
+            }
+
+        });
+        
         socket_io.on('pointerChangeMode', function(pointer_data){
             var pointerElem = document.getElementById(pointer_data.id);
         

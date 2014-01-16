@@ -391,16 +391,16 @@ sio.sockets.on('connection', function(socket) {
 			}
 		}
 		
-		if(interaction[address].selectedMoveItem != null && mode == ON_WINDOW_MODE ){
+		if(interaction[address].selectedMoveItem != null && mode == ON_WINDOW_MODE ){ //if over an item and on window mode, move item to front
 			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
         }
-		else if( interaction[address].itemInteractInWindow != null && mode == IN_WINDOW_MODE ){
+		else if( interaction[address].itemInteractInWindow != null && mode == IN_WINDOW_MODE ){ //if over item and in window mode,
             var newOrder = moveItemToFront(interaction[address].itemInteractInWindow.id); //update order in this mode too
 			sio.sockets.emit('updateItemOrder', newOrder);
 
-            //emit a pointer click on item signal 
-            //sio.sockets.emit('pointerClickInItem', sagePointers[address], iteraction[address].itemInteractInWindow, address); 
+            //emit a pointer click on item signal :  need to know which pointer, which item, global coord, item-relative coord 
+            sio.sockets.emit('pointerClickInItem', {ptr_id: sagePointers[address].id, elemId: interaction[address].itemInteractInWindow.id, globalX: pointerX, globalY: pointerY, itemRelativeX: interaction[address].selectOffsetX*-1.0, itemRelativeY: interaction[address].selectOffsetY*-1.0 } ); 
 		}
 		else if(interaction[address].selectedMoveItem == null && interaction[address].itemInteractInWindow == null ) {//else change mode
 	        sagePointers[address].mode = sagePointers[address].mode + 1;
@@ -558,6 +558,7 @@ sio.sockets.on('connection', function(socket) {
 	socket.on('keypressElementWithPointer', function(code) {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
+		var mode = sagePointers[address].mode;
 		
 		var keypressItem = null;
 		for(var i=items.length-1; i>=0; i--){
@@ -567,17 +568,42 @@ sio.sockets.on('connection', function(socket) {
 			}
 		}
 		
-		if(keypressItem != null){
-			if(code == "8" || code == "46"){ // backspace or delete
-				removeItemById(keypressItem.id);
-				sio.sockets.emit('deleteElement', keypressItem.id);
+		//if over an item:
+		if(keypressItem != null ){
+		    if( mode == ON_WINDOW_MODE ){
+                if(code == "8" || code == "46"){ // backspace or delete
+                    removeItemById(keypressItem.id);
+                    sio.sockets.emit('deleteElement', keypressItem.id);
+                }
+                else{
+                    var newOrder = moveItemToFront(keypressItem.id);
+                    sio.sockets.emit('updateItemOrder', newOrder);
+                
+                    sio.sockets.emit('keypressItem', {elemId: keypressItem.id, keyCode: code});
+                }
 			}
-			else{
-				var newOrder = moveItemToFront(keypressItem.id);
-				sio.sockets.emit('updateItemOrder', newOrder);
-				sio.sockets.emit('keypressItem', {elemId: keypressItem.id, keyCode: code});
+			else if ( mode == IN_WINDOW_MODE ){
+			    
+			    //send keypress events to items
+			    
 			}
 		}
+		
+		//if not over an item ... ? 
+		if( code == "9" ){ //if tab, switch modes
+		    sagePointers[address].mode = sagePointers[address].mode + 1;
+	        if( sagePointers[address].mode == numberOfPointerModes ){
+	            sagePointers[address].mode = 0; 
+	        }
+	        sio.sockets.emit('pointerChangeMode', sagePointers[address] );
+		}
+		
+		//Arthur:  here we could have a way to open the window manager?
+		
+		//maybe if you start typing, you launch a notepad...?
+		//lots of options
+		
+		
 	});
 	
 	socket.on('updateVideoTime', function(video_data) {
