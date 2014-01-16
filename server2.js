@@ -11,9 +11,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
  
 
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -87,7 +87,16 @@ wsioServer.onconnection(function(wsio) {
 			
 			broadcast('createSagePointer', sagePointers[address], "display");
 		}
+		else if(wsio.clientType == "display"){
+			for(var key in sagePointers){
+				wsio.emit('createSagePointer', sagePointers[key]);
+			}
+		}
 		clients.push(wsio);
+		
+		for(i=0; i<items.length; i++){
+			wsio.emit('addNewElement', items[i]);
+		}
 	});
 	
 	wsio.on('startSagePointer', function(data) {
@@ -215,8 +224,6 @@ wsioServer.onconnection(function(wsio) {
 			items.push(newItem);
 			itemCount++;
 		});
-		
-		//broadcast('startNewMediaStream', data, "display");
 	});
 	
 	wsio.on('updateMediaStreamFrame', function(data) {
@@ -237,7 +244,7 @@ wsioServer.onconnection(function(wsio) {
 				if(clientAddress == data.id) broadcastWS = clients[i];
 			}
 			
-			broadcastWS.emit('requestNextFrame', null);
+			if(broadcastWS != null) broadcastWS.emit('requestNextFrame', null);
 		}
 	});
 	

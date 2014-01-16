@@ -279,7 +279,7 @@
 		screenShareBtn.disabled = true;
 		
 		var streamHeight = Math.min(1080, screen.height);
-		var streamWidth = screen.width/screen.height * mediaHeight;
+		var streamWidth = screen.width/screen.height * streamHeight;
 		
 		var constraints = {chromeMediaSource: 'screen', maxWidth: streamWidth, maxHeight: streamHeight};
 		navigator.getUserMedia({video: {mandatory: constraints, optional: []}, audio: false}, streamSuccess, streamFail);
@@ -308,12 +308,13 @@
 	}
 	
 	function captureMediaFrame() {
+		mediaCtx.clearRect(0, 0, mediaWidth, mediaHeight);
 		mediaCtx.drawImage(mediaVideo, 0, 0, mediaWidth, mediaHeight);
-		return mediaCanvas.toDataURL("image/jpeg", mediaQuality);
+		return mediaCanvas.toDataURL("image/jpeg", (mediaQuality/10));
 	}
 	
 	function changeScreenShareResolution(event) {
-		mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
+		mediaResolution = parseInt(screenShareResolution.options[screenShareResolution.selectedIndex].value);
 		mediaHeight = Math.min(mediaResolution, screen.height);
 		mediaWidth = screen.width/screen.height * mediaHeight;
 		mediaCanvas.width = mediaWidth;

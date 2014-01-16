@@ -169,6 +169,7 @@ function windowManager(id, ws) {
 	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);
+		console.log("added: " + elem_data.id + "(" + elem_data.type + ")");
 		this.draw();
 	};
 	
