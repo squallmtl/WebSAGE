@@ -13,8 +13,6 @@ function pdf_canvas() {
 		this.element.height = this.img.height;
 		this.ctx = this.element.getContext("2d");
 		
-		console.log("Document: ", file);
-		
 		//
 		// Asynchronously download PDF as an ArrayBuffer
 		//
