@@ -269,8 +269,11 @@ wsioServer.onconnection(function(wsio) {
 			remoteInteraction[address].CAPS = !remoteInteraction[address].CAPS;
 		}
 		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
-			remoteInteraction[address].CMD = true;
+			remoteInteraction[address].CMD = false;
 		}
+		
+		console.log("ctrl: " + remoteInteraction[address].CTRL);
+		console.log("cmd: " + remoteInteraction[address].CMD);
 		
 		if(data.code == "9" && (remoteInteraction[address].CTRL || remoteInteraction[address].CMD)){ // ctrl + tab
 			remoteInteraction[address].toggleModes();
