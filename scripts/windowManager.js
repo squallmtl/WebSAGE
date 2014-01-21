@@ -167,6 +167,11 @@ function windowManager(id, ws) {
 		event.preventDefault();
 	};
 	
+	this.keyRelease = function(event) {
+		this.wsio.emit('keyReleased', {code: event.keyCode});
+		event.preventDefault();
+	}
+	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);
 		console.log("added: " + elem_data.id + "(" + elem_data.type + ")");

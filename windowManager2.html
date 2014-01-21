@@ -17,7 +17,8 @@
 	var address;
 	
 	var canvasKeyEvents = false;
-	var canvasKeyFunc = null;
+	var canvasKeyDownFunc = null;
+	var canvasKeyUpFunc = null;
 	var sensitivity;
 	var selectedFile = null;
 	
@@ -94,7 +95,8 @@
 		winMgr = new windowManager("winMgr", wsio);
 		winMgr.draw();
 		
-		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
+		canvasKeyDownFunc = winMgr.keyPress.bind(winMgr);
+		canvasKeyUpFunc = winMgr.keyRelease.bind(winMgr);
 		
 		winMgrCanvas = document.getElementById('winMgr');
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
@@ -194,11 +196,13 @@
 	
 	function updateTarget(event) {
 		if(event.target == winMgrCanvas && !canvasKeyEvents){
-			document.addEventListener('keydown', canvasKeyFunc, false);
+			document.addEventListener('keydown', canvasKeyDownFunc, false);
+			document.addEventListener('keyup', canvasKeyUpFunc, false);
 			canvasKeyEvents = true;
 		}
 		else if(event.target != winMgrCanvas && canvasKeyEvents){
-			document.removeEventListener('keydown', canvasKeyFunc, false);
+			document.removeEventListener('keydown', canvasKeyDownFunc, false);
+			document.removeEventListener('keyup', canvasKeyUpFunc, false);
 			canvasKeyEvents = false;
 		}
 	}
@@ -342,6 +346,7 @@
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
 			document.addEventListener('keydown', pointerKeyPress, false);
+			document.addEventListener('keyup', pointerKeyRelease, false);
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
 			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
@@ -355,6 +360,7 @@
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
 			document.removeEventListener('keydown', pointerKeyPress, false);
+			document.removeEventListener('keyup', pointerKeyRelease, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
@@ -404,6 +410,11 @@
 	
 	function pointerKeyPress(event) {
 		wsio.emit('keyPressed', {code: event.keyCode});
+		preventDefault(event);
+	}
+	
+	function pointerKeyRelease(event) {
+		wsio.emit('keyReleased', {code: event.keyCode});
 		preventDefault(event);
 	}
 	

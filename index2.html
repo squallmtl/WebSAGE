@@ -109,11 +109,11 @@
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
         
-        /*
-        wsio.on('startNewMediaStream', function(data) {
-			wsio.emit('receivedMediaStreamFrame', {id: data.id});
-		});
-		*/
+        wsio.on('changeSagePointerMode', function(pointer_data){
+        	console.log(pointer_data.mode);
+        	pointerItems[pointer_data.id].changeMode(pointer_data.mode);
+        	pointerItems[pointer_data.id].draw();
+        });
 		
 		wsio.on('updateMediaStreamFrame', function(data) {
 			wsio.emit('receivedMediaStreamFrame', {id: data.id});

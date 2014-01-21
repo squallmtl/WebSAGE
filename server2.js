@@ -184,9 +184,50 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('keyPressed', function(data) {
+		if(data.code == "16"){ // shift
+			remoteInteraction[address].SHIFT = true;
+		}
+		else if(data.code == "17"){ // ctrl
+			remoteInteraction[address].CTRL = true;
+		}
+		else if(data.code == "18") { // alt
+			remoteInteraction[address].ALT = true;
+		}
+		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+			remoteInteraction[address].CMD = true;
+		}
+	});
+	
+	wsio.on('keyReleased', function(data) {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
 		var elem = findItemUnderPointer(pointerX, pointerY);
+		
+		if(data.code == "16"){ // shift
+			remoteInteraction[address].SHIFT = false;
+		}
+		else if(data.code == "17"){ // ctrl
+			remoteInteraction[address].CTRL = false;
+		}
+		else if(data.code == "18") { // alt
+			remoteInteraction[address].ALT = false;
+		}
+		else if(data.code == "20") { // caps lock
+			remoteInteraction[address].CAPS = !remoteInteraction[address].CAPS;
+		}
+		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+			remoteInteraction[address].CMD = true;
+		}
+		
+		if(data.code == "9" && (remoteInteraction[address].CTRL || remoteInteraction[address].CMD)){ // ctrl + tab
+			if(remoteInteraction[address].isWindowManagementMode()){
+				remoteInteraction[address].selectAppInteractionMode();
+			}
+			else{
+				remoteInteraction[address].selectWindowManagementMode();
+			}
+			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
+		}
 		
 		if(elem != null){
 			if(data.code == "8" || data.code == "46"){ // backspace or delete
