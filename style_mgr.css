@@ -28,16 +28,13 @@ input, button {
 }
 
 #window {
-	margin: 20px 0px 20px 0px;
-}
-
-#extraInteraction {
-	width: 100%;
-	overflow: hidden;
+	margin: 20px 0px 0px 0px;
 }
 
 #fileUpload {
 	float: left;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
@@ -56,7 +53,8 @@ input, button {
 
 #sagePointer {
 	float: left;
-	margin-left: 20px;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
@@ -66,7 +64,8 @@ input, button {
 
 #screenShare {
 	float: left;
-	margin-left: 20px;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;

@@ -37,7 +37,6 @@ for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImag
 for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
-console.log(savedFiles);
 
 var app = express();
 
@@ -271,9 +270,6 @@ wsioServer.onconnection(function(wsio) {
 		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
 			remoteInteraction[address].CMD = false;
 		}
-		
-		console.log("ctrl: " + remoteInteraction[address].CTRL);
-		console.log("cmd: " + remoteInteraction[address].CMD);
 		
 		if(data.code == "9" && (remoteInteraction[address].CTRL)){ // ctrl + tab
 			remoteInteraction[address].toggleModes();
