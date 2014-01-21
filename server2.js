@@ -9,11 +9,11 @@ var loader = require('node-itemloader'); // custom node module
 var interaction = require('node-interaction'); // custom node module
 var sagepointer = require('node-sagepointer'); // custom node module
  
-
+ 
 // CONFIG FILE
-//var file = "config/desktop-cfg.json";
+var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-var file = "config/iridiumX-cfg.json";
+//var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -68,6 +68,11 @@ var sagePointers = {};
 var remoteInteraction = {};
 var mediaStreams = {};
 
+//handle pointer modes
+var numberOfPointerModes = 2; //2 modes:  interact with window and interact in window
+var ON_WINDOW_MODE = 0;
+var IN_WINDOW_MODE = 1; 
+
 wsioServer.onconnection(function(wsio) {
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	console.log("New Connection: " + address);
@@ -114,17 +119,50 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('pointerPress', function() {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
-		var elem = findItemUnderPointer(pointerX, pointerY);
+
+        var elem = findItemUnderPointer(pointerX, pointerY);
+
 		
 		if(elem != null){
-			remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY);
+            if( remoteInteraction[address].windowManagementMode() ){
+                remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+            }
+            else if ( remoteInteraction[address].appInteractionMode() ) {
+                var itemRelX = pointerX - items[i].left;
+				var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+				var now = new Date();
+				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+            }        
+            
 			var newOrder = moveItemToFront(elem.id);
 			broadcast('updateItemOrder', newOrder);
+		} 
+		else { //if no item, change pointer mode
+		    remoteInteraction[address].toggleModes(); 
+		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
 		}
+		
+		
 	});
 	
 	wsio.on('pointerRelease', function() {
-		remoteInteraction[address].releaseItem();
+	    if( remoteInteraction[address].windowManagementMode() ){
+            remoteInteraction[address].releaseItem();
+
+	    }
+	    else if ( remoteInteraction[address].appInteractionMode() ) {
+            var pointerX = sagePointers[address].left
+            var pointerY = sagePointers[address].top
+            
+            var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+            if( elem != null ){           
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();
+                broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+            }
+	    }
 	});
 	
 	wsio.on('pointerPosition', function(data) {
@@ -151,8 +189,23 @@ wsioServer.onconnection(function(wsio) {
 		
 		broadcast('updateSagePointerPosition', sagePointers[address], "display");
 		
-		var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-		if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+	    if( remoteInteraction[address].windowManagementMode() ){
+            var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
+            if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+		}
+        else if ( remoteInteraction[address].appInteractionMode() ) {		
+            var pointerX = sagePointers[address].left
+            var pointerY = sagePointers[address].top
+            
+            var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+            if( elem != null ){           
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();
+                broadcast( 'eventInItem', { eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");  
+            }
+		}
 	});
 	
 	wsio.on('pointerScrollStart', function() {
@@ -220,25 +273,29 @@ wsioServer.onconnection(function(wsio) {
 		}
 		
 		if(data.code == "9" && (remoteInteraction[address].CTRL || remoteInteraction[address].CMD)){ // ctrl + tab
-			if(remoteInteraction[address].isWindowManagementMode()){
-				remoteInteraction[address].selectAppInteractionMode();
-			}
-			else{
-				remoteInteraction[address].selectWindowManagementMode();
-			}
+			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
 		}
 		
 		if(elem != null){
-			if(data.code == "8" || data.code == "46"){ // backspace or delete
-				removeElement(items, elem);
-				broadcast('deleteElement', elem.id);
-			}
-			else{
-				var newOrder = moveItemToFront(elem.id);
-				broadcast('updateItemOrder', newOrder);
-				broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
-			}
+            if( remoteInteraction[address].windowManagementMode() ){
+                if(data.code == "8" || data.code == "46"){ // backspace or delete
+                    removeElement(items, elem);
+                    broadcast('deleteElement', elem.id);
+                }
+                else{
+                    var newOrder = moveItemToFront(elem.id);
+                    broadcast('updateItemOrder', newOrder);
+                    broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
+                }
+            }
+            else if ( remoteInteraction[address].appInteractionMode() ) {	
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();	
+                broadcast( 'eventInItem', { eventType: "keyPressed", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
+            }
+            
 		}
 	});
 	
