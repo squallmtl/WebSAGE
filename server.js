@@ -86,7 +86,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('addClient', function(data) {
 		wsio.clientType = data.clientType;
-		if(wsio.clientType == "windowManager"){
+		if(wsio.clientType == "sageUI"){
 			sagePointers[address] = new sagepointer(address+"_pointer");
 			remoteInteraction[address] = new interaction();
 			

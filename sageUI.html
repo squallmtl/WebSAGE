@@ -54,7 +54,7 @@
 		
 		wsio.open(function() {
 			console.log("open websocket");
-			wsio.emit('addClient', {clientType: "windowManager"});
+			wsio.emit('addClient', {clientType: "sageUI"});
 		});
 		
 		document.addEventListener('pointerlockchange', pointerLockChange, false);
