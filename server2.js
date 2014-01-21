@@ -275,7 +275,7 @@ wsioServer.onconnection(function(wsio) {
 		console.log("ctrl: " + remoteInteraction[address].CTRL);
 		console.log("cmd: " + remoteInteraction[address].CMD);
 		
-		if(data.code == "9" && (remoteInteraction[address].CTRL || remoteInteraction[address].CMD)){ // ctrl + tab
+		if(data.code == "9" && (remoteInteraction[address].CTRL)){ // ctrl + tab
 			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
 		}
