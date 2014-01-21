@@ -3,10 +3,7 @@
 <head lang="en">
 <meta charset="utf-,8">
 <title>Node Test</title>
-<script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="lib/firebase.js"></script>
-<script type="text/javascript" src="lib/RTCPeerConnection-v1.5.js"></script>
-<script type="text/javascript" src="lib/broadcast.js"></script>
+<script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
 <script type="text/javascript" src="scripts/pdf_canvas.js"></script>
@@ -24,25 +21,26 @@
 	var pointerOffsetX; 
 	var pointerOffsetY;
 
-	var url;
-	var socket_io;
+	var wsio;
 	
 	var itemCount = 0;
 	var pdfItems = {};
 	var pointerItems = {};
 	var canvasItems = {};
-	var broadcastUI = {};
-	var rooms = {};
 	
 	function init() {
-		url = window.location.origin;
-		socket_io = io.connect(url);
-		console.log("Connected to server: ", url);
+		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		console.log("Connected to server: ", window.location.origin);
+		
+		wsio.open(function() {
+			console.log("open websocket");
+			wsio.emit('addClient', {clientType: "display"});
+		});
 		
 		clientID = parseInt(getParameterByName("clientID"));
-		console.log(clientID);
+		console.log("clientID: " + clientID);
 
-		socket_io.on('setupDisplayConfiguration', function(json_cfg) {
+		wsio.on('setupDisplayConfiguration', function(json_cfg) {
 			offsetX = json_cfg.displays[clientID].column * json_cfg.resolution.width;
 			offsetY = json_cfg.displays[clientID].row * json_cfg.resolution.height;
 			titleBarHeight = json_cfg.titleBarHeight;
@@ -51,86 +49,19 @@
 			pointerHeight = json_cfg.pointerHeight;
 			pointerOffsetX = Math.round(0.025384*pointerHeight); 
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
-			console.log('offset: ' + offsetX + ', ' + offsetY);
 		});
 		
-		socket_io.on('newBroadcastClient', function(address) {
-			var origin = url.replace( /\/|:|#|%|\.|\[|\]/g , '');
-			var channel = address.replace( /\/|:|#|%|\.|\[|\]/g , '');
-		
-			var config = {
-				openSocket: function(config) {
-					var origin = config.channel || url.replace( /\/|:|#|%|\.|\[|\]/g , '');
-					var socket = new Firebase('https://chat.firebaseIO.com/' + origin + channel);
-					socket.channel = channel;
-					socket.on("child_added", function(data) {
-						config.onmessage && config.onmessage(data.val());
-					});
-					socket.send = function(data) {
-						this.push(data);
-					};
-					config.onopen && setTimeout(config.onopen, 1);
-					socket.onDisconnect().remove();
-					return socket;
-				},
-				onRemoteStream: function(htmlElement) {
-					if(document.getElementById(channel)) return;
-					
-					var main = document.getElementById("main");
-                        
-					var id = channel;
-		
-					var windowItem = document.createElement("div");
-					windowItem.id = id;
-					windowItem.className = "windowItem";
-					windowItem.style.left = (0-offsetX).toString() + "px";
-					windowItem.style.top = (0+titleBarHeight-offsetY).toString() + "px";
-					windowItem.style.zIndex = (itemCount+1).toString();
-					main.appendChild(windowItem);
-				
-					htmlElement.id = id + "_screen";
-					htmlElement.className = "sageItem";
-					htmlElement.controls = false;
-					htmlElement.play();
-					windowItem.appendChild(htmlElement);
-					
-					socket_io.emit('streamAdded', {id: id, client: clientID});
-				},
-				onRoomFound: function(room) {
-					if(rooms[channel].indexOf(room.broadcaster) >= 0) return;
-		
-					console.log("found room: " + room.broadcaster + "(" + channel + ")");
-		
-					var broadcaster = room.broadcaster;
-					var roomToken = room.broadcaster;
-					broadcastUI[channel].joinRoom({
-						roomToken: roomToken,
-						joinUser: broadcaster
-					});
-		
-					rooms[channel].push(room.broadcaster);
-				},
-				onNewParticipant: function(numberOfViewers) {
-					// do nothing
-				}
-			};
-
-			broadcastUI[channel] = broadcast(config);
-			rooms[channel] = [];
-		});
-		
-		socket_io.on('addScript', function(source) {
+		wsio.on('addScript', function(source) {
 			var js = document.createElement('script')
   			js.type = "text/javascript";
   			js.src = source;
   			document.head.appendChild(js);
 		});
 		
-		socket_io.on('createPointer', function(pointer_data){
+		wsio.on('createSagePointer', function(pointer_data){
+			console.log("creating pointer: " + pointer_data.id);
+			
             var main = document.getElementById("main");
-            
-            console.log("creating pointer: " + pointerWidth + "x" + pointerHeight);
-            console.log(pointer_data.id, pointer_data.label, pointer_data.color)
             
             var pointerElem = document.createElement("canvas");
             pointerElem.id = pointer_data.id; 
@@ -147,10 +78,13 @@
             ptr.init(pointerElem.id, pointer_data.label, pointer_data.color) ;
             ptr.draw();
             
+            if(pointer_data.visible) pointerElem.style.display = "block";
+            else pointerElem.style.display = "none";
+            
             pointerItems[pointerElem.id] = ptr;
         });
         
-        socket_io.on('showPointer', function(pointer_data){
+        wsio.on('showSagePointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "block";
@@ -162,20 +96,32 @@
             pointerItems[pointerElem.id].draw();
         });
         
-        socket_io.on('hidePointer', function(pointer_data){
+        wsio.on('hideSagePointer', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.display = "none";
         });
         
-        socket_io.on('updatePointer', function(pointer_data){
+        wsio.on('updateSagePointerPosition', function(pointer_data){
         	var pointerElem = document.getElementById(pointer_data.id);
         	
         	pointerElem.style.left = (pointer_data.left-pointerOffsetX-offsetX).toString() + "px";;
         	pointerElem.style.top = (pointer_data.top-pointerOffsetY-offsetY).toString() + "px";
         });
+        
+        wsio.on('changeSagePointerMode', function(pointer_data){
+        	pointerItems[pointer_data.id].changeMode(pointer_data.mode);
+        	pointerItems[pointer_data.id].draw();
+        });
 		
-		socket_io.on('addNewElement', function(elem_data) {		
+		wsio.on('updateMediaStreamFrame', function(data) {
+			wsio.emit('receivedMediaStreamFrame', {id: data.id});
+			
+			var screen = document.getElementById(data.id + "_screen");
+			screen.src = stringToBase64(data.src);
+		});
+		
+		wsio.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
 		
 			var main = document.getElementById("main");
@@ -198,8 +144,6 @@
 			titleText.textContent = elem_data.title;
 			windowTitle.appendChild(titleText);
 			
-			if(elem_data.type == "screen") return;
-			
 			var windowItem = document.createElement("div");
 			windowItem.id = elem_data.id;
 			windowItem.className = "windowItem";
@@ -207,6 +151,9 @@
 			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
 			windowItem.style.zIndex = (itemCount+1).toString();
 			main.appendChild(windowItem);
+			
+            console.log("add item ", elem_data.id, " " , elem_data.type);
+
 			
 			if(elem_data.type == "img"){
 				var img = document.createElement("img");
@@ -219,6 +166,33 @@
 				img.draggable = false;
 				
 				windowItem.appendChild(img);
+			}
+			else if(elem_data.type == "video" || elem_data.type == "youtube"){
+				var vid = document.createElement("video");
+				vid.id = elem_data.id + "_video";
+				vid.className = "sageItem";
+				vid.aspectRatio = elem_data.aspect;
+				vid.width = elem_data.width;
+				vid.height = elem_data.height;
+				vid.controls = false;
+				vid.muted = true;
+				vid.style.backgroundColor = "#333333";
+				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
+				
+				vid.addEventListener('canplay', function() {
+					console.log("video can now play"); // Video is loaded and can be played
+				}, false);
+				
+				console.log(elem_data.src);
+				
+				var source1 = document.createElement("source");
+				var param = elem_data.src.indexOf('?');
+				if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
+				else source1.src = elem_data.src + "?clientID=" + clientID.toString();
+				source1.type = "video/mp4";
+				vid.appendChild(source1);
+				
+				windowItem.appendChild(vid);
 			}
 			else if(elem_data.type == "pdf"){
 				var pdf = document.createElement("img");
@@ -234,6 +208,20 @@
 				var pdfObj = new pdf_canvas();
 				pdfObj.init(elem_data.id + "_pdf", pdfData);
 				pdfItems[elem_data.id + "_pdf"] = pdfObj;
+			}
+			else if(elem_data.type == "screen"){
+				wsio.emit('receivedMediaStreamFrame', {id: elem_data.id});
+				
+				var screen = document.createElement("img");
+				screen.id = elem_data.id + "_screen";
+				screen.className = "sageItem";
+				screen.aspectRatio = elem_data.aspect;
+				screen.width = elem_data.width;
+				screen.height = elem_data.height;
+				screen.src = stringToBase64(elem_data.src);
+				screen.draggable = false;
+				
+				windowItem.appendChild(screen);
 			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
@@ -256,6 +244,7 @@
 					canvasObj.draw(date);
 					canvasItems[elem_data.id + "_canvas"] = canvasObj;
 				}, false);
+				console.log("added canvas item ", canvas.id);
 			}
 			else if(elem_data.type == "kineticjs"){
 				var kineticjs = document.createElement("div");
@@ -299,33 +288,6 @@
 					canvasItems[elem_data.id + "_threejs"] = threejsObj;
 				}, false);
 			}
-			else if(elem_data.type == "video" || elem_data.type == "youtube"){
-				var vid = document.createElement("video");
-				vid.id = elem_data.id + "_video";
-				vid.className = "sageItem";
-				vid.aspectRatio = elem_data.aspect;
-				vid.width = elem_data.width;
-				vid.height = elem_data.height;
-				vid.controls = false;
-				vid.muted = true;
-				vid.style.backgroundColor = "#333333";
-				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
-				
-				vid.addEventListener('canplay', function() {
-					console.log("video can now play"); // Video is loaded and can be played
-				}, false);
-				
-				console.log(elem_data.src);
-				
-				var source1 = document.createElement("source");
-				var param = elem_data.src.indexOf('?');
-				if(param >= 0) source1.src = elem_data.src + "&clientID=" + clientID.toString();
-				else source1.src = elem_data.src + "?clientID=" + clientID.toString();
-				source1.type = "video/mp4";
-				vid.appendChild(source1);
-				
-				windowItem.appendChild(vid);
-			}
             else if(elem_data.type == "site"){       
                 var ifrm = document.createElement("IFRAME"); 
                 ifrm.id = elem_data.id + "_site"
@@ -340,7 +302,7 @@
 			itemCount += 2;
 		});
 		
-		socket_io.on('deleteElement', function(elemId) {
+		wsio.on('deleteElement', function(elemId) {
 			var deleteElemTitle = document.getElementById(elemId + "_title");
 			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
 			
@@ -348,7 +310,7 @@
 			deleteElem.parentNode.removeChild(deleteElem);
 		});
 		
-		socket_io.on('updateItemOrder', function(idList) {
+		wsio.on('updateItemOrder', function(idList) {
 			var i;
 			var zval = 0;
 			for(i=0; i<idList.length; i++){
@@ -362,7 +324,7 @@
 			}
 		});
 		
-		socket_io.on('setItemPosition', function(position_data) {
+		wsio.on('setItemPosition', function(position_data) {
 			var date = new Date(position_data.date);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -377,7 +339,7 @@
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 		});
 		
-		socket_io.on('setItemPositionAndSize', function(position_data) {
+		wsio.on('setItemPositionAndSize', function(position_data) {
 			var date = new Date(position_data.date);
 			
 			var eLeft = position_data.elemLeft - offsetX;
@@ -396,6 +358,7 @@
 			child[0].width = Math.round(position_data.elemWidth);
 			child[0].height = Math.round(position_data.elemHeight);
 			
+			/*
 			if(child[0].id.substring(child[0].id.length - 6) == "canvas"){
 				canvasItems[child[0].id].draw(date);
 			}
@@ -405,19 +368,22 @@
 			if(child[0].id.substring(child[0].id.length - 7) == "threejs"){
 				canvasItems[child[0].id].resize(date);
 			}
+			*/
+			
+			if(child[0].id in canvasItems) canvasItems[child[0].id].resize(date);
 		});
 		
-		socket_io.on('finishedResize', function(elemId) {
-			var selectedElem = document.getElementById(elemId);
+		wsio.on('finishedResize', function(elem) {
+			var selectedElem = document.getElementById(elem.id);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
 			
-			if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
+			if(child[0].id in pdfItems){
 				pdfItems[child[0].id].renderPage();
 			}
 		});
 		
-		socket_io.on('keypressItem', function(keypress_data) {
+		wsio.on('keypressItem', function(keypress_data) {
 			var selectedElem = document.getElementById(keypress_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -426,18 +392,14 @@
 				
 			}
 			else if(keypress_data.keyCode == "37"){ // left arrow
-				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
-					pdfItems[child[0].id].goPrevious();
-				}
+				if(child[0].id in pdfItems) pdfItems[child[0].id].goPrevious();
 			}
 			else if(keypress_data.keyCode == "39"){ // right arrow
-				if(child[0].id.substring(child[0].id.length - 3) == "pdf"){
-					pdfItems[child[0].id].goNext();
-				}
+				if(child[0].id in pdfItems) pdfItems[child[0].id].goNext();
 			}
 		});
 		
-		socket_io.on('updateVideoItemTime', function(video_data) {
+		wsio.on('updateVideoItemTime', function(video_data) {
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -449,14 +411,29 @@
 			else if(!video_data.play) child[0].pause();
 		});
 		
-		socket_io.on('animateCanvas', function(animate_data) {
+		wsio.on('animateCanvas', function(animate_data) {
 			var date = new Date(animate_data.date);
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
 			var child = canvasElem.getElementsByClassName("sageItem");
-			if(animate_data.type == "canvas" || animate_data.type == "webgl" || animate_data.type == "kineticjs" || animate_data.type == "threejs"){
+			if(child[0].id in canvasItems){
 				canvasItems[child[0].id].draw(date);
 			}
+		});
+		
+		wsio.on('eventInItem', function(event_data){
+			var date = new Date(event_data.date);
+
+            var selectedElem = document.getElementById(event_data.elemId);
+			var child = selectedElem.getElementsByClassName("sageItem");
+            if( child[0].tagName.toLowerCase() == "canvas" ){
+                if( typeof canvasItems[child[0].id].event === "function" )
+                    canvasItems[child[0].id].event( event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);  
+            }
+            if(child[0].tagName.toLowerCase() == "iframe"){
+                //child[0].contentWindow.postMessage('
+            }
+		
 		});
 	}
 	
@@ -474,6 +451,14 @@
 		}
 	}
 
+	function stringToBase64(string) {
+		return decodeURIComponent(escape(atob(string)));
+	}
+
+	function base64ToString(base64) {
+		return btoa(unescape(encodeURIComponent(base64)));
+	}
+	
 	function base64ToUint8Array(base64) {
         var raw = atob(base64); //This is a native function that decodes a base64-encoded string.
         var uint8Array = new Uint8Array(new ArrayBuffer(raw.length));
