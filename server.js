@@ -1,16 +1,15 @@
-var decompresszip = require('decompress-zip');
 var express = require('express');
 var fs = require('fs');
-var gm = require('gm');
 var https = require('https');
-var imageinfo = require('imageinfo');
-var ffprobe = require('node-ffprobe');
 var path = require('path');
-var pdfutils = require('pdfutils').pdfutils;
 var request = require('request');
-var io = require('socket.io');
-var ytdl = require('ytdl');
 
+var websocketIOServer = require('node-websocket.io'); // custom node module
+var loader = require('node-itemloader'); // custom node module
+var interaction = require('node-interaction'); // custom node module
+var sagepointer = require('node-sagepointer'); // custom node module
+ 
+ 
 // CONFIG FILE
 var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
@@ -59,454 +58,409 @@ var options = {
 };
 
 var server = https.createServer(options, app);
-var sio = io.listen(server);
-
-sio.configure(function () {
-	sio.set('transports', ['websocket']);
-	sio.set('log level', 0);
-});
-
-sio.configure('development', function () {
-	sio.set('transports', ['websocket']);
-	sio.disable('log');
-});
+var wsioServer = new websocketIOServer(config.port+1);
 
 var itemCount = 0;
 var items = [];
-var pointerCount = 0;
+
+var clients = [];
 var sagePointers = {};
-var interaction = {};
-var stream = {};
-var broadcastClients = [];
+var remoteInteraction = {};
+var mediaStreams = {};
 
-sio.sockets.on('connection', function(socket) {
-	var i;
-	var address = socket.handshake.address.address;
-	var port = socket.handshake.address.port;
-	console.log("New connection from " + address + ":" + port);
-	
-	interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
-	
-	socket.emit('setupDisplayConfiguration', config);
-	socket.emit('initialize', address + ":" + port);
-	for(var i=0; i<broadcastClients.length; i++){
-		sio.sockets.emit('newBroadcastClient', broadcastClients[i]);
-	}
+//handle pointer modes
+var numberOfPointerModes = 2; //2 modes:  interact with window and interact in window
+var ON_WINDOW_MODE = 0;
+var IN_WINDOW_MODE = 1; 
 
-	/* adding new elements */
-	for(var key in sagePointers){
-		sio.sockets.emit('createPointer', sagePointers[key]);
-	}
-	for(i=0; i<items.length; i++){
-		socket.emit('addNewElement', items[i]);
-	}
+wsioServer.onconnection(function(wsio) {
+	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	console.log("New Connection: " + address);
 	
-	socket.on('addBroadcastClient', function(channel) {
-		if(broadcastClients.indexOf(channel) < 0){
-			broadcastClients.push(channel);
-			sio.sockets.emit('newBroadcastClient', channel);
+	wsio.emit('setupDisplayConfiguration', config);
+	wsio.emit('initialize', {address: address});
+	
+	wsio.onclose(function() {
+		removeElement(clients, wsio);
+	});
+	
+	wsio.on('addClient', function(data) {
+		wsio.clientType = data.clientType;
+		if(wsio.clientType == "windowManager"){
+			sagePointers[address] = new sagepointer(address+"_pointer");
+			remoteInteraction[address] = new interaction();
+			
+			broadcast('createSagePointer', sagePointers[address], "display");
+		}
+		else if(wsio.clientType == "display"){
+			for(var key in sagePointers){
+				wsio.emit('createSagePointer', sagePointers[key]);
+			}
+		}
+		clients.push(wsio);
+		
+		for(i=0; i<items.length; i++){
+			wsio.emit('addNewElement', items[i]);
 		}
 	});
 	
-	socket.on('requestStoredFiles', function() {
-		socket.emit('storedFileList', savedFiles);
+	wsio.on('startSagePointer', function(data) {
+		console.log("starting pointer: " + address);
+		
+		sagePointers[address].start(data.label, data.color);
+		broadcast('showSagePointer', sagePointers[address], "display");
 	});
 	
-	socket.on('startSagePointer', function(pointer_data) {
-		console.log("starting pointer: " + address)
-		if(address in sagePointers){
-			sagePointers[address].label = pointer_data.label;
-			sagePointers[address].color = pointer_data.color;
-			sagePointers[address].left = 0;
-			sagePointers[address].top = 0;
-			sio.sockets.emit('showPointer', sagePointers[address]);
+	wsio.on('stopSagePointer', function() {
+		sagePointers[address].stop;
+		broadcast('hideSagePointer', sagePointers[address], "display");
+	});
+	
+	wsio.on('pointerPress', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+
+        var elem = findItemUnderPointer(pointerX, pointerY);
+
+		
+		if(elem != null){
+            if( remoteInteraction[address].windowManagementMode() ){
+                remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+            }
+            else if ( remoteInteraction[address].appInteractionMode() ) {
+                var itemRelX = pointerX - items[i].left;
+				var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+				var now = new Date();
+				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+            }        
+            
+			var newOrder = moveItemToFront(elem.id);
+			broadcast('updateItemOrder', newOrder);
+		} 
+		else { //if no item, change pointer mode
+		    remoteInteraction[address].toggleModes(); 
+		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
 		}
-		else{
-			sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: pointer_data.label, color: pointer_data.color};
-			pointerCount++;
-			sio.sockets.emit('createPointer', sagePointers[address]);
+		
+		
+	});
+	
+	wsio.on('pointerRelease', function() {
+	    if( remoteInteraction[address].windowManagementMode() ){
+            remoteInteraction[address].releaseItem();
+
+	    }
+	    else if ( remoteInteraction[address].appInteractionMode() ) {
+            var pointerX = sagePointers[address].left
+            var pointerY = sagePointers[address].top
+            
+            var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+            if( elem != null ){           
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();
+                broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+            }
+	    }
+	});
+	
+	wsio.on('pointerPosition', function(data) {
+		sagePointers[address].left = data.pointerX;
+		sagePointers[address].top = data.pointerY;
+		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+		
+		broadcast('updateSagePointerPosition', sagePointers[address], "display");
+		
+		var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
+		if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+	});
+	
+	wsio.on('pointerMove', function(data) {
+		sagePointers[address].left += data.deltaX;
+		sagePointers[address].top += data.deltaY;
+		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+		
+		broadcast('updateSagePointerPosition', sagePointers[address], "display");
+		
+	    if( remoteInteraction[address].windowManagementMode() ){
+            var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
+            if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+		}
+        else if ( remoteInteraction[address].appInteractionMode() ) {		
+            var pointerX = sagePointers[address].left
+            var pointerY = sagePointers[address].top
+            
+            var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+            if( elem != null ){           
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();
+                broadcast( 'eventInItem', { eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");  
+            }
 		}
 	});
 	
-	socket.on('stopSagePointer', function(pointer_data) {
-		sio.sockets.emit('hidePointer', sagePointers[address]);
+	wsio.on('pointerScrollStart', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		var elem = findItemUnderPointer(pointerX, pointerY);
+		
+		if(elem != null){
+			remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
+			var newOrder = moveItemToFront(elem.id);
+			broadcast('updateItemOrder', newOrder);
+		}
 	});
 	
-	socket.on('startNewScreenShare', function(screen_data) {
-		console.log("Added shared screen");
-		stream[screen_data.id] = {clients: initializeArray(config.displays.length, false), title: screen_data.title, width: screen_data.width, height: screen_data.height, aspect: screen_data.aspect};
+	wsio.on('pointerScroll', function(data) {
+		var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
+		if(updatedItem != null){
+			broadcast('setItemPositionAndSize', updatedItem);
+			
+			if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
+				clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
+			}
+			
+			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
+				broadcast('finishedResize', {id: updatedItem.elemId}, "display");
+				remoteInteraction[address].selectedScrollItem = null;
+			}, 500);
+		}
 	});
 	
-	socket.on('streamAdded', function(stream_data) {
-		stream[stream_data.id].clients[stream_data.client] = true;
-		if(allTrue(stream[stream_data.id].clients)){
-			var now = new Date();
-			var newItem = new item("screen", stream[stream_data.id].title, stream_data.id, null, 0, 0, stream[stream_data.id].width, stream[stream_data.id].height, stream[stream_data.id].aspect, now, null, null);
+	wsio.on('keyPressed', function(data) {
+		if(data.code == "16"){ // shift
+			remoteInteraction[address].SHIFT = true;
+		}
+		else if(data.code == "17"){ // ctrl
+			remoteInteraction[address].CTRL = true;
+		}
+		else if(data.code == "18") { // alt
+			remoteInteraction[address].ALT = true;
+		}
+		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+			remoteInteraction[address].CMD = true;
+		}
+	});
+	
+	wsio.on('keyReleased', function(data) {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		var elem = findItemUnderPointer(pointerX, pointerY);
+		
+		if(data.code == "16"){ // shift
+			remoteInteraction[address].SHIFT = false;
+		}
+		else if(data.code == "17"){ // ctrl
+			remoteInteraction[address].CTRL = false;
+		}
+		else if(data.code == "18") { // alt
+			remoteInteraction[address].ALT = false;
+		}
+		else if(data.code == "20") { // caps lock
+			remoteInteraction[address].CAPS = !remoteInteraction[address].CAPS;
+		}
+		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+			remoteInteraction[address].CMD = false;
+		}
+		
+		console.log("ctrl: " + remoteInteraction[address].CTRL);
+		console.log("cmd: " + remoteInteraction[address].CMD);
+		
+		if(data.code == "9" && (remoteInteraction[address].CTRL)){ // ctrl + tab
+			remoteInteraction[address].toggleModes();
+			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
+		}
+		
+		if(elem != null){
+            if( remoteInteraction[address].windowManagementMode() ){
+                if(data.code == "8" || data.code == "46"){ // backspace or delete
+                    removeElement(items, elem);
+                    broadcast('deleteElement', elem.id);
+                }
+                else{
+                    var newOrder = moveItemToFront(elem.id);
+                    broadcast('updateItemOrder', newOrder);
+                    broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
+                }
+            }
+            else if ( remoteInteraction[address].appInteractionMode() ) {	
+                var itemRelX = pointerX - items[i].left;
+                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var now = new Date();	
+                broadcast( 'eventInItem', { eventType: "keyPressed", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
+            }
+            
+		}
+	});
+	
+	wsio.on('requestStoredFiles', function() {
+		wsio.emit('storedFileList', savedFiles);
+	});
+	
+	wsio.on('updateVideoTime', function(video_data) {
+		broadcast('updateVideoItemTime', video_data, "display");
+	});
+	
+	wsio.on('startNewMediaStream', function(data) {
+		mediaStreams[data.id] = {};
+		for(var i=0; i<clients.length; i++){
+			if(clients[i].clientType == "display"){
+				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+				mediaStreams[data.id][clientAddress] = false;
+			}
+		}
+		
+		loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
+			broadcast('addNewElement', newItem);
+			
 			items.push(newItem);
-			sio.sockets.emit('addNewElement', newItem);
 			itemCount++;
+		});
+	});
+	
+	wsio.on('updateMediaStreamFrame', function(data) {
+		for(var key in mediaStreams[data.id]){
+			mediaStreams[data.id][key] = false;
+		}
+		
+		broadcast('updateMediaStreamFrame', data, "display");
+	});
+	
+	wsio.on('receivedMediaStreamFrame', function(data) {
+		mediaStreams[data.id][address] = true;
+		
+		if(allTrueDict(mediaStreams[data.id])){
+			var broadcastWS;
+			for(i=0; i<clients.length; i++){
+				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+				if(clientAddress == data.id) broadcastWS = clients[i];
+			}
+			
+			if(broadcastWS != null) broadcastWS.emit('requestNextFrame', null);
 		}
 	});
 	
-	socket.on('addNewWebElement', function(elem_data) {
-		if(elem_data.type == "img"){
-			request({url:elem_data.src, encoding:null}, function(err, response, body) {
+	wsio.on('addNewWebElement', function(data) {
+		if(data.type == "img"){
+			request({url: data.src, encoding: null}, function(err, response, body) {
 				if(err) throw err;
 				
-				console.log(elem_data.src);
-				var info = imageinfo(body);
-				var itemId = "item"+itemCount.toString();
-				var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
-				var source = "data:" + info.mimeType + ";base64, " + body.toString("base64");
-				var aspect = info.width / info.height;
-				var now = new Date();
-				var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
-				items.push(newItem);
-				sio.sockets.emit('addNewElement', newItem);
-				itemCount++;
-			});
-		}
-		else if(elem_data.type == "video"){
-			ffprobe(elem_data.src, function(err, data){
-				if(err) throw err;
-			
-				for(var i=0; i<data.streams.length; i++){
-					if(data.streams[i].codec_type == "video"){
-						var itemId = "item"+itemCount.toString();
-						var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
-						var aspect = data.streams[i].width / data.streams[i].height;
-						var now = new Date();
-						var newItem = new item("video", title, itemId, elem_data.src, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
-						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
-						itemCount++;
-						
-						break;
-					}
-				}
-			});
-		}
-		else if(elem_data.type == "youtube"){
-			ytdl.getInfo(elem_data.src, function(err, info){
-				if(err) throw err;
+				loader.loadImage(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+					broadcast('addNewElement', newItem);
 				
-				console.log(info.title);
-				var mp4Idx = -1;
-				var mp4Resolution = 0;
-				for(i=0; i<info.formats.length; i++){
-					if(info.formats[i].container == "mp4"){
-						var res = parseInt(info.formats[i].resolution.substring(0, info.formats[i].resolution.length-1));
-						if(res > mp4Resolution){
-							mp4Idx = i;
-							mp4Resolution = res;
-						}
-					}
-				}
-				console.log("mp4 resolution:  " + mp4Resolution);
-				
-				var itemId = "item"+itemCount.toString();
-				var title = info.title;
-				var aspect = 16/9;
-				var now = new Date();
-				var resolutionY = mp4Resolution;
-				var resolutionX = resolutionY * aspect;
-				var poster = info.iurlmaxres;
-				if(poster == null) poster = info.iurl;
-				if(poster == null) poster = info.iurlsd;
-				var newItem = new item("youtube", title, itemId, info.formats[mp4Idx].url, 0, 0, resolutionX, resolutionY, aspect, now, poster, null);
-				items.push(newItem);
-				sio.sockets.emit('addNewElement', newItem);
-				itemCount++;
-			});
-		}
-		else if(elem_data.type == "pdf"){
-			request({url:elem_data.src, encoding:null}, function(err, response, body) {
-				if(err) throw err;
-			
-				pdfutils(body, function(err, doc) {
-					if(err) throw err;
-					
-					// grab size of first page
-					var itemId = "item"+itemCount.toString();
-					var title = elem_data.src.substring(elem_data.src.lastIndexOf("/")+1);
-					var aspect = doc[0].width/doc[0].height;
-					var now = new Date();
-					var newItem = new item("pdf", title, itemId, body.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
 					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				});
 			});
 		}
-		else if(elem_data.type = "site" ){
-		    console.log("adding a site" , elem_data.type, " " , elem_data.src);
-            var aspect = 1;
-            var now = new Date();
-            //function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
-            var newItem = new item( "site", "webpage", "item"+itemCount.toString(), elem_data.src, 0, 0, 800, 800, aspect, now, "", ""); 
-            items.push(newItem);
-            sio.sockets.emit('addNewElement', newItem);//emit an addNewElement, will be caught by index.html and windowManager.html
-            itemCount++;
-        }
+		else if(data.type == "video"){
+			loader.loadVideo(data.src, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+				itemCount++;
+			});
+		}
+		else if(data.type == "youtube"){
+			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+				itemCount++;
+			});
+		}
+		else if(data.type == "pdf"){
+			request({url: data.src, encoding: null}, function(err, response, body) {
+				if(err) throw err;
+				
+				loader.loadPdf(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+					broadcast('addNewElement', newItem);
+				
+					items.push(newItem);
+					itemCount++;
+				});
+			});
+		}
 	});
 	
-	socket.on('addNewElementFromStoredFiles', function(file) {
-		console.log(file);
-		
+	wsio.on('addNewElementFromStoredFiles', function(file) {
 		if(file.dir == "images"){
 			var localPath = path.join("uploads", file.dir, file.name);
 			
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
-				var info = imageinfo(data);
-				var itemId = "item"+itemCount.toString();
-				var title = path.basename(localPath);
-				var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
-				var aspect = info.width / info.height;
-				var now = new Date();
-				var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
-				items.push(newItem);
-				sio.sockets.emit('addNewElement', newItem);
-				itemCount++;
+				loader.loadImage(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+			
+					items.push(newItem);
+					itemCount++;
+				});
 			});
 		}
 		else if(file.dir == "videos"){
 			var localPath = path.join("uploads", file.dir, file.name);
 			
-			ffprobe(localPath, function(err, data){
-				if(err) throw err;
-			
-				for(var i=0; i<data.streams.length; i++){
-					if(data.streams[i].codec_type == "video"){
-						var itemId = "item"+itemCount.toString();
-						var title = path.basename(localPath);
-						var aspect = data.streams[i].width / data.streams[i].height;
-						var now = new Date();
-						var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
-						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
-						itemCount++;
-						
-						break;
-					}
-				}
+			loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				broadcast('addNewElement', newItem);
+		
+				items.push(newItem);
+				itemCount++;
 			});
 		}
 		else if(file.dir == "pdfs"){
 			var localPath = path.join("uploads", file.dir, file.name);
 			
-			fs.readFile(localPath, function (err, data) {	
-				pdfutils(data, function(err, doc) {
-					if(err) throw err;
+			fs.readFile(localPath, function (err, data) {
+				if(err) throw err;
 				
-					// grab size of first page
-					var itemId = "item"+itemCount.toString();
-					var title = path.basename(localPath);
-					var aspect = doc[0].width/doc[0].height;
-					var now = new Date();
-					var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+				loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+			
 					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
 				});
 			});
 		}
 		else if(file.dir == "apps"){
-			var zipFolder = path.join("uploads", file.dir, file.name);
-			var instuctionsFile = path.join(zipFolder , "instructions.json");
+			var localPath = path.join("uploads", file.dir, file.name);
 			
-			fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
-				if(err) throw err;
-			
-				var instructions = JSON.parse(json_str);
-			
+			console.log(localPath);
+			var id = "item"+itemCount.toString();
+			loader.loadApp(localPath, id, function(newItem, instructions) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
-						sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
+						broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
 					}
 				}
-			
+	
 				// add item to clients (after waiting 1 second to ensure resources have loaded)
 				setTimeout(function() {
-					var itemId = "item"+itemCount.toString();
-					var title = file.name;
-					var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
-					var now = new Date();
-					var aspect = instructions.width / instructions.height;
-					var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
+					broadcast('addNewElement', newItem);
+					
 					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
 					itemCount++;
-		
+
 					// set interval timer if specified
 					if(instructions.animation == "timer"){
 						setInterval(function() {
 							var now = new Date();
-							sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
 						}, instructions.interval);
 					}
 				}, 1000);
 			});
 		}
-	});
-
-	socket.on('selectElementById', function(select_data) {
-		interaction[address].selectedMoveItem = findItemById(select_data.elemId);
-		interaction[address].selectedScrollItem = null;
-		interaction[address].selectOffsetX = select_data.eventOffsetX;
-		interaction[address].selectOffsetY = select_data.eventOffsetY;
-		
-		var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
-		sio.sockets.emit('updateItemOrder', newOrder);
-	});
-	
-	socket.on('selectElementWithPointer', function() {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
-		
-		for(var i=items.length-1; i>=0; i--){
-			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				interaction[address].selectedMoveItem = findItemById(items[i].id);
-				interaction[address].selectedScrollItem = null;
-				interaction[address].selectOffsetX = items[i].left - pointerX;
-				interaction[address].selectOffsetY = items[i].top - pointerY;
-				break;
-			}
-		}
-		
-		if(interaction[address].selectedMoveItem != null){
-			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
-			sio.sockets.emit('updateItemOrder', newOrder);
-		}
-	});
-	
-	socket.on('releaseSelectedElement', function() {
-		interaction[address].selectedMoveItem = null;
-		interaction[address].selectedScrollItem = null;
-	});
-	
-	socket.on('moveSelectedElement', function(move_data) {
-		if(interaction[address].selectedMoveItem == null) return;
-		interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
-		interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
-		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-	});
-	
-	socket.on('moveSagePointer', function(pointer_data) {
-		sagePointers[address].left += pointer_data.deltaX;
-		sagePointers[address].top += pointer_data.deltaY;
-		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-		
-		sio.sockets.emit('updatePointer', sagePointers[address]);
-		
-		if(interaction[address].selectedMoveItem == null) return;
-		interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-		interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-		var now = new Date();
-		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-	});
-	
-	socket.on('selectScrollElementById', function(elemId) {
-		interaction[address].selectedScrollItem = findItemById(elemId);
-		interaction[address].selectedMoveItem = null;
-		
-		var newOrder = moveItemToFront(interaction[address].selectedScrollItem.id);
-		sio.sockets.emit('updateItemOrder', newOrder);
-	});
-	
-	socket.on('selectScrollElementWithPointer', function() {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
-		
-		for(var i=items.length-1; i>=0; i--){
-			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				interaction[address].selectedScrollItem = findItemById(items[i].id);
-				interaction[address].selectedMoveItem = null;
-				break;
-			}
-		}
-		
-		if(interaction[address].selectedScrollItem != null){
-			var newOrder = moveItemToFront(interaction[address].selectedScrollItem.id);
-			sio.sockets.emit('updateItemOrder', newOrder);
-		}
-	});
-	
-	socket.on('scrollSelectedElement', function(scale) {
-		if(interaction[address].selectedScrollItem == null) return;
-		var iWidth = interaction[address].selectedScrollItem.width * scale;
-		var iHeight = iWidth / interaction[address].selectedScrollItem.aspect;
-		if(iWidth < 20){ iWidth = 20; iHeight = iWidth/interaction[address].selectedScrollItem.aspect; }
-		if(iHeight < 20){ iHeight = 20; iWidth = iHeight*interaction[address].selectedScrollItem.aspect; }
-		var iCenterX = interaction[address].selectedScrollItem.left + (interaction[address].selectedScrollItem.width/2);
-		var iCenterY = interaction[address].selectedScrollItem.top + (interaction[address].selectedScrollItem.height/2);
-		interaction[address].selectedScrollItem.left = iCenterX - (iWidth/2);
-		interaction[address].selectedScrollItem.top = iCenterY - (iHeight/2);
-		interaction[address].selectedScrollItem.width = iWidth;
-		interaction[address].selectedScrollItem.height = iHeight;
-		var now = new Date();
-		sio.sockets.emit('setItemPositionAndSize', {elemId: interaction[address].selectedScrollItem.id, elemLeft: interaction[address].selectedScrollItem.left, elemTop: interaction[address].selectedScrollItem.top, elemWidth: interaction[address].selectedScrollItem.width, elemHeight: interaction[address].selectedScrollItem.height, date: now});
-		
-		var elemId = interaction[address].selectedScrollItem.id;
-		if(elemId in interaction[address].selectTimeId) clearTimeout(interaction[address].selectTimeId[elemId]);
-		
-		interaction[address].selectTimeId[elemId] = setTimeout(function() {
-			sio.sockets.emit('finishedResize', elemId);
-			interaction[address].selectedScrollItem = null;
-		}, 500);
-	});
-	
-	socket.on('deleteElementById', function(id) {
-		removeItemById(id);
-		sio.sockets.emit('deleteElement', id);
-	});
-	
-	socket.on('keypressElementById', function(keypress_data) {
-		if(keypress_data.keyCode == "8" || keypress_data.keyCode == "46"){ // backspace or delete
-			removeItemById(keypress_data.elemId);
-			sio.sockets.emit('deleteElement', keypress_data.elemId);
-		}
-		else{
-			var keypressItem = findItemById(keypress_data.elemId);
-			var newOrder = moveItemToFront(keypressItem.id);
-			sio.sockets.emit('updateItemOrder', newOrder);
-			sio.sockets.emit('keypressItem', keypress_data);
-		}
-	});
-	
-	socket.on('keypressElementWithPointer', function(code) {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
-		
-		var keypressItem = null;
-		for(var i=items.length-1; i>=0; i--){
-			if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-				keypressItem = findItemById(items[i].id);
-				break;
-			}
-		}
-		
-		if(keypressItem != null){
-			if(code == "8" || code == "46"){ // backspace or delete
-				removeItemById(keypressItem.id);
-				sio.sockets.emit('deleteElement', keypressItem.id);
-			}
-			else{
-				var newOrder = moveItemToFront(keypressItem.id);
-				sio.sockets.emit('updateItemOrder', newOrder);
-				sio.sockets.emit('keypressItem', {elemId: keypressItem.id, keyCode: code});
-			}
-		}
-	});
-	
-	socket.on('updateVideoTime', function(video_data) {
-		sio.sockets.emit('updateVideoItemTime', video_data);
 	});
 });
 
@@ -518,25 +472,21 @@ app.post('/upload', function(request, response) {
 		if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
 			var finalPath = path.join(uploadPath, "images", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
-			console.log(finalPath);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
 				
-				fs.readFile(finalPath, function (err, data) {
+				fs.readFile(localPath, function (err, data) {
 					if(err) throw err;
 					
-					var info = imageinfo(data);
-					var itemId = "item"+itemCount.toString();
-					var title = path.basename(finalPath);
-					var source = "data:" + info.mimeType + ";base64, " + data.toString("base64");
-					var aspect = info.width / info.height;
-					var now = new Date();
-					var newItem = new item("img", title, itemId, source, 0, 0, info.width, info.height, aspect, now, null, null);
-					items.push(newItem);
-					sio.sockets.emit('addNewElement', newItem);
-					itemCount++;
-					
-					savedFiles["image"].push(path.basename(finalPath));
+					loader.loadImage(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+						broadcast('addNewElement', newItem);
+				
+						items.push(newItem);
+						itemCount++;
+				
+						var file = path.basename(localPath);
+						if(savedFiles["image"].indexOf(file) < 0) savedFiles["image"].push(file);
+					});
 				});
 			});
 		}
@@ -545,26 +495,15 @@ app.post('/upload', function(request, response) {
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
-		
-				ffprobe(finalPath, function(err, data){
-					if(err) throw err;
 				
-					for(var i=0; i<data.streams.length; i++){
-						if(data.streams[i].codec_type == "video"){
-							var itemId = "item"+itemCount.toString();
-							var title = path.basename(finalPath);
-							var aspect = data.streams[i].width / data.streams[i].height;
-							var now = new Date();
-							var newItem = new item("video", title, itemId, localPath, 0, 0, data.streams[i].width, data.streams[i].height, aspect, now, null, null);
-							items.push(newItem);
-							sio.sockets.emit('addNewElement', newItem);
-							itemCount++;
-							
-							savedFiles["video"].push(path.basename(finalPath));
-							
-							break;
-						}
-					}
+				loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+			
+					items.push(newItem);
+					itemCount++;
+				
+					var file = path.basename(localPath);
+					if(savedFiles["video"].indexOf(file) < 0) savedFiles["video"].push(file);
 				});
 			});
 		}
@@ -574,21 +513,17 @@ app.post('/upload', function(request, response) {
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
 				
-				fs.readFile(finalPath, function (err, data) {	
-					pdfutils(data, function(err, doc) {
-						if(err) throw err;
+				fs.readFile(finalPath, function (err, data) {
+					if(err) throw err;
 					
-						// grab size of first page
-						var itemId = "item"+itemCount.toString();
-						var title = path.basename(finalPath);
-						var aspect = doc[0].width/doc[0].height;
-						var now = new Date();
-						var newItem = new item("pdf", title, itemId, data.toString("base64"), 0, 0, doc[0].width, doc[0].height, aspect, now, null, null);
+					loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+						broadcast('addNewElement', newItem);
+				
 						items.push(newItem);
-						sio.sockets.emit('addNewElement', newItem);
 						itemCount++;
-					
-						savedFiles["pdf"].push(path.basename(finalPath));
+						
+						var file = path.basename(localPath);
+						if(savedFiles["pdf"].indexOf(file) < 0) savedFiles["pdf"].push(file);
 					});
 				});
 			});
@@ -599,76 +534,39 @@ app.post('/upload', function(request, response) {
 			fs.rename(request.files[key].path, finalPath, function(err) {
 				if(err) throw err;
 				
-				var zipFolder = localPath.substring(0, localPath.length-4);
-				var zipName = path.basename(localPath, ".zip");
-			
-				var unzipper = new decompresszip(finalPath);
-				unzipper.on('extract', function(log) {
-					// read instructions for how to handle
-					var instuctionsFile = path.join(zipFolder, "/instructions.json");
-					fs.readFile(instuctionsFile, 'utf8', function(err, json_str) {
-						if(err) throw err;
-					
-						var instructions = JSON.parse(json_str);
-					
-						// add resource scripts to clients
-						for(var i=0; i<instructions.resources.length; i++){
-							if(instructions.resources[i].type == "script"){
-								sio.sockets.emit('addScript', path.join(zipFolder, instructions.resources[i].src));
-							}
+				var id = "item"+itemCount.toString();
+				loader.loadZipApp(localPath, id, function(newItem, instructions) {
+					// add resource scripts to clients
+					for(var i=0; i<instructions.resources.length; i++){
+						if(instructions.resources[i].type == "script"){
+							broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
 						}
-					
-						// add item to clients (after waiting 1 second to ensure resources have loaded)
-						setTimeout(function() {
-							var itemId = "item"+itemCount.toString();
-							var title = zipName;
-							var objName = instructions.main_script.substring(0, instructions.main_script.lastIndexOf('.'));
-							var now = new Date();
-							var aspect = instructions.width / instructions.height;
-							var newItem = new item(instructions.type, title, itemId, path.join(zipFolder, instructions.main_script), 0, 0, instructions.width, instructions.height, aspect, now, zipFolder+path.sep, objName);
-							items.push(newItem);
-							sio.sockets.emit('addNewElement', newItem);
-							itemCount++;
-							
-							savedFiles["app"].push(zipName);
-				
-							// set interval timer if specified
-							if(instructions.animation == "timer"){
-								setInterval(function() {
-									var now = new Date();
-									sio.sockets.emit('animateCanvas', {elemId: itemId, type: instructions.type, date: now});
-								}, instructions.interval);
-							}
-						}, 1000);
-					});
-				
-					// delete original zip file
-					fs.unlink(localPath, function(err) {
-						if(err) throw err;
-					});
-				});
-				unzipper.extract({
-					path: uploadsFolder+"/apps",
-					filter: function(file) {
-						if(file.type === "SymbolicLink") return false;
-						if(file.filename === "__MACOSX") return false;
-						if(file.filename.substring(0,1) == ".") return false;
-						if(file.parent.length >= 8 && file.parent.substring(0,8) == "__MACOSX") return false;
-						
-						return true;
 					}
+		
+					// add item to clients (after waiting 1 second to ensure resources have loaded)
+					setTimeout(function() {
+						broadcast('addNewElement', newItem);
+						
+						items.push(newItem);
+						itemCount++;
+	
+						// set interval timer if specified
+						if(instructions.animation == "timer"){
+							setInterval(function() {
+								var now = new Date();
+								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+							}, instructions.interval);
+						}
+					}, 1000);
+					
+					var file = path.basename(localPath, path.extname(localPath));
+					if(savedFiles["app"].indexOf(file) < 0) savedFiles["app"].push(file);
 				});
 			});
 		}
-		else{
-			console.log("Unknown type: " + request.files[key].type);
-		}
 	});
-	
-	response.end("upload complete");
 });
-
-/////////////////////////////////////////////////////////////////////////
+	
 
 
 // Start the https server
@@ -676,40 +574,31 @@ server.listen(config.port);
 
 console.log('Now serving the app at https://localhost:' + config.port);
 
-function initializeArray(length, value) {
-	var arr = new Array(length);
-	for(var i=0; i<length; i++){
-		arr[i] = value;
-	}
-	
-	return arr;
-}
 
-function allTrue(boolArr) {
-	for(var i=0; i<boolArr.length; i++){
-		if(!boolArr[i]) return false;
-	}
-	return true;
-}
 
-function findItemById(id) {
-	for(var i=0; i<items.length; i++){
-		if(items[i].id == id) return items[i];
+/***************************************************************************************/
+
+function broadcast(func, data, type) {
+	for(var i=0; i<clients.length; i++){
+		if(type == null || type == clients[i].clientType) clients[i].emit(func, data);
 	}
 }
 
-function removeItemById(id) {
-	moveItemToFront(id);
-	items.pop();
+function findItemUnderPointer(pointerX, pointerY) {
+	for(var i=items.length-1; i>=0; i--){
+		if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height+config.titleBarHeight)){
+			return items[i];
+		}
+	}
+	return null;
 }
 
 function moveItemToFront(id) {
-	var i;
 	var selectedIndex;
 	var selectedItem;
 	var itemIds = [];
 	
-	for(i=0; i<items.length; i++){
+	for(var i=0; i<items.length; i++){
 		if(items[i].id == id){
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];
@@ -717,7 +606,7 @@ function moveItemToFront(id) {
 		}
 		itemIds.push(items[i].id);
 	}
-	for(i=selectedIndex; i<items.length-1; i++){
+	for(var i=selectedIndex; i<items.length-1; i++){
 		items[i] = items[i+1];
 		itemIds.push(items[i].id);
 	}
@@ -727,18 +616,25 @@ function moveItemToFront(id) {
 	return itemIds;
 }
 
-function item(type, title, id, src, left, top, width, height, aspect, date, resrc, extra) {
-	this.type = type;
-	this.title = title;
-	this.id = id;
-	this.src = src;
-	this.left = left;
-	this.top = top;
-	this.width = width;
-	this.height = height;
-	this.aspect = aspect;
-	this.date = date;
-	this.resrc = resrc;
-	this.extra = extra;
+function allTrueDict(dict) {
+	for(key in dict){
+		if(dict[key] == false) return false;
+	}
+	return true;
+}
+
+function removeElement(list, elem) {
+	if(list.indexOf(elem) >= 0){
+		moveElementToEnd(list, elem);
+		list.pop();
+	}
+}
+
+function moveElementToEnd(list, elem) {
+	var pos = list.indexOf(elem);
+	for(var i=pos; i<list.length-1; i++){
+		list[i] = list[i+1];
+	}
+	list[list.length-1] = elem;
 }
 

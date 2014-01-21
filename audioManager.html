@@ -3,19 +3,22 @@
 <head lang="en">
 <meta charset="utf-,8">
 <title>Node Test</title>
-<script type="text/javascript" src="lib/socket.io.min.js"></script>
+<script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript">
-	var url;
-	var socket;
+	var ws;
 	
 	var videos = {};
 	
 	function init() {
-		url = window.location.origin;
-		socket = io.connect(url);
-		console.log("Connected to server: ", url);
+		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		console.log("Connected to server: ", window.location.origin);
 		
-		socket.on('addNewElement', function(elem_data) {
+		wsio.open(function() {
+			console.log("open websocket");
+			wsio.emit('addClient', {clientType: "audioManager"});
+		});
+		
+		wsio.on('addNewElement', function(elem_data) {
 			var main = document.getElementById("main");
 			
 			if(elem_data.type == "video" || elem_data.type == "youtube"){
@@ -54,12 +57,12 @@
 			}
 		});
 		
-		socket.on('deleteElement', function(elemId) {
+		wsio.on('deleteElement', function(elemId) {
 			var deleteElem = document.getElementById(elemId);
 			if(deleteElem != null) deleteElem.parentNode.removeChild(deleteElem);
 		});
 		
-		socket.on('keypressItem', function(keypress_data) {
+		wsio.on('keypressItem', function(keypress_data) {
 			var selectedElem = document.getElementById(keypress_data.elemId);
 			if(selectedElem == null) return;
 			
@@ -81,16 +84,16 @@
 			videoElem.play();
 			videoElem.style.display = "block";
 			
-			socket.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
+			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
 			videos[videoElem.id].interval = setInterval(function() {
-				socket.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
+				wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
 			}, 2000);
 		}
 		else{
 			videoElem.pause();
 			videoElem.style.display = "none";
 			clearInterval(videos[videoElem.id].interval);
-			socket.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: false});
+			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: false});
 		}
 	}
 </script>

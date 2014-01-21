@@ -3,43 +3,65 @@
 <head lang="en">
 <meta charset="utf-,8">
 <title>Window Manager</title>
-<script type="text/javascript" src="lib/socket.io.min.js"></script>
-<script type="text/javascript" src="lib/firebase.js"></script>
-<script type="text/javascript" src="lib/RTCPeerConnection-v1.5.js"></script>
-<script type="text/javascript" src="lib/broadcast.js"></script>
+<script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
-	var url;
-	var socket_io;
-	var winMgr;
-	
-	var canvasKeyEvents = false;
-	var canvasKeyFunc = null;
+	window.URL = (window.URL || window.webkitURL || window.msURL || window.oURL);
+	navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
 	
 	var name = "Default";
 	var col = [180, 180, 180];
 	
-	var sensitivity;
+	var wsio;
+	var winMgr;
+	var address;
 	
+	var canvasKeyEvents = false;
+	var canvasKeyDownFunc = null;
+	var canvasKeyUpFunc = null;
+	var sensitivity;
 	var selectedFile = null;
 	
-	var channel;
-	var origin;
-	var config;
-	var broadcastUI;
-	var streamWidth;
-	var streamHeight;
+	var mediaStream;
+	var mediaResolution;
+	var mediaQuality;
+	var mediaHeight;
+	var mediaWidth;
+	var broadcasting;
+	
+	var fileDrop;
+	var serverUploadBtn;
+	var fileOKBtn;
+	var fileCloseBtn;
+	var pointerBtn;
+	var pointerLabel;
+	var pointerColor;
+	var screenShareBtn;
+	var screenShareResolution;
+	var screenShareQuality;
+	var screenShareQualityIndicator;
+	var winMgrCanvas;
+	var mediaVideo;
+	var mediaCanvas;
+	var mediaCtx;
+	var appsDir;
+	var imagesDir;
+	var pdfsDir;
+	var videosDir;
 	
 	function init() {
-		url = window.location.origin;
-		socket_io = io.connect(url);
-		console.log("Connected to server: ", url);
+		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		
+		wsio.open(function() {
+			console.log("open websocket");
+			wsio.emit('addClient', {clientType: "windowManager"});
+		});
 		
 		document.addEventListener('pointerlockchange', pointerLockChange, false);
         document.addEventListener('mozpointerlockchange', pointerLockChange, false);
         document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
 		
-		var fileDrop = document.getElementById("fileDrop");
+		fileDrop = document.getElementById('fileDrop');
 		fileDrop.addEventListener('dragover', preventDefault, false);
 		fileDrop.addEventListener('dragend', preventDefault, false);
 		fileDrop.addEventListener('drop', uploadFileToServer, false);
@@ -48,167 +70,139 @@
 		window.addEventListener('dragend', preventDefault, false);
 		window.addEventListener('drop', preventDefault, false);
 		
-		var serverUploadBtn = document.getElementById("serverUploadBtn");
-		var fileOKBtn = document.getElementById("fileOKBtn");
-		var fileCloseBtn = document.getElementById("fileCloseBtn");
+		serverUploadBtn = document.getElementById('serverUploadBtn');
+		fileOKBtn = document.getElementById('fileOKBtn');
+		fileCloseBtn = document.getElementById('fileCloseBtn');
 		serverUploadBtn.addEventListener('click', openServerFileBrowser, false);
 		fileOKBtn.addEventListener('click', selectServerFiles, false);
 		fileCloseBtn.addEventListener('click', closeServerFileBrowser, false);
 		
-		var pointerBtn = document.getElementById("sagePointerBtn");
-		var pointerLabel = document.getElementById("sagePointerLabel");
-		var pointerColor = document.getElementById("sagePointerColor");
+		pointerBtn = document.getElementById('sagePointerBtn');
+		pointerLabel = document.getElementById('sagePointerLabel');
+		pointerColor = document.getElementById('sagePointerColor');
 		pointerBtn.addEventListener('click', startSagePointer, false);
-		if(localStorage["WebSAGE_ptrName"] != null) pointerLabel.value = localStorage["WebSAGE_ptrName"];
-		if(localStorage["WebSAGE_ptrColor"] != null) pointerColor.value = localStorage["WebSAGE_ptrColor"];
+		if(localStorage["WebSAGE_ptrName"] != null) pointerLabel.value = localStorage['WebSAGE_ptrName'];
+		if(localStorage["WebSAGE_ptrColor"] != null) pointerColor.value = localStorage['WebSAGE_ptrColor'];
 		
-		var screenShareBtn = document.getElementById("screenShareBtn");
+		screenShareBtn = document.getElementById('screenShareBtn');
+		screenShareResolution = document.getElementById('screenShareResolution');
+		screenShareQuality = document.getElementById('screenShareQuality');
+		screenShareQualityIndicator = document.getElementById('screenShareQualityIndicator');
 		screenShareBtn.addEventListener('click', startScreenShare, false);
+		screenShareResolution.addEventListener('change', changeScreenShareResolution, false);
+		screenShareQuality.addEventListener('change', changeScreenShareQuality, false);
 		
-		winMgr = new windowManager('winMgr', socket_io);
+		winMgr = new windowManager("winMgr", wsio);
 		winMgr.draw();
 		
-		canvasKeyFunc = winMgr.keyPress.bind(winMgr);
+		canvasKeyDownFunc = winMgr.keyPress.bind(winMgr);
+		canvasKeyUpFunc = winMgr.keyRelease.bind(winMgr);
 		
-		var winMgrCanvas = document.getElementById("winMgr");
+		winMgrCanvas = document.getElementById('winMgr');
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousemove', winMgr.mouseMove.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mouseup', winMgr.mouseRelease.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousewheel', winMgr.mouseScroll.bind(winMgr), false);
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
 		document.addEventListener('mousemove', updateTarget, false);
+		
+		mediaVideo = document.getElementById('mediaVideo');
+		mediaCanvas = document.getElementById('mediaCanvas');
+		mediaCtx = mediaCanvas.getContext('2d');
+		mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
+		mediaQuality = screenShareQuality.value;
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
+		broadcasting = false;
+		
+		appsDir = document.getElementById('apps');
+		imagesDir = document.getElementById('images');
+		pdfsDir = document.getElementById('pdfs');
+		videosDir = document.getElementById('videos');
 				
-		socket_io.on('setupDisplayConfiguration', function(config) {
+		wsio.on('setupDisplayConfiguration', function(config) {
 			winMgr.initDisplayConfig(config);
 			var displayMin = Math.min(config.totalWidth, config.totalHeight);
 			var thisMin = Math.min(screen.width, screen.height);
 			sensitivity = displayMin/thisMin;
 		});
 		
-		socket_io.on('initialize', function(address) {
-			origin = url.replace( /\/|:|#|%|\.|\[|\]/g , '');
-			channel = address.replace( /\/|:|#|%|\.|\[|\]/g , '');
-		
-			socket_io.emit('addBroadcastClient', channel);
-	
-			config = {
-				openSocket: function(config) {
-					var origin = config.channel || url.replace( /\/|:|#|%|\.|\[|\]/g , '');
-					var socket = new Firebase('https://chat.firebaseIO.com/' + origin + channel);
-					socket.channel = channel;
-					socket.on("child_added", function(data) {
-						config.onmessage && config.onmessage(data.val());
-					});
-					socket.send = function(data) {
-						this.push(data);
-					};
-					config.onopen && setTimeout(config.onopen, 1);
-					socket.onDisconnect().remove();
-					return socket;
-				},
-				onRemoteStream: function(htmlElement) {
-					// do nothing
-				},
-				onRoomFound: function(room) {
-					// do nothing
-				},
-				onNewParticipant: function(numberOfViewers) {
-					console.log("Viewers: " + numberOfViewers);
-				}
-			};
-		
-			broadcastUI = broadcast(config);
+		wsio.on('initialize', function(data) {
+			address = data.address;
 		});
 		
-		socket_io.on('addNewElement', function(elem_data) {
+		wsio.on('addNewElement', function(elem_data) {
 			winMgr.addNewElement(elem_data);
 		});
 		
-		socket_io.on('deleteElement', function(elemId) {
+		wsio.on('deleteElement', function(elemId) {
 			winMgr.deleteElement(elemId);
 		});
 		
-		socket_io.on('updateItemOrder', function(idList) {
+		wsio.on('updateItemOrder', function(idList) {
 			winMgr.updateItemOrder(idList);
 		});
 		
-		socket_io.on('setItemPosition', function(position_data) {
+		wsio.on('setItemPosition', function(position_data) {
 			winMgr.setItemPosition(position_data);
 		});
 		
-		socket_io.on('setItemPositionAndSize', function(position_data) {
+		wsio.on('setItemPositionAndSize', function(position_data) {
 			winMgr.setItemPositionAndSize(position_data);
 		});
 		
-		socket_io.on('storedFileList', function(files) {
-			console.log(files);
+		wsio.on('storedFileList', function(files) {
+			document.getElementById('lb_fade').style.display="block";
+			document.getElementById('lb_light').style.display="block";
 			
-			var i;
-			
-			document.getElementById("lb_fade").style.display="block";
-			document.getElementById("lb_light").style.display="block";
-			
-			document.getElementById("apps-dir").checked = false;
-			document.getElementById("images-dir").checked = false;;
-			document.getElementById("pdfs-dir").checked = false;;
-			document.getElementById("videos-dir").checked = false;;
-			
-			var appsDir = document.getElementById("apps");
-			var imagesDir = document.getElementById("images");
-			var pdfsDir = document.getElementById("pdfs");
-			var videosDir = document.getElementById("videos");
+			document.getElementById('apps-dir').checked = false;
+			document.getElementById('images-dir').checked = false;;
+			document.getElementById('pdfs-dir').checked = false;;
+			document.getElementById('videos-dir').checked = false;;
 			
 			removeAllChildren(appsDir);
 			removeAllChildren(imagesDir);
 			removeAllChildren(pdfsDir);
 			removeAllChildren(videosDir);
 			
-			files["app"].sort();
-			for(i=0; i<files["app"].length; i++){
-				var listElem = document.createElement("li");
-				listElem.innerHTML = files["app"][i];
-				listElem.addEventListener('click', selectFile, false);
-							
-				appsDir.appendChild(listElem);
-			}
-			files["image"].sort();
-			for(i=0; i<files["image"].length; i++){
-				var listElem = document.createElement("li");
-				listElem.innerHTML = files["image"][i];
-				listElem.addEventListener('click', selectFile, false);
-							
-				imagesDir.appendChild(listElem);
-			}
-			files["pdf"].sort();
-			for(i=0; i<files["pdf"].length; i++){
-				var listElem = document.createElement("li");
-				listElem.innerHTML = files["pdf"][i];
-				listElem.addEventListener('click', selectFile, false);
-							
-				pdfsDir.appendChild(listElem);
-			}
-			files["video"].sort();
-			for(i=0; i<files["video"].length; i++){
-				var listElem = document.createElement("li");
-				listElem.innerHTML = files["video"][i];
-				listElem.addEventListener('click', selectFile, false);
-							
-				videosDir.appendChild(listElem);
-			}
+			createFileList(files, "app", appsDir);
+			createFileList(files, "image", imagesDir);
+			createFileList(files, "pdf", pdfsDir);
+			createFileList(files, "video", videosDir);
 			
 			selectedFile = null;
 		});
+		
+		wsio.on('requestNextFrame', function(data) {
+			if(broadcasting){
+				var frame = captureMediaFrame();
+				wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
+			}
+		});
+	}
+	
+	function createFileList(files, type, dir) {
+		files[type].sort();
+		for(var i=0; i<files[type].length; i++){
+			var listElem = document.createElement("li");
+			listElem.innerHTML = files[type][i];
+			listElem.addEventListener('click', selectFile, false);
+						
+			dir.appendChild(listElem);
+		}
 	}
 	
 	function updateTarget(event) {
-		var winMgrCanvas = document.getElementById("winMgr");
-		
 		if(event.target == winMgrCanvas && !canvasKeyEvents){
-			document.addEventListener('keydown', canvasKeyFunc, false);
+			document.addEventListener('keydown', canvasKeyDownFunc, false);
+			document.addEventListener('keyup', canvasKeyUpFunc, false);
 			canvasKeyEvents = true;
 		}
 		else if(event.target != winMgrCanvas && canvasKeyEvents){
-			document.removeEventListener('keydown', canvasKeyFunc, false);
+			document.removeEventListener('keydown', canvasKeyDownFunc, false);
+			document.removeEventListener('keyup', canvasKeyUpFunc, false);
 			canvasKeyEvents = false;
 		}
 	}
@@ -220,7 +214,7 @@
 	}
 	
 	function openServerFileBrowser(event) {
-		socket_io.emit('requestStoredFiles');
+		wsio.emit('requestStoredFiles');
 	}
 	
 	function closeServerFileBrowser(event) {
@@ -232,8 +226,7 @@
 		var directory = selectedFile.parentNode.id
 		var fileName = selectedFile.innerHTML;
 		
-		socket_io.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
-		console.log("load: " + fileName);
+		wsio.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
 		
 		closeServerFileBrowser(event);
 	}
@@ -288,14 +281,54 @@
 		
 		// start screen share
 		screenShareBtn.disabled = true;
-
-		captureUserMedia(function() {
-			broadcastUI.createRoom({
-				roomName: channel,
-				isAudio: false
-			});
-			socket_io.emit('startNewScreenShare', {id: channel, title: name, width: streamWidth, height: streamHeight, aspect: streamWidth/streamHeight});
-		});
+		
+		var streamHeight = Math.min(1080, screen.height);
+		var streamWidth = screen.width/screen.height * streamHeight;
+		
+		var constraints = {chromeMediaSource: 'screen', maxWidth: streamWidth, maxHeight: streamHeight};
+		navigator.getUserMedia({video: {mandatory: constraints, optional: []}, audio: false}, streamSuccess, streamFail);
+	}
+	
+	function streamSuccess(stream) {
+		console.log("media capture success!");
+		
+		mediaStream = stream;
+		mediaStream.onended = function(e) {
+			console.log("ended");
+			broadcasting = false;
+		};
+		
+		mediaVideo.src = window.URL.createObjectURL(mediaStream);
+		mediaVideo.play();
+		
+		var frame = captureMediaFrame();
+		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
+		
+		broadcasting = true;
+	}
+	
+	function streamFail() {
+		console.log("no access to media capture");
+	}
+	
+	function captureMediaFrame() {
+		mediaCtx.clearRect(0, 0, mediaWidth, mediaHeight);
+		mediaCtx.drawImage(mediaVideo, 0, 0, mediaWidth, mediaHeight);
+		return mediaCanvas.toDataURL("image/jpeg", (mediaQuality/10));
+	}
+	
+	function changeScreenShareResolution(event) {
+		mediaResolution = parseInt(screenShareResolution.options[screenShareResolution.selectedIndex].value);
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
+		console.log("select: " + mediaResolution);
+	}
+	
+	function changeScreenShareQuality(event) {
+		mediaQuality = screenShareQuality.value;
+		screenShareQualityIndicator.innerHTML = mediaQuality;
 	}
 	
 	function pointerLockChange() {
@@ -305,7 +338,7 @@
 		   document.mozPointerLockElement === pointerBtn ||
 		   document.webkitPointerLockElement === pointerBtn){
 			console.log("pointer lock enabled");
-			socket_io.emit('startSagePointer', {label: name, color: col});
+			wsio.emit('startSagePointer', {label: name, color: col});
 			
 			document.addEventListener('mousedown', pointerPress, false);
 			document.addEventListener('mousemove', pointerMove, false);
@@ -313,12 +346,13 @@
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
 			document.addEventListener('keydown', pointerKeyPress, false);
+			document.addEventListener('keyup', pointerKeyRelease, false);
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
 			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
 		}
 		else{
-			socket_io.emit('stopSagePointer', {label: name, color: col});
+			wsio.emit('stopSagePointer');
 			
 			document.removeEventListener('mousedown', pointerPress, false);
 			document.removeEventListener('mousemove', pointerMove, false);
@@ -326,18 +360,19 @@
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
 			document.removeEventListener('keydown', pointerKeyPress, false);
+			document.removeEventListener('keyup', pointerKeyRelease, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
 	}
 	
 	function pointerPress(event) {
-		socket_io.emit('selectElementWithPointer');
+		wsio.emit('pointerPress');
 		preventDefault(event);
 	}
 	
 	function pointerRelease(event) {
-		socket_io.emit('releaseSelectedElement');
+		wsio.emit('pointerRelease');
 		preventDefault(event);
 	}
 	
@@ -352,15 +387,15 @@
 						event.webkitMovementY ||
 						0;
 		
-		socket_io.emit('moveSagePointer', {label: name, color: col, deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
+		wsio.emit('pointerMove', {deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
 		preventDefault(event);
 	}
 	
 	function pointerScroll(event) {
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
-		socket_io.emit('selectScrollElementWithPointer');
-		socket_io.emit('scrollSelectedElement', scale);
+		wsio.emit('pointerScrollStart');
+		wsio.emit('pointerScroll', {scale: scale});
 		preventDefault(event);
 	}
 	
@@ -368,33 +403,19 @@
 		var wheelDelta = -120*event.detail;
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
-		socket_io.emit('selectScrollElementWithPointer');
-		socket_io.emit('scrollSelectedElement', scale);
+		wsio.emit('pointerScrollStart');
+		wsio.emit('pointerScroll', {scale: scale});
 		preventDefault(event);
 	}
 	
 	function pointerKeyPress(event) {
-		socket_io.emit('keypressElementWithPointer', event.keyCode);
+		wsio.emit('keyPressed', {code: event.keyCode});
 		preventDefault(event);
 	}
 	
-	function captureUserMedia(callback) {
-		streamHeight = Math.min(720, screen.height);
-		streamWidth = screen.width/screen.height * streamHeight;
-		
-		var mediaConfig = {
-			video: null,
-			constraints: {video: {mandatory: {chromeMediaSource: "screen", maxWidth: streamWidth, maxHeight: streamHeight, minFrameRate: 24}, optional: []}, audio: false},
-			onsuccess: function(stream) {
-				config.attachStream = stream;
-				callback && callback();
-			},
-			onerror: function() {
-				alert('Unable to get access to your screen. Make sure screen capture is enabled (chrome://flags)');
-			}
-		};
-	
-		getUserMedia(mediaConfig);
+	function pointerKeyRelease(event) {
+		wsio.emit('keyReleased', {code: event.keyCode});
+		preventDefault(event);
 	}
 	
 	function preventDefault(event) {
@@ -443,8 +464,16 @@
 			else urlType = "site";  //if all else fails, will try to open in iframe as a webpage
 			console.log("URL: " + dataUrl + ", type: " + urlType);
 			
-			if(urlType != "") socket_io.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			if(urlType != "") wsio.emit('addNewWebElement', {type: urlType, src: dataUrl});
 		}
+	}
+	
+	function stringToBase64(string) {
+		return decodeURIComponent(escape(atob(string)));
+	}
+
+	function base64ToString(base64) {
+		return btoa(unescape(encodeURIComponent(base64)));
 	}
 	
 </script>
@@ -471,9 +500,24 @@
 				<label class="sageLabel">Pointer color:</label><input id="sagePointerColor" type="color"></input>
 			</div>
 			<div id="screenShare">
-				<label class="sageLabel">Click to start:</label><button id="screenShareBtn" type="button">Share Screen</button>
+				<label class="sageLabel">Click to start:</label>
+				<button id="screenShareBtn" type="button">Share Screen</button>
+				<label class="sageLabel">Screen resolution:</label>
+				<select id="screenShareResolution">
+					<option value="360">360p</option>
+					<option value="480">480p</option>
+					<option value="720">720p</option>
+					<option value="1080" selected="selected">1080p</option>
+				</select>
+				<label class="sageLabel">Frame quality:</label>
+				<input id="screenShareQuality" type="range" name="quality" min="1" max="10" step="1" value="5" style="width:100px;">
+					<span id="screenShareQualityIndicator" style="margin-left:5px;">5</span>
+				</input>
 			</div>
 		<div>
+		
+		<canvas id="mediaCanvas" style="display: none;"></canvas>
+        <video id="mediaVideo" style="display: none;"></video>
 	</div>
 	
 	<div class="clear"></div>
