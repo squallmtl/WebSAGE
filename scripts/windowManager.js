@@ -1,7 +1,7 @@
-function windowManager(id, sock) {
+function windowManager(id, ws) {
 	this.element = document.getElementById(id);
 	this.ctx = this.element.getContext("2d");
-	this.socket = sock;
+	this.wsio = ws;
 	this.nRows = 0;
 	this.nCols = 0;
 	this.aspectRatio = 1.0;
@@ -124,25 +124,7 @@ function windowManager(id, sock) {
 	};
 	
 	this.mousePress = function(event) {
-		var rect = this.element.getBoundingClientRect();
-		this.mouseX = event.clientX - rect.left;
-		this.mouseY = event.clientY - rect.top;
-		var globalX = this.mouseX / this.scale;
-		var globalY = this.mouseY / this.scale;
-		for(i=this.items.length-1; i>=0; i--){
-			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
-			var eWidth = this.items[i].width * this.scale;
-			var eHeight = (this.items[i].height+this.titleBarHeight) * this.scale;
-			
-			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
-				var selectOffsetX = this.items[i].left - globalX;
-				var selectOffsetY = this.items[i].top - globalY;
-				
-				this.socket.emit('selectElementById', {elemId: this.items[i].id, eventOffsetX: selectOffsetX, eventOffsetY: selectOffsetY});
-				break;
-			}
-		}
+		this.wsio.emit('pointerPress');
 		event.preventDefault();
 	};
 	
@@ -152,94 +134,62 @@ function windowManager(id, sock) {
 		this.mouseY = event.clientY - rect.top;
 		var globalX = this.mouseX / this.scale;
 		var globalY = this.mouseY / this.scale;
-		this.socket.emit('moveSelectedElement', {eventX: globalX, eventY: globalY});
-		event.preventDefault();
+		
+		this.wsio.emit('pointerPosition', {pointerX: globalX, pointerY: globalY});
 	};
 	
 	this.mouseRelease = function(event) {
-		this.socket.emit('releaseSelectedElement');
+		this.wsio.emit('pointerRelease');
 		event.preventDefault();
 	};
 	
 	this.mouseScroll = function(event) {
-		var rect = this.element.getBoundingClientRect();
-		this.mouseX = event.clientX - rect.left;
-		this.mouseY = event.clientY - rect.top;
-		for(i=this.items.length-1; i>=0; i--){
-			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
-			var eWidth = this.items[i].width * this.scale;
-			var eHeight = this.items[i].height * this.scale;
-			
-			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
-				this.socket.emit('selectScrollElementById', this.items[i].id);
-				break;
-			}
-		}
-		
 		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
 		if(event.wheelDelta < 0) scale = 1.0 / scale;
-		this.socket.emit('scrollSelectedElement', scale);
+		
+		this.wsio.emit('pointerScrollStart');
+		this.wsio.emit('pointerScroll', {scale: scale});
 		event.preventDefault();
 	};
 	
 	this.mouseScrollFF = function(event) {
-		var rect = this.element.getBoundingClientRect();
-		this.mouseX = event.clientX - rect.left;
-		this.mouseY = event.clientY - rect.top;
-		for(i=this.items.length-1; i>=0; i--){
-			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
-			var eWidth = this.items[i].width * this.scale;
-			var eHeight = this.items[i].height * this.scale;
-			
-			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
-				this.socket.emit('selectScrollElementById', this.items[i].id);
-				break;
-			}
-		}
-		
 		var wheelDelta = -120*event.detail;
 		var scale = 1.0 + Math.abs(wheelDelta)/256;
 		if(wheelDelta < 0) scale = 1.0 / scale;
-		this.socket.emit('scrollSelectedElement', scale);
+		
+		this.wsio.emit('pointerScrollStart');
+		this.wsio.emit('pointerScroll', {scale: scale});
 		event.preventDefault();
 	};
 	
 	this.keyPress = function(event) {
-		for(i=this.items.length-1; i>=0; i--){
-			var eLeft = this.items[i].left * this.scale;
-			var eTop = this.items[i].top * this.scale;
-			var eWidth = this.items[i].width * this.scale;
-			var eHeight = (this.items[i].height+this.titleBarHeight) * this.scale;
-			
-			if(this.mouseX >= eLeft && this.mouseX <= (eLeft+eWidth) && this.mouseY >= eTop && this.mouseY <= (eTop+eHeight)){
-				this.socket.emit('keypressElementById', {elemId: this.items[i].id, keyCode: event.keyCode});
-				break;
-			}
-		}
-		console.log("winMgr keypress");
+		this.wsio.emit('keyPressed', {code: event.keyCode});
 		event.preventDefault();
 	};
 	
+	this.keyRelease = function(event) {
+		this.wsio.emit('keyReleased', {code: event.keyCode});
+		event.preventDefault();
+	}
+	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);
+		console.log("added: " + elem_data.id + "(" + elem_data.type + ")");
 		this.draw();
 	};
 	
 	this.deleteElement = function(elemId) {
-		var i;
 		var selectedIndex;
 		var selectedItem;
-	
-		for(i=0; i<this.items.length; i++){
+		
+		for(var i=0; i<this.items.length; i++){
 			if(this.items[i].id == elemId){
 				selectedIndex = i;
-				selectedItem = this.items[selectedIndex];
+				selectedItem = this.items[i];
 				break;
 			}
 		}
-		for(i=selectedIndex; i<this.items.length-1; i++){
+		for(var i=selectedIndex; i<this.items.length-1; i++){
 			this.items[i] = this.items[i+1];
 		}
 		this.items[this.items.length-1] = selectedItem;

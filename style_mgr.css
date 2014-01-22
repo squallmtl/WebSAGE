@@ -10,14 +10,14 @@ body {
 	text-align: center;
 }
 
-p {
+p, label, span {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
 	font-size: 12px;
 }
 
-label {
+input, button {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
-	font-size: 12px;
+	font-size: 11px;
 }
 	
 #wrapper {
@@ -28,16 +28,13 @@ label {
 }
 
 #window {
-	margin: 20px 0px 20px 0px;
-}
-
-#extraInteraction {
-	width: 100%;
-	overflow: hidden;
+	margin: 20px 0px 0px 0px;
 }
 
 #fileUpload {
 	float: left;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
@@ -56,7 +53,8 @@ label {
 
 #sagePointer {
 	float: left;
-	margin-left: 20px;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
@@ -66,7 +64,8 @@ label {
 
 #screenShare {
 	float: left;
-	margin-left: 20px;
+	margin-top: 10px;
+	margin-left: 10px;
 	padding: 5px;
 	width: 250px;
 	height: 70px;
@@ -103,9 +102,9 @@ label {
 
 .sageLabel {
 	display:inline-block;
-    width:100px;
+    width:110px;
     text-align: right;
-    padding: 3px 5px 0px 0px;
+    padding: 3px 10px 3px 0px;
 }
 
 .lb_blackoverlay {

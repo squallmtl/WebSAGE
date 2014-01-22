@@ -3,10 +3,14 @@ function clock(){
 	this.ctx = null;
 	this.resrcPath = null;
 	
+	this.minDim = null;
+	
 	this.init = function(id, date, resrc) {
 		this.element = document.getElementById(id);
 		this.ctx = this.element.getContext("2d");
 		this.resrcPath = resrc;
+		
+		this.minDim = Math.min(this.element.width, this.element.height);
 	}
 	
 	this.draw = function(date) {
@@ -15,8 +19,6 @@ function clock(){
 		
 		this.ctx.fillStyle = "rgba(255, 255, 255, 1.0)"
 		this.ctx.fillRect(0,0, this.element.width, this.element.height)
-		
-		this.minDim = Math.min(this.element.width, this.element.height);
 		
 		var radius = 0.95 * this.minDim / 2;
 		var centerX = this.element.width / 2;
@@ -127,4 +129,9 @@ function clock(){
         this.ctx.closePath();
         this.ctx.stroke();
 	};
+	
+	this.resize = function(date) {
+		this.minDim = Math.min(this.element.width, this.element.height);
+		this.draw(date);
+	}
 }

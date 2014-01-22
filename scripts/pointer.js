@@ -76,7 +76,5 @@ function pointer(){
 		this.ctx.textAlign = "left";
 		this.ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
 		this.ctx.fillText(name, 0.82*minDim, 0.80*minDim+(0.4*size));
-		
-		console.log("finished draw");
 	};
 }
