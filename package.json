@@ -36,9 +36,6 @@
   
       "request": "latest",
       "socket.io": "latest",
-      "webrtc.io": "latest",
-      "webrtc.io-client": "latest",
-      "ws": "latest",
       "ytdl": "latest"
   },
   "bundledDependencies": [
@@ -50,9 +47,6 @@
 
       "request",
       "socket.io",
-      "webrtc.io",
-      "webrtc.io-client",
-      "ws",
       "ytdl"
   ],
   "devDependencies": {

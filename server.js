@@ -1,23 +1,21 @@
 var decompresszip = require('decompress-zip');
-var express = require("express");
+var express = require('express');
 var fs = require('fs');
 var gm = require('gm');
-var http = require('http');
 var https = require('https');
 var imageinfo = require('imageinfo');
 var ffprobe = require('node-ffprobe');
 var path = require('path');
-//var pdfutils = require('pdfutils').pdfutils;
+var pdfutils = require('pdfutils').pdfutils;
 var request = require('request');
 var io = require('socket.io');
-var webRTCio = require('webrtc.io');
 var ytdl = require('ytdl');
 
 // CONFIG FILE
-var file = 'config/desktop-cfg.json';
-//var file = 'config/thor-cfg.json';
-//var file = 'config/iridiumX-cfg.json';
-//var file = 'config/lyraX-cfg.json';
+var file = "config/desktop-cfg.json";
+//var file = "config/thor-cfg.json";
+//var file = "config/iridiumX-cfg.json";
+//var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -29,13 +27,13 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
-var uploadsFolder = __dirname + "/uploads";
+var uploadsFolder = path.join(__dirname, "uploads");
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
-var uploadedImages = fs.readdirSync(uploadsFolder+"/images");
-var uploadedVideos = fs.readdirSync(uploadsFolder+"/videos");
-var uploadedPdfs = fs.readdirSync(uploadsFolder+"/pdfs");
-var uploadedApps = fs.readdirSync(uploadsFolder+"/apps");
+var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
+var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
+var uploadedPdfs = fs.readdirSync(path.join(uploadsFolder, "pdfs"));
+var uploadedApps = fs.readdirSync(path.join(uploadsFolder, "apps"));
 for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImages[i]);
 for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
@@ -48,27 +46,19 @@ app.configure(function(){
 	app.use(express.methodOverride());
 	app.use(express.bodyParser({uploadDir: uploadsFolder, limit: '250mb'}));
 	app.use(express.multipart());
-	app.use(express.static(__dirname + '/'));
+	app.use(express.static(__dirname + path.sep));
 	app.use(app.router);
 });
 
 var options = {
-  key: fs.readFileSync("keys/server.key"),
-  cert: fs.readFileSync("keys/server.crt"),
-  ca: fs.readFileSync("keys/ca.crt"),
+  key: fs.readFileSync(path.join("keys", "server.key")),
+  cert: fs.readFileSync(path.join("keys", "server.crt")),
+  ca: fs.readFileSync(path.join("keys", "ca.crt")),
   requestCert: true,
   rejectUnauthorized: false
 };
 
 var server = https.createServer(options, app);
-var wsserver = http.createServer(app);
-
-var webRTC = webRTCio.listen(wsserver);
-
-// ---------------------------------------------
-// Setup the websocket
-// ---------------------------------------------
-// To talk to the web clients
 var sio = io.listen(server);
 
 sio.configure(function () {
@@ -81,13 +71,13 @@ sio.configure('development', function () {
 	sio.disable('log');
 });
 
-var initDate = new Date();
-
 var itemCount = 0;
 var items = [];
 var pointerCount = 0;
 var sagePointers = {};
 var interaction = {};
+var stream = {};
+var broadcastClients = [];
 
 sio.sockets.on('connection', function(socket) {
 	var i;
@@ -97,11 +87,11 @@ sio.sockets.on('connection', function(socket) {
 	
 	interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
 	
-	var cDate = new Date();
-
-	console.log(cDate.getTime()-initDate.getTime());
-	socket.emit('setSystemTime', cDate.getTime()-initDate.getTime());
 	socket.emit('setupDisplayConfiguration', config);
+	socket.emit('initialize', address + ":" + port);
+	for(var i=0; i<broadcastClients.length; i++){
+		sio.sockets.emit('newBroadcastClient', broadcastClients[i]);
+	}
 
 	/* adding new elements */
 	for(var key in sagePointers){
@@ -110,6 +100,13 @@ sio.sockets.on('connection', function(socket) {
 	for(i=0; i<items.length; i++){
 		socket.emit('addNewElement', items[i]);
 	}
+	
+	socket.on('addBroadcastClient', function(channel) {
+		if(broadcastClients.indexOf(channel) < 0){
+			broadcastClients.push(channel);
+			sio.sockets.emit('newBroadcastClient', channel);
+		}
+	});
 	
 	socket.on('requestStoredFiles', function() {
 		socket.emit('storedFileList', savedFiles);
@@ -135,13 +132,20 @@ sio.sockets.on('connection', function(socket) {
 		sio.sockets.emit('hidePointer', sagePointers[address]);
 	});
 	
-	socket.on('addNewSharedScreen', function(screen_data) {
+	socket.on('startNewScreenShare', function(screen_data) {
 		console.log("Added shared screen");
-		var now = new Date();
-		var newItem = new item("screen", screen_data.title, screen_data.id, null, 0, 0, screen_data.width, screen_data.height, screen_data.aspect, now, null, null);
-		items.push(newItem);
-		sio.sockets.emit('addNewElement', newItem);
-		itemCount++;
+		stream[screen_data.id] = {clients: initializeArray(config.displays.length, false), title: screen_data.title, width: screen_data.width, height: screen_data.height, aspect: screen_data.aspect};
+	});
+	
+	socket.on('streamAdded', function(stream_data) {
+		stream[stream_data.id].clients[stream_data.client] = true;
+		if(allTrue(stream[stream_data.id].clients)){
+			var now = new Date();
+			var newItem = new item("screen", stream[stream_data.id].title, stream_data.id, null, 0, 0, stream[stream_data.id].width, stream[stream_data.id].height, stream[stream_data.id].aspect, now, null, null);
+			items.push(newItem);
+			sio.sockets.emit('addNewElement', newItem);
+			itemCount++;
+		}
 	});
 	
 	socket.on('addNewWebElement', function(elem_data) {
@@ -362,16 +366,13 @@ sio.sockets.on('connection', function(socket) {
 			}
 		}
 		
-		
 		if(interaction[address].selectedMoveItem != null){
 			var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
 			sio.sockets.emit('updateItemOrder', newOrder);
-			console.log("Pointer select");
 		}
 	});
 	
 	socket.on('releaseSelectedElement', function() {
-		console.log("Pointer release selected");
 		interaction[address].selectedMoveItem = null;
 		interaction[address].selectedScrollItem = null;
 	});
@@ -381,7 +382,6 @@ sio.sockets.on('connection', function(socket) {
 		interaction[address].selectedMoveItem.left = move_data.eventX + interaction[address].selectOffsetX;
 		interaction[address].selectedMoveItem.top = move_data.eventY + interaction[address].selectOffsetY;
 		var now = new Date();
-		
 		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
 	});
 	
@@ -400,7 +400,6 @@ sio.sockets.on('connection', function(socket) {
 		interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
 		var now = new Date();
 		sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-		console.log("Pointer move selected");
 	});
 	
 	socket.on('selectScrollElementById', function(elemId) {
@@ -451,6 +450,11 @@ sio.sockets.on('connection', function(socket) {
 			sio.sockets.emit('finishedResize', elemId);
 			interaction[address].selectedScrollItem = null;
 		}, 500);
+	});
+	
+	socket.on('deleteElementById', function(id) {
+		removeItemById(id);
+		sio.sockets.emit('deleteElement', id);
 	});
 	
 	socket.on('keypressElementById', function(keypress_data) {
@@ -555,7 +559,6 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "application/pdf"){
-			/*
 			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
@@ -579,7 +582,6 @@ app.post('/upload', function(request, response) {
 					});
 				});
 			});
-			*/
 		}
 		else if(request.files[key].type == "application/zip"){
 			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
@@ -657,387 +659,28 @@ app.post('/upload', function(request, response) {
 });
 
 /////////////////////////////////////////////////////////////////////////
-// ---------------------------------------------
-// DATA FROM OMICRONJS
-// ADAPTED FROM LUC's omicronjs server code
-// ---------------------------------------------
 
-// ---------------------------------------------
-// Tracking
-// ---------------------------------------------
-
-var net = require('net');
-var util = require('util');
-var dgram = require('dgram');
-//var sprint = require('sprint').sprint;
-
-// Global UDP socket to the tracker server
-var udp = undefined;
-
-// CAVE2
-//var tserver   = "cave2tracker.evl.uic.edu";
-// Green table
-//var tserver   = "midori.evl.uic.edu";
-// Icelab
-//var tserver   = "omgtracker.evl.uic.edu";
-var tserver   = "localhost";
-
-var tport     = 28000;
-var pdataPort = 9123;
-
-var ptrs    = {};
-
-	console.log('Connecting to Omicron server: ', tserver, tport);
-		var client = net.connect(tport, tserver,  function() { //'connect' listener
-        console.log('Connected to: ', tserver, tport);
-
-        var sendbuf = util.format("omicron_data_on,%d", pdataPort);
-        //console.log("Omicron> Sending handshake: ", sendbuf);
-        client.write(sendbuf);
-
-        udp = dgram.createSocket("udp4");
-        var dstart = Date.now();
-        var emit = 0;
-
-        // array to hold all the button values (1 - down, 0 = up)
-        var buttons = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        var mouse   = [0, 0, 0];
-        var mousexy = [0.0, 0.0];
-        var colorpt = [0.0, 0.0, 0.0];
-        var mousez  = 0;
-
-        udp.on("message", function (msg, rinfo) {
-                // console.log("UDP> got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
-                // var out = util.format("UDP> msg from [%s:%d] %d bytes", rinfo.address,rinfo.port,msg.length);
-                // console.log(out);
-
-                if ((Date.now() - dstart) > 100) {
-                        var offset = 0;
-                        var e = {};
-                        if (offset < msg.length) e.timestamp = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.sourceId = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.serviceId = msg.readInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.serviceType = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.type = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.flags = msg.readUInt32LE(offset); offset += 4;
-
-                        if (offset < msg.length) e.posx = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.posy = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.posz = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.orw = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.orx = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.ory = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.orz = msg.readFloatLE(offset); offset += 4;
-                        if (offset < msg.length) e.extraDataType = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.extraDataItems = msg.readUInt32LE(offset); offset += 4;
-                        if (offset < msg.length) e.extraDataMask = msg.readUInt32LE(offset); offset += 4;
-                        //memcpy(ed.extraData, &eventPacket[offset], EventData::ExtraDataSize);
-
-                        // Extra data types:
-						//    0 ExtraDataNull,
-						//    1 ExtraDataFloatArray,
-						//    2 ExtraDataIntArray,
-						//    3 ExtraDataVector3Array,
-						//    4 ExtraDataString,
-						//    5 ExtraDataKinectSpeech
-
-                        var r_roll  = Math.asin(2.0*e.orx*e.ory + 2.0*e.orz*e.orw);
-                        var r_yaw   = Math.atan2(2.0*e.ory*e.orw-2.0*e.orx*e.orz , 1.0 - 2.0*e.ory*e.ory - 2.0*e.orz*e.orz);
-                        var r_pitch = Math.atan2(2.0*e.orx*e.orw-2.0*e.ory*e.orz , 1.0 - 2.0*e.orx*e.orx - 2.0*e.orz*e.orz);
-						
-						var posX = e.posx * config.totalWidth;
-						var posY = e.posy*config.totalHeight;
-						var sourceID = e.sourceId;
-
-						// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
-						var serviceID = e.serviceId;
-						
-						var touchWidth = 0;
-						var touchHeight = 0;
-						if( serviceID == 0 &&  e.extraDataItems >= 2)
-						{
-							touchWidth = msg.readFloatLE(offset); offset += 4;
-							touchHeight = msg.readFloatLE(offset); offset += 4;
-							//console.log("Touch size: " + touchWidth + "," + touchHeight); 
-						}
-						
-						// Appending sourceID to pointer address ID
-						var address = tserver+":"+sourceID;
-												
-                        if (e.serviceType == 0) {  // ServiceTypePointer
-								//console.log("pointer ID "+ sourceID +" event! type: " + e.type  );
-                                //console.log("pointer event! type: " + e.type  );
-                                //console.log("ServiceTypePointer> source ", e.sourceId);
-								//console.log("ServiceTypePointer> serviceID ", e.serviceId);
-								
-								// TouchGestureManager Flags:
-								// 1 << 17 = User flag start (as of 12/20/13)
-								// User << 1 = Unprocessed
-								// User << 2 = Single touch
-								// User << 3 = Big touch
-								// User << 4 = 5-finger hold
-								// User << 5 = 5-finger swipe
-								// User << 6 = 3-finger hold
-								var User = 1 << 17;
-								
-								var FLAG_SINGLE_TOUCH = User << 2;
-								var FLAG_BIG_TOUCH = User << 3;
-								var FLAG_FIVE_FINGER_HOLD = User << 4;
-								var FLAG_FIVE_FINGER_SWIPE = User << 5;
-								var FLAG_THREE_FINGER_HOLD = User << 6;
-								var FLAG_SINGLE_CLICK = User << 7;
-								var FLAG_DOUBLE_CLICK = User << 8;
-								
-								//console.log( e.flags );
-                                if (e.type == 3) { // update
-                                         if( e.sourceId in ptrs )
-                                             return;
-                                        colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
-                                        if (offset < msg.length) {
-                                                if (e.extraDataType == 4 && e.extraDataItems > 0) {
-                                                        console.log("create touch pointer"); 
-                                                        e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
-                                                        ptrinfo = e.extraString.split(" ");
-                                                        offset += e.extraDataItems;
-                                                        ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0], mode:0};
-                                                        sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
-                                                }
-                                        }
-                                }
-                                else if (e.type == 4) { // move
-								
-									/*
-									sagePointers[address].left += pointer_data.deltaX;
-									sagePointers[address].top += pointer_data.deltaY;
-									if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-									if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-									if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-									if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-									
-									sio.sockets.emit('updatePointer', sagePointers[address]);
-									
-									if(interaction[address].selectedMoveItem == null) return;
-									interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-									interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-									var now = new Date();
-									sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-									*/ 
-									if( e.flags == FLAG_SINGLE_TOUCH )
-									{
-										if(address in sagePointers){
-											sagePointers[address].left = posX;
-											sagePointers[address].top = posY;
-											sio.sockets.emit("updatePointer", sagePointers[address]);
-										}
-										
-										if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
-										interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-										interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-										var now = new Date();
-										sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-										console.log("Touch move selected");
-									}
-                                }
-                                else if (e.type == 15) { // zoom
-									console.log("Touch zoom");
-									
-									/*
-									Omicron zoom event extra data:
-									0 = touchWidth (parsed above)
-									1 = touchHeight (parsed above)
-									2  = zoom delta
-									3 = event second type ( 1 = Down, 2 = Move, 3 = Up )
-									*/
-									// extraDataType 1 = float		
-									if (e.extraDataType == 1 && e.extraDataItems >= 4)
-									{
-										var zoomDelta = msg.readFloatLE(offset); offset += 4;
-										var eventType = msg.readFloatLE(offset);  offset += 4;
-                                        console.log( zoomDelta ); 
-                                        console.log( eventType ); 
-									}
-									
-									/*
-//                                         sio.sockets.emit('changeMode', {mode: 1} );
-                                     if (e.sourceId in ptrs) {
-                                         //console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
-
-                                        //ptrs[e.sourceId].position = [e.posx, e.posy];
-                                        ptrs[e.sourceId].zoom = 1;
-                                                zoom = 1; 
-                                                if (offset < msg.length) {
-                                                        // One int for zoom value
-                                                        if (e.extraDataType == 2 && e.extraDataItems == 1) {
-                                                                //which elem:
-                                                                
-                                                        
-                                                                e.extraInt = msg.readInt32LE(offset);
-                                                                offset += 4
-                                                                zoom = e.extraInt; 
-                                                                
-                                                                handleSagePointerZoom( zoom, ptrs[e.sourceId].position[0]*config.totalWidth, ptrs[e.sourceId].position[1]*config.totalHeight, ptrs[e.sourceId].mode); 
-                                                        }
-                                                }
-                                        }
-										*/
-                                }
-                                else if (e.type == 5) { // button down
-                                        //console.log("\t down , flags ", e.flags);
-										
-										if( e.flags == FLAG_SINGLE_TOUCH )
-										{
-											console.log("starting pointer: " + address)
-											if(address in sagePointers){
-												sagePointers[address].label = "Touch: " + sourceID;
-												sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-												sagePointers[address].left = posX;
-												sagePointers[address].top = posY;
-												sio.sockets.emit('showPointer', sagePointers[address]);
-											}else{
-												sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
-												sagePointers[address].label = "Touch: " + sourceID;
-												sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-												sagePointers[address].left = posX;
-												sagePointers[address].top = posY;
-												
-												pointerCount++;
-												sio.sockets.emit('createPointer', sagePointers[address]);
-												
-												interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
-												
-												var pointerX = posX;
-												var pointerY = posY;
-												
-												for(var i=items.length-1; i>=0; i--){
-													if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-														interaction[address].selectedMoveItem = findItemById(items[i].id);
-														interaction[address].selectedScrollItem = null;
-														interaction[address].selectOffsetX = items[i].left - pointerX;
-														interaction[address].selectOffsetY = items[i].top - pointerY;
-														break;
-													}
-												}
-												
-												
-												if(interaction[address].selectedMoveItem != null){
-													var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
-													sio.sockets.emit('updateItemOrder', newOrder);
-													console.log("Touch select");
-												}
-											}
-										}
-										else if( e.flags == FLAG_FIVE_FINGER_HOLD )
-										{
-											if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
-
-											removeItemById( interaction[address].selectedMoveItem.id );
-											sio.sockets.emit('deleteElement', interaction[address].selectedMoveItem.id );
-										}
-										else if( e.flags == FLAG_THREE_FINGER_HOLD )
-										{
-											console.log("Touch gesture: Three finger hold");
-										}
-										else if( e.flags == FLAG_SINGLE_CLICK )
-										{
-											console.log("Touch gesture: Click");
-										}
-										else if( e.flags == FLAG_DOUBLE_CLICK )
-										{
-											console.log("Touch gesture: Double Click");
-										}
-                                }
-                                else if (e.type == 6) { // button up
-									if( e.flags == FLAG_SINGLE_TOUCH )
-									{
-										sio.sockets.emit('hidePointer', sagePointers[address]);
-										
-										console.log("Touch release");
-										if( interaction[address] == null ) return;
-										interaction[address].selectedMoveItem = null;
-										interaction[address].selectedScrollItem = null;
-									}
-                                }
-                                else {
-                                        console.log("\t UNKNOWN event type ", e.type);                                        
-                                }
-
-                                // Emit a pointer event
-                                //sio.sockets.emit('pointer', {x:mousexy[0],y:mousexy[1],zoom:mousez, b1:mouse[0], b2:mouse[1], b3:mouse[2]} );
-//                                 if (e.sourceId in ptrs)
-//                                         sio.sockets.emit('pointer',  ptrs[e.sourceId] );
-                        }
-
-                        // if (e.type == 3) {
-//                                 if (e.serviceType == 1) {  // ServiceTypeMocap
-//                                         var RAD_TO_DEGREE = 180.0/Math.PI;
-//                                         var pfmt = sprint("\tp: x %6.2fm | y %6.2fm | z %6.2fm\n",
-//                                                                 e.posx, e.posy, e.posz); // in meters
-//                                         var rfmt = sprint("\tr: p(x) %4.0f | y(y) %4.0f | r(z) %4.0f\n", // degrees
-//                                                                 RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll);
-// 
-//                                         if (e.sourceId == 0) {
-//                                                 //console.log("head> ", pfmt+rfmt);
-//                                                 sio.sockets.emit('head', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-//                                         }
-//                                         if (e.sourceId == 1) {
-//                                                 //console.log("wand> ", pfmt+rfmt);
-//                                                 sio.sockets.emit('wand', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-//                                         }
-//                                         if (e.sourceId == 2) {
-//                                                 //console.log("wand2> ", pfmt+rfmt);
-//                                                 sio.sockets.emit('wand2', {text: pfmt+rfmt, pos:[e.posx, e.posy, e.posz],
-//                                                                                                 rot:[RAD_TO_DEGREE * r_pitch, RAD_TO_DEGREE * r_yaw, RAD_TO_DEGREE * r_roll]});
-//                                         }
-//                                         emit++;
-//                                 }
-//                         }
-                        if (emit>2) { dstart = Date.now(); emit = 0; }
-                }
-        });
-
-// 
-//                            if( e.type == 4 ) //MOVE event is of type 4
-//                            {
-//                                if( e.serviceType == 0 ) //SAGE pointer event
-//                                {
-//                                    var pfmt = sprint("\tp: x %6.2fm | y %6.2fm | z %6.2fm\n",
-//                                                      e.posx, e.posy, e.posz); // in meters
-//                                    console.log( "pointer moved: " + e.posx + " " + e.posy);
-// //                           
-// //                              sio.sockets.emit('createPointer', {type: 'ptr', id: '1', src: "resources/cursor_arrow_48x48.png" });
-// //                           sio.sockets.emit('movePointer', "hi");
-// 
-//                            
-//                                    sio.sockets.emit( 'movePointer',{elemId: '0', elemLeft: e.posx, elemTop: e.posy});
-//                            
-//                            
-// //                                    sio.sockets.emit('TEST', "hi");
-//                                }
-//                            }
-//                            
-//                            if (emit>2) { dstart = Date.now(); emit = 0; }
-//                            }
-//                            });
-                            
-                            udp.on("listening", function () {
-                                   var address = udp.address();
-                                   console.log("UDP> listening " + address.address + ":" + address.port);
-                                   });
-                            
-                            udp.bind(pdataPort);
-                            });
-
-/////////////////////////////////////////////////////////////////////////
 
 // Start the https server
 server.listen(config.port);
-wsserver.listen(config.port+1);
-var net = require('net');
 
 console.log('Now serving the app at https://localhost:' + config.port);
 
+function initializeArray(length, value) {
+	var arr = new Array(length);
+	for(var i=0; i<length; i++){
+		arr[i] = value;
+	}
+	
+	return arr;
+}
+
+function allTrue(boolArr) {
+	for(var i=0; i<boolArr.length; i++){
+		if(!boolArr[i]) return false;
+	}
+	return true;
+}
 
 function findItemById(id) {
 	for(var i=0; i<items.length; i++){

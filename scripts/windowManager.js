@@ -20,6 +20,8 @@ function windowManager(id, sock) {
 	this.kineticjsImg.src = "images/kineticjs.png";
 	this.pdfImg = new Image();
 	this.pdfImg.src = "images/pdf.png";
+	this.screenImg = new Image();
+	this.screenImg.src = "images/screen.png";
 	this.threejsImg = new Image();
 	this.threejsImg.src = "images/threejs.png";
 	this.videoImg = new Image();
@@ -79,6 +81,7 @@ function windowManager(id, sock) {
 			else if(this.items[i].type == "img") this.ctx.drawImage(this.imageImg, x, y, size, size);
 			else if(this.items[i].type == "kineticjs") this.ctx.drawImage(this.kineticjsImg, x, y, size, size);
 			else if(this.items[i].type == "pdf") this.ctx.drawImage(this.pdfImg, x, y, size, size);
+			else if(this.items[i].type == "screen") this.ctx.drawImage(this.screenImg, x, y, size, size);
 			else if(this.items[i].type == "threejs") this.ctx.drawImage(this.threejsImg, x, y, size, size);
 			else if(this.items[i].type == "video") this.ctx.drawImage(this.videoImg, x, y, size, size);
 			else if(this.items[i].type == "webgl") this.ctx.drawImage(this.webglImg, x, y, size, size);
