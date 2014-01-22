@@ -1,3 +1,4 @@
+var dropbox = require('dropbox');
 var express = require('express');
 var fs = require('fs');
 var https = require('https');
@@ -11,9 +12,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
  
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -26,6 +27,10 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
+var dropboxJSON = fs.readFileSync("dropboxApp.json", 'utf8');
+var client = new dropbox.Client(JSON.parse(dropboxJSON));
+client.authDriver(new dropbox.AuthDriver.NodeServer({port: 8912}));
+
 var uploadsFolder = path.join(__dirname, "uploads");
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
@@ -37,6 +42,18 @@ for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImag
 for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
+
+client.authenticate(function(err, client) {
+	if(err) throw err;
+	
+	client.readdir("/EVL/"+config.config, function(err, entries) {
+		if(err) throw err;
+
+		console.log("Your Dropbox contains:");
+		console.log(entries);
+	});
+});
+
 
 var app = express();
 

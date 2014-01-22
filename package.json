@@ -29,6 +29,7 @@
   },
   "dependencies": {
       "decompress-zip": "latest",
+      "dropbox": "latest",
       "express": "latest",
       "gm": "latest",
       "imageinfo": "latest",
@@ -40,6 +41,7 @@
   },
   "bundledDependencies": [
       "decompress-zip",
+      "dropbox",
       "express",
       "gm",
       "imageinfo",
