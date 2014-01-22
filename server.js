@@ -8,13 +8,14 @@ var websocketIOServer = require('node-websocket.io'); // custom node module
 var loader = require('node-itemloader'); // custom node module
 var interaction = require('node-interaction'); // custom node module
 var sagepointer = require('node-sagepointer'); // custom node module
- var omicronManager = require('node-omicron'); // custom node module
+var omicronManager = require('node-omicron'); // custom node module
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
 //var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
+var file = "config/desktop-omicron-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -414,7 +415,6 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "pdfs"){
-		/*
 			var localPath = path.join("uploads", file.dir, file.name);
 			
 			fs.readFile(localPath, function (err, data) {
@@ -427,7 +427,6 @@ wsioServer.onconnection(function(wsio) {
 					itemCount++;
 				});
 			});
-			*/
 		}
 		else if(file.dir == "apps"){
 			var localPath = path.join("uploads", file.dir, file.name);
@@ -506,7 +505,6 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "application/pdf"){
-		/*
 			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
@@ -526,7 +524,6 @@ app.post('/upload', function(request, response) {
 					});
 				});
 			});
-			*/
 		}
 		else if(request.files[key].type == "application/zip"){
 			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
@@ -567,11 +564,386 @@ app.post('/upload', function(request, response) {
 	});
 });
 	
+//if( config.omicronServerIP )
+//{
+//	omicronManager = new omicronManager(config, this);
+//	omicronManager.runTracker(this, sagePointers);
+//}
 
-// Connect to Omicron tracker
-omicronManager = new omicronManager()
-omicronManager.connectToTracker()
+/**Big ugly Omicron section******************************************************************/
+var net = require('net');
+var util = require('util');
+var dgram = require('dgram');
 
+	udp = undefined;
+	
+	trackerIP = config.omicronServerIP;
+	msgPort = config.omicronMsgPort;
+	dataPort = config.omicronDataPort;
+	
+if( config.omicronServerIP )
+{
+	if( msgPort == undefined )
+	{
+		msgPort = 28000;
+		console.log('Omicron: msgPort undefined. Using default: ', msgPort);
+	}
+	if( dataPort == undefined )	
+	{
+		dataPort = 9123;
+		console.log('Omicron: dataPort undefined. Using default: ', dataPort);
+	}
+	
+	console.log('Connecting to Omicron server: ', trackerIP, msgPort);
+	
+	var client = net.connect(msgPort, trackerIP,  function()
+	{ //'connect' listener
+		console.log('Connected to Omicron server. Requesting data on port ', dataPort);
+		
+		var sendbuf = util.format("omicron_data_on,%d", dataPort);
+		//console.log("Omicron> Sending handshake: ", sendbuf);
+		client.write(sendbuf);
+
+		udp = dgram.createSocket("udp4");
+		var dstart = Date.now();
+		var emit = 0;
+
+		// array to hold all the button values (1 - down, 0 = up)
+		var buttons = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		var mouse   = [0, 0, 0];
+		var mousexy = [0.0, 0.0];
+		var colorpt = [0.0, 0.0, 0.0];
+		var mousez  = 0;
+
+		udp.on("message", function (msg, rinfo)
+		{
+			//console.log("UDP> got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+			// var out = util.format("UDP> msg from [%s:%d] %d bytes", rinfo.address,rinfo.port,msg.length);
+			// console.log(out);
+		 
+			if ((Date.now() - dstart) > 100)
+			{
+				var offset = 0;
+				var e = {};
+				if (offset < msg.length) e.timestamp = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.sourceId = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.serviceId = msg.readInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.serviceType = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.type = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.flags = msg.readUInt32LE(offset); offset += 4;
+
+				if (offset < msg.length) e.posx = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.posy = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.posz = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.orw = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.orx = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.ory = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.orz = msg.readFloatLE(offset); offset += 4;
+				if (offset < msg.length) e.extraDataType = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.extraDataItems = msg.readUInt32LE(offset); offset += 4;
+				if (offset < msg.length) e.extraDataMask = msg.readUInt32LE(offset); offset += 4;
+				//memcpy(ed.extraData, &eventPacket[offset], EventData::ExtraDataSize);
+
+				// Extra data types:
+				//    0 ExtraDataNull,
+				//    1 ExtraDataFloatArray,
+				//    2 ExtraDataIntArray,
+				//    3 ExtraDataVector3Array,
+				//    4 ExtraDataString,
+				//    5 ExtraDataKinectSpeech
+
+				var r_roll  = Math.asin(2.0*e.orx*e.ory + 2.0*e.orz*e.orw);
+				var r_yaw   = Math.atan2(2.0*e.ory*e.orw-2.0*e.orx*e.orz , 1.0 - 2.0*e.ory*e.ory - 2.0*e.orz*e.orz);
+				var r_pitch = Math.atan2(2.0*e.orx*e.orw-2.0*e.ory*e.orz , 1.0 - 2.0*e.orx*e.orx - 2.0*e.orz*e.orz);
+						
+				var posX = e.posx * config.totalWidth;
+				var posY = e.posy*config.totalHeight;
+				var sourceID = e.sourceId;
+
+				// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
+				var serviceID = e.serviceId;
+						
+				var touchWidth = 0;
+				var touchHeight = 0;
+				if( serviceID == 0 &&  e.extraDataItems >= 2)
+				{
+					touchWidth = msg.readFloatLE(offset); offset += 4;
+					touchHeight = msg.readFloatLE(offset); offset += 4;
+					//console.log("Touch size: " + touchWidth + "," + touchHeight); 
+				}
+						
+				// Appending sourceID to pointer address ID
+				var address = trackerIP+":"+sourceID;
+				
+				// ServiceTypePointer //////////////////////////////////////////////////
+				if (e.serviceType == 0)
+				{  
+					//console.log("pointer ID "+ sourceID +" event! type: " + e.type  );
+					//console.log("pointer event! type: " + e.type  );
+					//console.log("ServiceTypePointer> source ", e.sourceId);
+					//console.log("ServiceTypePointer> serviceID ", e.serviceId);
+								
+					// TouchGestureManager Flags:
+					// 1 << 17 = User flag start (as of 12/20/13)
+					// User << 1 = Unprocessed
+					// User << 2 = Single touch
+					// User << 3 = Big touch
+					// User << 4 = 5-finger hold
+					// User << 5 = 5-finger swipe
+					// User << 6 = 3-finger hold
+					var User = 1 << 17;
+					
+					var FLAG_SINGLE_TOUCH = User << 2;
+					var FLAG_BIG_TOUCH = User << 3;
+					var FLAG_FIVE_FINGER_HOLD = User << 4;
+					var FLAG_FIVE_FINGER_SWIPE = User << 5;
+					var FLAG_THREE_FINGER_HOLD = User << 6;
+					var FLAG_SINGLE_CLICK = User << 7;
+					var FLAG_DOUBLE_CLICK = User << 8;
+					
+					//console.log( e.flags );
+					if (e.type == 3)
+					{ // update
+						/* if( e.sourceId in ptrs )
+							 return;
+						colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
+						if (offset < msg.length)
+						{
+							if (e.extraDataType == 4 && e.extraDataItems > 0)
+							{
+								console.log("create touch pointer"); 
+								e.extraString = msg.toString("utf-8", offset, offset+e.extraDataItems);
+								ptrinfo = e.extraString.split(" ");
+								offset += e.extraDataItems;
+								ptrs[e.sourceId] = {id:e.sourceId, label:ptrinfo[0], ip:ptrinfo[1], mouse:[0,0,0], color:colorpt, zoom:0, position:[0,0], mode:0};
+								sio.sockets.emit('createPointer', {type: 'ptr', id: e.sourceId, label: ptrinfo[0], color: colorpt, zoom:0, position:[0,0], src: "resources/mouse-pointer-hi.png" });
+							}
+						}*/
+					}
+					else if (e.type == 4)
+					{ // move
+						if( e.flags == FLAG_SINGLE_TOUCH )
+						{/*
+							if(address in sagePointers)
+							{
+								sagePointers[address].left = posX;
+								sagePointers[address].top = posY;
+								sio.sockets.emit("updatePointer", sagePointers[address]);
+							}
+							
+							if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
+							interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
+							interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
+							
+							var now = new Date();
+							sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
+							console.log("Touch move selected");*/
+							
+							sagePointers[address].left = posX;
+							sagePointers[address].top = posY;
+							if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+							if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+							if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+							if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+							
+							broadcast('updateSagePointerPosition', sagePointers[address], "display");
+							
+							var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
+							if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+		
+						}
+					}
+					else if (e.type == 15)
+					{ // zoom
+						console.log("Touch zoom");
+								
+						/*
+						Omicron zoom event extra data:
+						0 = touchWidth (parsed above)
+						1 = touchHeight (parsed above)
+						2  = zoom delta
+						3 = event second type ( 1 = Down, 2 = Move, 3 = Up )
+						*/
+						// extraDataType 1 = float		
+						if (e.extraDataType == 1 && e.extraDataItems >= 4)
+						{
+							var zoomDelta = msg.readFloatLE(offset); offset += 4;
+							var eventType = msg.readFloatLE(offset);  offset += 4;
+							console.log( zoomDelta ); 
+							console.log( eventType ); 
+						}
+
+					}
+					else if (e.type == 5) { // button down
+						//console.log("\t down , flags ", e.flags);
+						
+						if( e.flags == FLAG_SINGLE_TOUCH )
+						{
+							console.log("starting pointer: " + address)
+							// Create pointer
+							if(address in sagePointers){
+								sagePointers[address].label = "Touch: " + sourceID;
+								sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+								sagePointers[address].left = posX;
+								sagePointers[address].top = posY;
+								sio.sockets.emit('showPointer', sagePointers[address]);
+							}else{
+								sagePointers[address] = new sagepointer(address+"_pointer");
+								remoteInteraction[address] = new interaction();
+								
+								broadcast('createSagePointer', sagePointers[address], "display");
+								
+								// Display pointer
+								label = "Touch: " + sourceID;
+								color = "rgba(255, 255, 255, 1.0)";
+
+								sagePointers[address].start(label, color);
+								broadcast('showSagePointer', sagePointers[address], "display");
+								
+								// Pointer 'click'
+								var pointerX = posX;
+								var pointerY = posY;
+
+								var elem = findItemUnderPointer(pointerX, pointerY);
+
+								if(elem != null){
+									if( remoteInteraction[address].windowManagementMode() ){
+										remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+									}
+									else if ( remoteInteraction[address].appInteractionMode() ) {
+										var itemRelX = pointerX - items[i].left;
+										var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+										var now = new Date();
+										broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+									}        
+									
+									var newOrder = moveItemToFront(elem.id);
+									broadcast('updateItemOrder', newOrder);
+								} 
+								else { //if no item, change pointer mode
+									//remoteInteraction[address].toggleModes(); 
+									//broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
+								}
+		
+								//sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
+								//sagePointers[address].label = "Touch: " + sourceID;
+								//sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
+								//sagePointers[address].left = posX;
+								//sagePointers[address].top = posY;
+												
+								//pointerCount++;
+								//sio.sockets.emit('createPointer', sagePointers[address]);
+												
+								//interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
+								/*
+								var pointerX = posX;
+								var pointerY = posY;
+												
+								for(var i=items.length-1; i>=0; i--){
+									if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
+										interaction[address].selectedMoveItem = findItemById(items[i].id);
+										interaction[address].selectedScrollItem = null;
+										interaction[address].selectOffsetX = items[i].left - pointerX;
+										interaction[address].selectOffsetY = items[i].top - pointerY;
+										break;
+									}
+								}
+								
+								
+								if(interaction[address].selectedMoveItem != null){
+									var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
+									sio.sockets.emit('updateItemOrder', newOrder);
+									console.log("Touch select");
+								}
+								*/
+							}
+						}
+						else if( e.flags == FLAG_FIVE_FINGER_HOLD )
+						{
+							console.log("Touch gesture: Five finger hold");
+							
+							var elem = findItemUnderPointer(posX, posY);
+							
+							if( elem != null && remoteInteraction[address].windowManagementMode() )
+							{
+								removeElement(items, elem);
+								broadcast('deleteElement', elem.id);
+							}
+							
+							//if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
+							
+							//removeItemById( interaction[address].selectedMoveItem.id );
+							//sio.sockets.emit('deleteElement', interaction[address].selectedMoveItem.id );
+						}
+						else if( e.flags == FLAG_THREE_FINGER_HOLD )
+						{
+							console.log("Touch gesture: Three finger hold");
+						}
+						else if( e.flags == FLAG_SINGLE_CLICK )
+						{
+							console.log("Touch gesture: Click");
+						}
+						else if( e.flags == FLAG_DOUBLE_CLICK )
+						{
+							console.log("Touch gesture: Double Click");
+						}
+					}
+					else if (e.type == 6)
+					{ // button up
+						if( e.flags == FLAG_SINGLE_TOUCH )
+						{
+							// Hide pointer
+							sagePointers[address].stop;
+							broadcast('hideSagePointer', sagePointers[address], "display");
+		
+							// Release event
+							if( remoteInteraction[address].windowManagementMode() ){
+								remoteInteraction[address].releaseItem();
+
+							}
+							else if ( remoteInteraction[address].appInteractionMode() ) {
+								var pointerX = sagePointers[address].left
+								var pointerY = sagePointers[address].top
+								
+								var elem = findItemUnderPointer(pointerX, pointerY);
+					 
+								if( elem != null ){           
+									var itemRelX = pointerX - items[i].left;
+									var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+									var now = new Date();
+									broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+								}
+							}
+		
+							//sio.sockets.emit('hidePointer', sagePointers[address]);
+							
+							console.log("Touch release");
+							//if( interaction[address] == null ) return;
+							//interaction[address].selectedMoveItem = null;
+							//interaction[address].selectedScrollItem = null;
+						}
+					}
+					else
+					{
+					console.log("\t UNKNOWN event type ", e.type);                                        
+					}
+					/////////////////////////////////////////////////////////////////////////////
+					
+					if (emit>2) { dstart = Date.now(); emit = 0; }
+				}
+			}
+		});
+
+		udp.on("listening", function () {
+			var address = udp.address();
+			console.log("UDP> listening " + address.address + ":" + address.port);
+		});
+								
+		udp.bind(dataPort)
+		
+	});
+}
+/***************************************************************************************/
 
 // Start the https server
 server.listen(config.port);
