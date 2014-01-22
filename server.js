@@ -11,9 +11,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
  
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -127,8 +127,8 @@ wsioServer.onconnection(function(wsio) {
                 remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
             }
             else if ( remoteInteraction[address].appInteractionMode() ) {
-                var itemRelX = pointerX - items[i].left;
-				var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var itemRelX = pointerX - elem.left;
+				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
             }        
@@ -155,9 +155,9 @@ wsioServer.onconnection(function(wsio) {
             
             var elem = findItemUnderPointer(pointerX, pointerY);
  
-            if( elem != null ){           
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+            if(elem != null){           
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();
                 broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
             }
@@ -198,9 +198,9 @@ wsioServer.onconnection(function(wsio) {
             
             var elem = findItemUnderPointer(pointerX, pointerY);
  
-            if( elem != null ){           
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+            if(elem != null){           
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();
                 broadcast( 'eventInItem', { eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");  
             }
@@ -289,8 +289,8 @@ wsioServer.onconnection(function(wsio) {
                 }
             }
             else if ( remoteInteraction[address].appInteractionMode() ) {	
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();	
                 broadcast( 'eventInItem', { eventType: "keyPressed", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
             }
