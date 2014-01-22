@@ -95,8 +95,9 @@
 		winMgr = new windowManager("winMgr", wsio);
 		winMgr.draw();
 		
-		canvasKeyDownFunc = winMgr.keyPress.bind(winMgr);
-		canvasKeyUpFunc = winMgr.keyRelease.bind(winMgr);
+		canvasKeyDownFunc = winMgr.keyDown.bind(winMgr);
+		canvasKeyUpFunc = winMgr.keyUp.bind(winMgr);
+		canvaseKeyPressFunc = winMgr.keyPress.bind(winMgr);
 		
 		winMgrCanvas = document.getElementById('winMgr');
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
@@ -345,8 +346,10 @@
 			document.addEventListener('mouseup', pointerRelease, false);
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
-			document.addEventListener('keydown', pointerKeyPress, false);
-			document.addEventListener('keyup', pointerKeyRelease, false);
+			document.addEventListener('keydown', pointerKeyDown, false);
+			document.addEventListener('keyup', pointerKeyUp, false);
+            document.addEventListener('keypress', pointerKeyPress, false);
+
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
 			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
@@ -359,8 +362,9 @@
 			document.removeEventListener('mouseup', pointerRelease, false);
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
-			document.removeEventListener('keydown', pointerKeyPress, false);
-			document.removeEventListener('keyup', pointerKeyRelease, false);
+			document.removeEventListener('keydown', pointerKeyDown, false);
+			document.removeEventListener('keyup', pointerKeyUp, false);
+            document.removeEventListener('keypress', pointerKeyPress, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
@@ -408,13 +412,19 @@
 		preventDefault(event);
 	}
 	
-	function pointerKeyPress(event) {
-		wsio.emit('keyPressed', {code: event.keyCode});
+	function pointerKeyDown(event) {
+		wsio.emit('keyDown', {code: event.keyCode});
 		preventDefault(event);
 	}
 	
-	function pointerKeyRelease(event) {
-		wsio.emit('keyReleased', {code: event.keyCode});
+	function pointerKeyUp(event) {
+		wsio.emit('keyUp', {code: event.keyCode});
+		preventDefault(event);
+	}
+	
+		
+	function pointerKeyPress(event) {
+		wsio.emit('keyPress', {code: event.charCode});
 		preventDefault(event);
 	}
 	

@@ -127,8 +127,8 @@ wsioServer.onconnection(function(wsio) {
                 remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
             }
             else if ( remoteInteraction[address].appInteractionMode() ) {
-                var itemRelX = pointerX - items[i].left;
-				var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var itemRelX = pointerX - elem.left;
+				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
             }        
@@ -156,8 +156,8 @@ wsioServer.onconnection(function(wsio) {
             var elem = findItemUnderPointer(pointerX, pointerY);
  
             if( elem != null ){           
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();
                 broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
             }
@@ -199,8 +199,8 @@ wsioServer.onconnection(function(wsio) {
             var elem = findItemUnderPointer(pointerX, pointerY);
  
             if( elem != null ){           
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();
                 broadcast( 'eventInItem', { eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");  
             }
@@ -235,7 +235,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 	});
 	
-	wsio.on('keyPressed', function(data) {
+	wsio.on('keyDown', function(data) {
 		if(data.code == "16"){ // shift
 			remoteInteraction[address].SHIFT = true;
 		}
@@ -248,9 +248,27 @@ wsioServer.onconnection(function(wsio) {
 		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
 			remoteInteraction[address].CMD = true;
 		}
+
+        //SEND SPECIAL KEY EVENT only
+        if ( remoteInteraction[address].appInteractionMode() ) {	
+            if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
+                var pointerX = sagePointers[address].left
+                var pointerY = sagePointers[address].top
+            
+                var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+                if( elem != null ){            
+                    var itemRelX = pointerX - elem.left;
+                    var itemRelY = pointerY - elem.top - config.titleBarHeight;
+                    var now = new Date();	
+                    broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now }, "display");  
+                }
+            }
+        }
+		
 	});
-	
-	wsio.on('keyReleased', function(data) {
+		
+    wsio.on('keyUp', function(data) {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
 		var elem = findItemUnderPointer(pointerX, pointerY);
@@ -288,16 +306,132 @@ wsioServer.onconnection(function(wsio) {
                     broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
                 }
             }
-            else if ( remoteInteraction[address].appInteractionMode() ) {	
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
-                var now = new Date();	
-                broadcast( 'eventInItem', { eventType: "keyPressed", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
+            else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
+                if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
+                    var pointerX = sagePointers[address].left
+                    var pointerY = sagePointers[address].top
+            
+                    var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+                    if( elem != null ){            
+                        var itemRelX = pointerX - elem.left;
+                        var itemRelY = pointerY - elem.top - config.titleBarHeight;
+                        var now = new Date();	
+                        broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now }, "display");  
+                    }
+                }
             }
             
 		}
 	});
 	
+    wsio.on('keyPress', function(data) {
+        if ( remoteInteraction[address].appInteractionMode() ) {
+            var pointerX = sagePointers[address].left
+            var pointerY = sagePointers[address].top
+            
+            var elem = findItemUnderPointer(pointerX, pointerY);
+            
+             if( elem != null ){            
+                var itemRelX = pointerX - elem.left;
+                var itemRelY = pointerY - elem.top - config.titleBarHeight;
+                var now = new Date();	
+                broadcast( 'eventInItem', { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now }, "display");  
+
+            }   
+        }
+    });
+	
+	/////  NEW KEY HANDLING: 
+	
+//     wsio.on('keydown', function(data) {
+//         console.log( data.key
+//     
+// // 	    if(data.code == "16"){ // shift
+// // 			remoteInteraction[address].SHIFT = true;
+// // 		}
+// // 		else if(data.code == "17"){ // ctrl
+// // 			remoteInteraction[address].CTRL = true;
+// // 		}
+// // 		else if(data.code == "18") { // alt
+// // 			remoteInteraction[address].ALT = true;
+// // 		}
+// // 		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+// // 			remoteInteraction[address].CMD = true;
+// // 		}
+// // 		
+// // 		
+// //         if ( remoteInteraction[address].appInteractionMode() ) {	
+// //             var pointerX = sagePointers[address].left
+// //             var pointerY = sagePointers[address].top
+// //             var elem = findItemUnderPointer(pointerX, pointerY);
+// //             
+// //             if( elem != null ){
+// //                 var itemRelX = pointerX - items[i].left;
+// //                 var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+// //                 var now = new Date();	
+// //                 broadcast( 'eventInItem', { eventType: "keydown", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
+// //             }
+// //         }
+// 		
+// 	});
+// 	
+// 	wsio.on('keyup', function(data) {
+// // 	    var pointerX = sagePointers[address].left
+// // 		var pointerY = sagePointers[address].top
+// // 		var elem = findItemUnderPointer(pointerX, pointerY);
+// // 		
+// // 		if(data.code == "16"){ // shift
+// // 			remoteInteraction[address].SHIFT = false;
+// // 		}
+// // 		else if(data.code == "17"){ // ctrl
+// // 			remoteInteraction[address].CTRL = false;
+// // 		}
+// // 		else if(data.code == "18") { // alt
+// // 			remoteInteraction[address].ALT = false;
+// // 		}
+// // 		else if(data.code == "20") { // caps lock
+// // 			remoteInteraction[address].CAPS = !remoteInteraction[address].CAPS;
+// // 		}
+// // 		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+// // 			remoteInteraction[address].CMD = false;
+// // 		}
+// // 		
+// // 		if(data.code == "9" && (remoteInteraction[address].CTRL)){ // ctrl + tab
+// // 			remoteInteraction[address].toggleModes();
+// // 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
+// // 		}
+// // 		
+// // 		if(elem != null){
+// //             if( remoteInteraction[address].windowManagementMode() ){
+// //                 if(data.code == "8" || data.code == "46"){ // backspace or delete
+// //                     removeElement(items, elem);
+// //                     broadcast('deleteElement', elem.id);
+// //                 }
+// //                 else{
+// //                     var newOrder = moveItemToFront(elem.id);
+// //                     broadcast('updateItemOrder', newOrder);
+// //                     broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
+// //                 }
+// //             }
+// //             else if ( remoteInteraction[address].appInteractionMode() ) {	
+// //                 var itemRelX = pointerX - items[i].left;
+// //                 var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+// //                 var now = new Date();	
+// //                 broadcast( 'eventInItem', { eventType: "keyup", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, key: String.fromCharCode(data.code).toLowerCase() }, date: now }, "display");  
+// //             }
+// //             
+// // 		}
+// // 	
+// 	});
+// 	
+// 	wsio.on('keypress', function(data) {
+// 	    
+// 	});
+	
+
+	
+
 	wsio.on('requestStoredFiles', function() {
 		wsio.emit('storedFileList', savedFiles);
 	});
@@ -633,4 +767,25 @@ function moveElementToEnd(list, elem) {
 	}
 	list[list.length-1] = elem;
 }
+
+// function fromCodeToCharAndAscii(code, theInteraction){
+//     var charToReturn = "";
+//     var asciiToReturn = 0; 
+//     
+//     if( ! theInteraction.SHIFT ){
+//         if( code >= 48 && code <=57 ) // is a number
+//         {
+//             asciiToReturn = code - 48; 
+//         }
+//         else if( code >= 65 && code <= 90 ){
+//             asciiToReturn = 
+//         }
+//     }
+//     
+//     if( theInteraction.SHIFT ){ 
+// 
+// 
+//     }
+// 
+// }
 
