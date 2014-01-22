@@ -11,9 +11,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
  
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
@@ -154,7 +154,7 @@ wsioServer.onconnection(function(wsio) {
             var pointerY = sagePointers[address].top
             
             var elem = findItemUnderPointer(pointerX, pointerY);
- 
+
             if( elem != null ){           
                 var itemRelX = pointerX - elem.left;
                 var itemRelY = pointerY - elem.top - config.titleBarHeight;
@@ -199,6 +199,7 @@ wsioServer.onconnection(function(wsio) {
             var elem = findItemUnderPointer(pointerX, pointerY);
  
             if( elem != null ){           
+
                 var itemRelX = pointerX - elem.left;
                 var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();
@@ -320,8 +321,7 @@ wsioServer.onconnection(function(wsio) {
                         broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now }, "display");  
                     }
                 }
-            }
-            
+            }  
 		}
 	});
 	

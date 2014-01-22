@@ -297,6 +297,7 @@
 		mediaStream.onended = function(e) {
 			console.log("ended");
 			broadcasting = false;
+			screenShareBtn.disabled = false;
 		};
 		
 		mediaVideo.src = window.URL.createObjectURL(mediaStream);
