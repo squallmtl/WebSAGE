@@ -8,7 +8,7 @@ var websocketIOServer = require('node-websocket.io'); // custom node module
 var loader = require('node-itemloader'); // custom node module
 var interaction = require('node-interaction'); // custom node module
 var sagepointer = require('node-sagepointer'); // custom node module
- 
+ var omicronManager = require('node-omicron'); // custom node module
  
 // CONFIG FILE
 var file = "config/desktop-cfg.json";
@@ -414,6 +414,7 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "pdfs"){
+		/*
 			var localPath = path.join("uploads", file.dir, file.name);
 			
 			fs.readFile(localPath, function (err, data) {
@@ -426,6 +427,7 @@ wsioServer.onconnection(function(wsio) {
 					itemCount++;
 				});
 			});
+			*/
 		}
 		else if(file.dir == "apps"){
 			var localPath = path.join("uploads", file.dir, file.name);
@@ -504,6 +506,7 @@ app.post('/upload', function(request, response) {
 			});
 		}
 		else if(request.files[key].type == "application/pdf"){
+		/*
 			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
 			var localPath = finalPath.substring(__dirname.length+1);
 			fs.rename(request.files[key].path, finalPath, function(err) {
@@ -523,6 +526,7 @@ app.post('/upload', function(request, response) {
 					});
 				});
 			});
+			*/
 		}
 		else if(request.files[key].type == "application/zip"){
 			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
@@ -563,6 +567,10 @@ app.post('/upload', function(request, response) {
 	});
 });
 	
+
+// Connect to Omicron tracker
+omicronManager = new omicronManager()
+omicronManager.connectToTracker()
 
 
 // Start the https server
