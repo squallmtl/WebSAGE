@@ -114,11 +114,10 @@ wsioServer.onconnection(function(wsio) {
 		sagePointers[address].stop;
 		broadcast('hideSagePointer', sagePointers[address], "display");
 		
-		if( remoteInteraction[address].appInteractionMode() ){
+		if( remoteInteraction[address].appInteractionMode() ){//return to window interaction mode after stopping pointer
 		    remoteInteraction[address].toggleModes(); 
 		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
 		}
-		
 	});
 	
 	wsio.on('pointerPress', function() {
@@ -241,22 +240,27 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('keyDown', function(data) {
-		if(data.code == "16"){ // shift
+	    console.log("keydown");
+
+		if(data.code == 16){ // shift
 			remoteInteraction[address].SHIFT = true;
 		}
-		else if(data.code == "17"){ // ctrl
+		else if(data.code == 17){ // ctrl
 			remoteInteraction[address].CTRL = true;
 		}
-		else if(data.code == "18") { // alt
+		else if(data.code == 18) { // alt
 			remoteInteraction[address].ALT = true;
 		}
-		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+        else if(data.code == 20) { // caps lock
+			remoteInteraction[address].CAPS = true;
+		}
+		else if(data.code == 91 || data.code == 92 || data.code == 93){ // command
 			remoteInteraction[address].CMD = true;
 		}
 
-        //SEND SPECIAL KEY EVENT only
+        //SEND SPECIAL KEY EVENT only will come here
         if ( remoteInteraction[address].appInteractionMode() ) {	
-            if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
+            //if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
                 var pointerX = sagePointers[address].left
                 var pointerY = sagePointers[address].top
             
@@ -268,35 +272,32 @@ wsioServer.onconnection(function(wsio) {
                     var now = new Date();	
                     broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now }, "display");  
                 }
-            }
+            //}
         }
 		
 	});
 		
     wsio.on('keyUp', function(data) {
+        console.log("keyup");
+
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
 		var elem = findItemUnderPointer(pointerX, pointerY);
 		
-		if(data.code == "16"){ // shift
+		if(data.code == 16){ // shift
 			remoteInteraction[address].SHIFT = false;
 		}
-		else if(data.code == "17"){ // ctrl
+		else if(data.code == 17){ // ctrl
 			remoteInteraction[address].CTRL = false;
 		}
-		else if(data.code == "18") { // alt
+		else if(data.code == 18) { // alt
 			remoteInteraction[address].ALT = false;
 		}
-		else if(data.code == "20") { // caps lock
-			remoteInteraction[address].CAPS = !remoteInteraction[address].CAPS;
+		else if(data.code == 20) { // caps lock
+			remoteInteraction[address].CAPS = false;
 		}
-		else if(data.code == "91" || data.code == "92" || data.code == "93"){ // command
+		else if(data.code == 91 || data.code == 92 || data.code == 93){ // command
 			remoteInteraction[address].CMD = false;
-		}
-		
-		if(data.code == "9" && (remoteInteraction[address].CTRL)){ // ctrl + tab
-			remoteInteraction[address].toggleModes();
-			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
 		}
 		
 		if(elem != null){
@@ -305,14 +306,14 @@ wsioServer.onconnection(function(wsio) {
                     removeElement(items, elem);
                     broadcast('deleteElement', elem.id);
                 }
-                else{
-                    var newOrder = moveItemToFront(elem.id);
-                    broadcast('updateItemOrder', newOrder);
-                    broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
-                }
+//                 else{
+//                     var newOrder = moveItemToFront(elem.id);
+//                     broadcast('updateItemOrder', newOrder);
+//                     broadcast('keypressItem', {elemId: elem.id, keyCode: data.code});
+//                 }
             }
             else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
-                if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
+                //if( data.code <= 46 ||  ( data.code >=91 && data.code <= 93) || ( data.code >= 112 && data.code <= 145 )  ) {
                     var pointerX = sagePointers[address].left
                     var pointerY = sagePointers[address].top
             
@@ -324,12 +325,19 @@ wsioServer.onconnection(function(wsio) {
                         var now = new Date();	
                         broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now }, "display");  
                     }
-                }
+                //}
             }  
 		}
 	});
 	
     wsio.on('keyPress', function(data) {
+        console.log("keypress");
+
+        if(data.code == 9 && (remoteInteraction[address].CTRL)){ // ctrl + tab
+			remoteInteraction[address].toggleModes();
+			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
+		}
+        
         if ( remoteInteraction[address].appInteractionMode() ) {
             var pointerX = sagePointers[address].left
             var pointerY = sagePointers[address].top
@@ -341,9 +349,11 @@ wsioServer.onconnection(function(wsio) {
                 var itemRelY = pointerY - elem.top - config.titleBarHeight;
                 var now = new Date();	
                 broadcast( 'eventInItem', { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now }, "display");  
+                broadcast( 'eventInItem', { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now }, "audioManager");  
 
             }   
         }
+        
     });
 	
 	/////  NEW KEY HANDLING: 

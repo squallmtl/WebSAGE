@@ -62,12 +62,12 @@
 			if(deleteElem != null) deleteElem.parentNode.removeChild(deleteElem);
 		});
 		
-		wsio.on('keypressItem', function(keypress_data) {
-			var selectedElem = document.getElementById(keypress_data.elemId);
+		wsio.on('eventInItem', function(event_data) {
+			var selectedElem = document.getElementById(event_data.elemId);
 			if(selectedElem == null) return;
 			
-			if(keypress_data.keyCode == "32"){ // spacebar
-				playPauseVideo(keypress_data.elemId);
+			if(event_data.code == 32){ // spacebar
+				playPauseVideo(event_data.elemId);
 			}
 		});
 	}

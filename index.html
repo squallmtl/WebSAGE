@@ -433,6 +433,13 @@
             if(child[0].tagName.toLowerCase() == "iframe"){
                 //child[0].contentWindow.postMessage('
             }
+            
+			if(event_data.code == 37 ){ // left arrow
+				if(child[0].id in pdfItems) pdfItems[child[0].id].goPrevious();
+			}
+			if(event_data.code == 39){ // right arrow
+				if(child[0].id in pdfItems) pdfItems[child[0].id].goNext();
+			}
 		
 		});
 	}

@@ -19,6 +19,7 @@
 	var canvasKeyEvents = false;
 	var canvasKeyDownFunc = null;
 	var canvasKeyUpFunc = null;
+	var canvasKeyPressFunc = null;
 	var sensitivity;
 	var selectedFile = null;
 	
@@ -97,7 +98,7 @@
 		
 		canvasKeyDownFunc = winMgr.keyDown.bind(winMgr);
 		canvasKeyUpFunc = winMgr.keyUp.bind(winMgr);
-		canvaseKeyPressFunc = winMgr.keyPress.bind(winMgr);
+		canvasKeyPressFunc = winMgr.keyPress.bind(winMgr);
 		
 		winMgrCanvas = document.getElementById('winMgr');
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
@@ -199,11 +200,14 @@
 		if(event.target == winMgrCanvas && !canvasKeyEvents){
 			document.addEventListener('keydown', canvasKeyDownFunc, false);
 			document.addEventListener('keyup', canvasKeyUpFunc, false);
+            document.addEventListener('keypress', canvasKeyPressFunc, false);
 			canvasKeyEvents = true;
 		}
 		else if(event.target != winMgrCanvas && canvasKeyEvents){
 			document.removeEventListener('keydown', canvasKeyDownFunc, false);
 			document.removeEventListener('keyup', canvasKeyUpFunc, false);
+            document.removeEventListener('keypress', canvasKeyPressFunc, false);
+
 			canvasKeyEvents = false;
 		}
 	}
@@ -353,7 +357,11 @@
 
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
-			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
+			if(canvasKeyEvents){
+			    document.removeEventListener('keydown', canvasKeyDownFunc, false);
+                document.removeEventListener('keyup', canvasKeyUpFunc, false);
+			    document.removeEventListener('keypress', canvasKeyPressFunc, false);
+            }
 		}
 		else{
 			wsio.emit('stopSagePointer');
@@ -414,18 +422,28 @@
 	}
 	
 	function pointerKeyDown(event) {
-		wsio.emit('keyDown', {code: event.keyCode});
-		preventDefault(event);
+	    console.log("keydown");
+	    var code = parseInt(event.keyCode);
+        if( code <= 46 ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyDown', {code: code});
+            preventDefault(event);
+        }
 	}
 	
 	function pointerKeyUp(event) {
-		wsio.emit('keyUp', {code: event.keyCode});
-		preventDefault(event);
+		    console.log("keyup");
+	    var code = parseInt(event.keyCode);
+        if( code <= 46 ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyUp', {code: code});
+            preventDefault(event);
+        }
 	}
 	
 		
 	function pointerKeyPress(event) {
-		wsio.emit('keyPress', {code: event.charCode});
+		console.log("keypress");
+	    var code = parseInt(event.charCode);
+		wsio.emit('keyPress', {code: code});
 		preventDefault(event);
 	}
 	
