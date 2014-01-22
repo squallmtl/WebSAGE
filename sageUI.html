@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
 <meta charset="utf-,8">
-<title>Window Manager</title>
+<title>SageUI</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
@@ -52,6 +52,8 @@
 	
 	function init() {
 		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		
+		document.title = window.location.hostname.concat(" ", document.title ); 
 		
 		wsio.open(function() {
 			console.log("open websocket");
@@ -424,16 +426,21 @@
 	function pointerKeyDown(event) {
 	    console.log("keydown");
 	    var code = parseInt(event.keyCode);
-        if( code <= 46 ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 ) ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
             wsio.emit('keyDown', {code: code});
+            preventDefault(event);
+        }
+        if( code == 9 ) //tab is a special case- no keypress event called, but need this event
+        {
+            wsio.emit('keyPress', {code: code});
             preventDefault(event);
         }
 	}
 	
 	function pointerKeyUp(event) {
-		    console.log("keyup");
+		console.log("keyup");
 	    var code = parseInt(event.keyCode);
-        if( code <= 46 ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 )||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
             wsio.emit('keyUp', {code: code});
             preventDefault(event);
         }
