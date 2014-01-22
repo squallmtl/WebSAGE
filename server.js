@@ -679,9 +679,8 @@ var udp = undefined;
 // Green table
 //var tserver   = "midori.evl.uic.edu";
 // Icelab
-var tserver   = "omgtracker.evl.uic.edu";
-// Arthur Touchscreen
-//var tserver   = "localhost";
+//var tserver   = "omgtracker.evl.uic.edu";
+var tserver   = "localhost";
 
 var tport     = 28000;
 var pdataPort = 9123;
@@ -732,7 +731,7 @@ var ptrs    = {};
                         if (offset < msg.length) e.extraDataType = msg.readUInt32LE(offset); offset += 4;
                         if (offset < msg.length) e.extraDataItems = msg.readUInt32LE(offset); offset += 4;
                         if (offset < msg.length) e.extraDataMask = msg.readUInt32LE(offset); offset += 4;
-                        // memcpy(ed.extraData, &eventPacket[offset], EventData::ExtraDataSize);
+                        //memcpy(ed.extraData, &eventPacket[offset], EventData::ExtraDataSize);
 
                         // Extra data types:
 						//    0 ExtraDataNull,
@@ -752,6 +751,15 @@ var ptrs    = {};
 
 						// serviceID: 0 = touch, 1 = SAGEPointer (note this depends on the order the services are specified on the server)
 						var serviceID = e.serviceId;
+						
+						var touchWidth = 0;
+						var touchHeight = 0;
+						if( serviceID == 0 &&  e.extraDataItems >= 2)
+						{
+							touchWidth = msg.readFloatLE(offset); offset += 4;
+							touchHeight = msg.readFloatLE(offset); offset += 4;
+							//console.log("Touch size: " + touchWidth + "," + touchHeight); 
+						}
 						
 						// Appending sourceID to pointer address ID
 						var address = tserver+":"+sourceID;
@@ -777,6 +785,8 @@ var ptrs    = {};
 								var FLAG_FIVE_FINGER_HOLD = User << 4;
 								var FLAG_FIVE_FINGER_SWIPE = User << 5;
 								var FLAG_THREE_FINGER_HOLD = User << 6;
+								var FLAG_SINGLE_CLICK = User << 7;
+								var FLAG_DOUBLE_CLICK = User << 8;
 								
 								//console.log( e.flags );
                                 if (e.type == 3) { // update
@@ -829,12 +839,31 @@ var ptrs    = {};
 									}
                                 }
                                 else if (e.type == 15) { // zoom
+									console.log("Touch zoom");
+									
+									/*
+									Omicron zoom event extra data:
+									0 = touchWidth (parsed above)
+									1 = touchHeight (parsed above)
+									2  = zoom delta
+									3 = event second type ( 1 = Down, 2 = Move, 3 = Up )
+									*/
+									// extraDataType 1 = float		
+									if (e.extraDataType == 1 && e.extraDataItems >= 4)
+									{
+										var zoomDelta = msg.readFloatLE(offset); offset += 4;
+										var eventType = msg.readFloatLE(offset);  offset += 4;
+                                        console.log( zoomDelta ); 
+                                        console.log( eventType ); 
+									}
+									
+									/*
 //                                         sio.sockets.emit('changeMode', {mode: 1} );
-                                        if (e.sourceId in ptrs) {
-                                                //console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
+                                     if (e.sourceId in ptrs) {
+                                         //console.log("\t zoom x:" + ptrs[e.sourceId].position[0] + " y:" + ptrs[e.sourceId].position[1]);
 
-                                                //ptrs[e.sourceId].position = [e.posx, e.posy];
-                                                ptrs[e.sourceId].zoom = 1;
+                                        //ptrs[e.sourceId].position = [e.posx, e.posy];
+                                        ptrs[e.sourceId].zoom = 1;
                                                 zoom = 1; 
                                                 if (offset < msg.length) {
                                                         // One int for zoom value
@@ -850,6 +879,7 @@ var ptrs    = {};
                                                         }
                                                 }
                                         }
+										*/
                                 }
                                 else if (e.type == 5) { // button down
                                         //console.log("\t down , flags ", e.flags);
@@ -902,6 +932,18 @@ var ptrs    = {};
 
 											removeItemById( interaction[address].selectedMoveItem.id );
 											sio.sockets.emit('deleteElement', interaction[address].selectedMoveItem.id );
+										}
+										else if( e.flags == FLAG_THREE_FINGER_HOLD )
+										{
+											console.log("Touch gesture: Three finger hold");
+										}
+										else if( e.flags == FLAG_SINGLE_CLICK )
+										{
+											console.log("Touch gesture: Click");
+										}
+										else if( e.flags == FLAG_DOUBLE_CLICK )
+										{
+											console.log("Touch gesture: Double Click");
 										}
                                 }
                                 else if (e.type == 6) { // button up
