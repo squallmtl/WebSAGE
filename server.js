@@ -113,6 +113,12 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('stopSagePointer', function() {
 		sagePointers[address].stop;
 		broadcast('hideSagePointer', sagePointers[address], "display");
+		
+		if( remoteInteraction[address].appInteractionMode() ){
+		    remoteInteraction[address].toggleModes(); 
+		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
+		}
+		
 	});
 	
 	wsio.on('pointerPress', function() {
@@ -120,8 +126,6 @@ wsioServer.onconnection(function(wsio) {
 		var pointerY = sagePointers[address].top
 
         var elem = findItemUnderPointer(pointerX, pointerY);
-
-		
 		if(elem != null){
             if( remoteInteraction[address].windowManagementMode() ){
                 remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
