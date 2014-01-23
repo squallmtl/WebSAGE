@@ -1,8 +1,10 @@
-var express = require('express');
+//var express = require('express');
 var fs = require('fs');
 var https = require('https');
+var multiparty = require('multiparty');
 var path = require('path');
 var request = require('request');
+var url = require('url');
 
 var websocketIOServer = require('node-websocket.io'); // custom node module
 var loader = require('node-itemloader'); // custom node module
@@ -38,6 +40,7 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
+/*
 var app = express();
 
 app.configure(function(){
@@ -47,6 +50,7 @@ app.configure(function(){
 	app.use(express.static(__dirname + path.sep));
 	app.use(app.router);
 });
+*/
 
 var options = {
   key: fs.readFileSync(path.join("keys", "server.key")),
@@ -56,7 +60,55 @@ var options = {
   rejectUnauthorized: false
 };
 
-var server = https.createServer(options, app);
+//var server = https.createServer(options, app);
+
+var server = https.createServer(options, onRequest);
+
+function onRequest(req, res) {
+	if(req.method == "GET"){
+		var pathname = "." + url.parse(req.url).pathname;
+		if(pathname == "./") pathname = "./index.html";
+	
+		fs.readFile(pathname, "binary", function(err, data) {
+			if(err){
+				res.writeHead(500, {"Content-Type": "text/plain"});
+				res.write(err + "\n\n");
+				res.end();
+				return;
+			}
+		
+			if     (pathname.indexOf(".html") >= 0)  res.writeHead(200, {"Content-Type": "text/html"});
+			else if(pathname.indexOf(".css")  >= 0)  res.writeHead(200, {"Content-Type": "text/css"});
+			else if(pathname.indexOf(".js")   >= 0)  res.writeHead(200, {"Content-Type": "text/javascript"});
+			else                                     res.writeHead(200, {"Content-Type": "text/plain"});
+		
+			res.write(data, "binary");
+			res.end();
+		});
+	}
+	else if(req.method == "POST"){
+		var pathname = url.parse(req.url).pathname;
+		if(pathname == "/upload"){
+			var form = new multiparty.Form();
+			form.parse(req, function(err, fields, files) {
+				if(err){
+					res.writeHead(500, {"Content-Type": "text/plain"});
+					res.write(err + "\n\n");
+					res.end();
+				}
+				
+				uploadFiles(files);
+		
+				res.writeHead(200, {"Content-Type": "text/plain"});
+				res.write("received upload:\n\n");
+				res.end();
+			});
+        }
+	}
+}
+
+
+
 var wsioServer = new websocketIOServer(config.port+1);
 
 var itemCount = 0;
@@ -498,39 +550,39 @@ wsioServer.onconnection(function(wsio) {
 			request({url: data.src, encoding: null}, function(err, response, body) {
 				if(err) throw err;
 				
+				itemCount++;
 				loader.loadImage(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
 					broadcast('addNewElement', newItem);
 				
 					items.push(newItem);
-					itemCount++;
 				});
 			});
 		}
 		else if(data.type == "video"){
+			itemCount++;
 			loader.loadVideo(data.src, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
-				itemCount++;
 			});
 		}
 		else if(data.type == "youtube"){
+			itemCount++;
 			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
-				itemCount++;
 			});
 		}
 		else if(data.type == "pdf"){
 			request({url: data.src, encoding: null}, function(err, response, body) {
 				if(err) throw err;
 				
+				itemCount++;
 				loader.loadPdf(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
 					broadcast('addNewElement', newItem);
 				
 					items.push(newItem);
-					itemCount++;
 				});
 			});
 		}
@@ -543,22 +595,22 @@ wsioServer.onconnection(function(wsio) {
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
+				itemCount++;
 				loader.loadImage(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
-					itemCount++;
 				});
 			});
 		}
 		else if(file.dir == "videos"){
 			var localPath = path.join("uploads", file.dir, file.name);
 			
+			itemCount++;
 			loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
 		
 				items.push(newItem);
-				itemCount++;
 			});
 		}
 		else if(file.dir == "pdfs"){
@@ -567,11 +619,11 @@ wsioServer.onconnection(function(wsio) {
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
+				itemCount++;
 				loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
-					itemCount++;
 				});
 			});
 		}
@@ -579,6 +631,8 @@ wsioServer.onconnection(function(wsio) {
 			var localPath = path.join("uploads", file.dir, file.name);
 			
 			console.log(localPath);
+			
+			itemCount++;
 			var id = "item"+itemCount.toString();
 			loader.loadApp(localPath, id, function(newItem, instructions) {
 				// add resource scripts to clients
@@ -593,7 +647,6 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('addNewElement', newItem);
 					
 					items.push(newItem);
-					itemCount++;
 
 					// set interval timer if specified
 					if(instructions.animation == "timer"){
@@ -608,6 +661,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 });
 
+/*
 app.post('/upload', function(request, response) {
 	var fileKeys = Object.keys(request.files);
 	fileKeys.forEach(function(key) {
@@ -710,7 +764,72 @@ app.post('/upload', function(request, response) {
 		}
 	});
 });
-	
+*/
+
+function uploadFiles(files) {
+	var fileKeys = Object.keys(files);
+	fileKeys.forEach(function(key) {
+		var file = files[key][0];
+		var type = file.headers['content-type'];
+		var uploadsDir = path.join(__dirname, "uploads");
+		
+		console.log(file);
+		
+		if(type == "image/jpeg" || type == "image/png"){
+			var localPath = path.join("uploads", "images", file.originalFilename);
+			fs.rename(file.path, localPath, function(err) {
+				if(err) throw err;
+				
+				fs.readFile(localPath, function (err, data) {
+					if(err) throw err;
+					
+					itemCount++;
+					loader.loadImage(data, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+						broadcast('addNewElement', newItem);
+				
+						items.push(newItem);
+				
+						if(savedFiles["image"].indexOf(file.originalFilename) < 0) savedFiles["image"].push(file.originalFilename);
+					});
+				});
+			});
+		}
+		else if(type == "video/mp4"){
+			var localPath = path.join("uploads", "videos", file.originalFilename);
+			fs.rename(file.path, localPath, function(err) {
+				if(err) throw err;
+				
+				itemCount++;
+				loader.loadVideo(localPath, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+					broadcast('addNewElement', newItem);
+			
+					items.push(newItem);
+					
+					if(savedFiles["video"].indexOf(file.originalFilename) < 0) savedFiles["video"].push(file.originalFilename);
+				});
+			});
+		}
+		else if(type == "application/pdf"){
+			var localPath = path.join("uploads", "pdfs", file.originalFilename);
+			fs.rename(file.path, localPath, function(err) {
+				if(err) throw err;
+				
+			});
+		}
+		else if(type == "application/zip"){
+			var localPath = path.join("uploads", "apps", file.originalFilename);
+			fs.rename(file.path, localPath, function(err) {
+				if(err) throw err;
+				
+			});
+		}
+		else{
+			console.log("uploaded unknown type: " + type)
+		}
+	});
+}
+
+
 
 
 // Start the https server

@@ -50,6 +50,8 @@
 	var pdfsDir;
 	var videosDir;
 	
+	var maxUploadSize = 500 * (1024*1024); // 500 MB
+	
 	function init() {
 		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
 		
@@ -467,22 +469,26 @@
 		var text = event.dataTransfer.getData("Text");
 		if(files.length > 0){
 			var formdata = new FormData();
+			var empty = true;
 			for(i=0; i<files.length; i++){
-				formdata.append("file"+i.toString(), files[i]);
+				if(files[i].size <= maxUploadSize){ formdata.append("file"+i.toString(), files[i]); empty = false; }
+				else alert("File: " + files[i].name + " is too large (max size is " + (maxUploadSize / (1024*1024)) + " MB)");
 			}
-			xhr = new XMLHttpRequest();
-			xhr.open("POST", "/upload", true);
-			xhr.upload.addEventListener('progress', function(event) {
-				var fileDropText = document.getElementById("fileDropText");
-				var pc = parseInt((event.loaded / event.total) * 100);
-				fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
-				if(pc == 100){
-					setTimeout(function() {
-						fileDropText.innerHTML = "Drag files here to upload";
-					}, 500);
-				}
-			}, false);
-			xhr.send(formdata);
+			if(!empty){
+				xhr = new XMLHttpRequest();
+				xhr.open("POST", "/upload", true);
+				xhr.upload.addEventListener('progress', function(event) {
+					var fileDropText = document.getElementById("fileDropText");
+					var pc = parseInt((event.loaded / event.total) * 100);
+					fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
+					if(pc == 100){
+						setTimeout(function() {
+							fileDropText.innerHTML = "Drag files here to upload";
+						}, 500);
+					}
+				}, false);
+				xhr.send(formdata);
+			}
 		}
 		else if(url != null || text != null){
 			var dataUrl;
@@ -493,6 +499,7 @@
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(ext.length > 3) ext = ext.substring(0,3);
+			ext = ext.toLowerCase();
 			if(youtube >= 0) urlType = "youtube";
 			else if(ext == "jpg" || ext == "png") urlType = "img";
 			else if(ext == "mp4") urlType = "video";
