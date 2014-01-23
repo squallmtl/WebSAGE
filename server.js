@@ -87,10 +87,7 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('addClient', function(data) {
 		wsio.clientType = data.clientType;
 		if(wsio.clientType == "sageUI"){
-			sagePointers[address] = new sagepointer(address+"_pointer");
-			remoteInteraction[address] = new interaction();
-			
-			broadcast('createSagePointer', sagePointers[address], "display");
+			createSagePointer(address);
 		}
 		else if(wsio.clientType == "display"){
 			for(var key in sagePointers){
@@ -105,78 +102,29 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('startSagePointer', function(data) {
-		console.log("starting pointer: " + address);
-		
-		sagePointers[address].start(data.label, data.color);
-		broadcast('showSagePointer', sagePointers[address], "display");
+		showPointer( address, data );
 	});
 	
 	wsio.on('stopSagePointer', function() {
-		sagePointers[address].stop;
-		broadcast('hideSagePointer', sagePointers[address], "display");
+		hidePointer( address);
 	});
 	
 	wsio.on('pointerPress', function() {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
-
-        var elem = findItemUnderPointer(pointerX, pointerY);
-
-		
-		if(elem != null){
-            if( remoteInteraction[address].windowManagementMode() ){
-                remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
-            }
-            else if ( remoteInteraction[address].appInteractionMode() ) {
-                var itemRelX = pointerX - items[i].left;
-				var itemRelY = pointerY - items[i].top - config.titleBarHeight;
-				var now = new Date();
-				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
-            }        
-            
-			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', newOrder);
-		} 
-		else { //if no item, change pointer mode
-		    remoteInteraction[address].toggleModes(); 
-		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
-		}
-		
-		
+	
+		pointerPress( address, pointerX, pointerY );
 	});
 	
 	wsio.on('pointerRelease', function() {
-	    if( remoteInteraction[address].windowManagementMode() ){
-            remoteInteraction[address].releaseItem();
-
-	    }
-	    else if ( remoteInteraction[address].appInteractionMode() ) {
-            var pointerX = sagePointers[address].left
-            var pointerY = sagePointers[address].top
-            
-            var elem = findItemUnderPointer(pointerX, pointerY);
- 
-            if( elem != null ){           
-                var itemRelX = pointerX - items[i].left;
-                var itemRelY = pointerY - items[i].top - config.titleBarHeight;
-                var now = new Date();
-                broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
-            }
-	    }
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		
+		pointerRelease( address, pointerX, pointerY );
 	});
 	
 	wsio.on('pointerPosition', function(data) {
-		sagePointers[address].left = data.pointerX;
-		sagePointers[address].top = data.pointerY;
-		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-		
-		broadcast('updateSagePointerPosition', sagePointers[address], "display");
-		
-		var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-		if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+		pointerPosition(address, data);
 	});
 	
 	wsio.on('pointerMove', function(data) {
@@ -211,29 +159,12 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('pointerScrollStart', function() {
 		var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
-		var elem = findItemUnderPointer(pointerX, pointerY);
 		
-		if(elem != null){
-			remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
-			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', newOrder);
-		}
+		pointerScrollStart( address, pointerX, pointerY );
 	});
 	
 	wsio.on('pointerScroll', function(data) {
-		var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
-		if(updatedItem != null){
-			broadcast('setItemPositionAndSize', updatedItem);
-			
-			if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
-				clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
-			}
-			
-			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
-				broadcast('finishedResize', {id: updatedItem.elemId}, "display");
-				remoteInteraction[address].selectedScrollItem = null;
-			}, 500);
-		}
+		pointerScroll( address, data );
 	});
 	
 	wsio.on('keyPressed', function(data) {
@@ -563,23 +494,17 @@ app.post('/upload', function(request, response) {
 		}
 	});
 });
-	
-//if( config.omicronServerIP )
-//{
-//	omicronManager = new omicronManager(config, this);
-//	omicronManager.runTracker(this, sagePointers);
-//}
 
-/**Big ugly Omicron section******************************************************************/
+/******** Omicron section *****************************************************************/
 var net = require('net');
 var util = require('util');
 var dgram = require('dgram');
 
-	udp = undefined;
+udp = undefined;
 	
-	trackerIP = config.omicronServerIP;
-	msgPort = config.omicronMsgPort;
-	dataPort = config.omicronDataPort;
+trackerIP = config.omicronServerIP;
+msgPort = config.omicronMsgPort;
+dataPort = config.omicronDataPort;
 	
 if( config.omicronServerIP )
 {
@@ -642,7 +567,6 @@ if( config.omicronServerIP )
 				if (offset < msg.length) e.extraDataType = msg.readUInt32LE(offset); offset += 4;
 				if (offset < msg.length) e.extraDataItems = msg.readUInt32LE(offset); offset += 4;
 				if (offset < msg.length) e.extraDataMask = msg.readUInt32LE(offset); offset += 4;
-				//memcpy(ed.extraData, &eventPacket[offset], EventData::ExtraDataSize);
 
 				// Extra data types:
 				//    0 ExtraDataNull,
@@ -703,7 +627,7 @@ if( config.omicronServerIP )
 					
 					//console.log( e.flags );
 					if (e.type == 3)
-					{ // update
+					{ // update (Used only by classic SAGE pointer)
 						/* if( e.sourceId in ptrs )
 							 return;
 						colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
@@ -723,33 +647,8 @@ if( config.omicronServerIP )
 					else if (e.type == 4)
 					{ // move
 						if( e.flags == FLAG_SINGLE_TOUCH )
-						{/*
-							if(address in sagePointers)
-							{
-								sagePointers[address].left = posX;
-								sagePointers[address].top = posY;
-								sio.sockets.emit("updatePointer", sagePointers[address]);
-							}
-							
-							if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
-							interaction[address].selectedMoveItem.left = sagePointers[address].left + interaction[address].selectOffsetX;
-							interaction[address].selectedMoveItem.top = sagePointers[address].top + interaction[address].selectOffsetY;
-							
-							var now = new Date();
-							sio.sockets.emit('setItemPosition', {elemId: interaction[address].selectedMoveItem.id, elemLeft: interaction[address].selectedMoveItem.left, elemTop: interaction[address].selectedMoveItem.top, elemWidth: interaction[address].selectedMoveItem.width, elemHeight: interaction[address].selectedMoveItem.height, date: now});
-							console.log("Touch move selected");*/
-							
-							sagePointers[address].left = posX;
-							sagePointers[address].top = posY;
-							if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-							if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-							if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-							if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-							
-							broadcast('updateSagePointerPosition', sagePointers[address], "display");
-							
-							var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-							if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+						{
+							pointerPosition( address, { pointerX: posX, pointerY: posY } );
 		
 						}
 					}
@@ -764,13 +663,22 @@ if( config.omicronServerIP )
 						2  = zoom delta
 						3 = event second type ( 1 = Down, 2 = Move, 3 = Up )
 						*/
-						// extraDataType 1 = float		
+						// extraDataType 1 = float
 						if (e.extraDataType == 1 && e.extraDataItems >= 4)
 						{
+
 							var zoomDelta = msg.readFloatLE(offset); offset += 4;
 							var eventType = msg.readFloatLE(offset);  offset += 4;
 							console.log( zoomDelta ); 
-							console.log( eventType ); 
+							
+							if( eventType == 1 ) // Zoom start/down
+							{
+								pointerScrollStart( address, posX, posY );
+							}
+							else // Zoom move
+							{
+								pointerScroll( address, { scale: 1+zoomDelta } );
+							}
 						}
 
 					}
@@ -782,80 +690,13 @@ if( config.omicronServerIP )
 							console.log("starting pointer: " + address)
 							// Create pointer
 							if(address in sagePointers){
-								sagePointers[address].label = "Touch: " + sourceID;
-								sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-								sagePointers[address].left = posX;
-								sagePointers[address].top = posY;
-								sio.sockets.emit('showPointer', sagePointers[address]);
+								showPointer( address, { label:  "Touch: " + sourceID, color: "rgba(255, 255, 255, 1.0)" } );
 							}else{
-								sagePointers[address] = new sagepointer(address+"_pointer");
-								remoteInteraction[address] = new interaction();
+								createSagePointer(address);
 								
-								broadcast('createSagePointer', sagePointers[address], "display");
+								showPointer( address, { label:  "Touch: " + sourceID, color: "rgba(255, 255, 255, 1.0)" } );
 								
-								// Display pointer
-								label = "Touch: " + sourceID;
-								color = "rgba(255, 255, 255, 1.0)";
-
-								sagePointers[address].start(label, color);
-								broadcast('showSagePointer', sagePointers[address], "display");
-								
-								// Pointer 'click'
-								var pointerX = posX;
-								var pointerY = posY;
-
-								var elem = findItemUnderPointer(pointerX, pointerY);
-
-								if(elem != null){
-									if( remoteInteraction[address].windowManagementMode() ){
-										remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
-									}
-									else if ( remoteInteraction[address].appInteractionMode() ) {
-										var itemRelX = pointerX - items[i].left;
-										var itemRelY = pointerY - items[i].top - config.titleBarHeight;
-										var now = new Date();
-										broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
-									}        
-									
-									var newOrder = moveItemToFront(elem.id);
-									broadcast('updateItemOrder', newOrder);
-								} 
-								else { //if no item, change pointer mode
-									//remoteInteraction[address].toggleModes(); 
-									//broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
-								}
-		
-								//sagePointers[address] = {id: "pointer"+pointerCount.toString(), left: 0, top: 0, label: "", color: "rgba(255, 255, 255, 1.0)"};
-								//sagePointers[address].label = "Touch: " + sourceID;
-								//sagePointers[address].color = "rgba(255, 255, 255, 1.0)"
-								//sagePointers[address].left = posX;
-								//sagePointers[address].top = posY;
-												
-								//pointerCount++;
-								//sio.sockets.emit('createPointer', sagePointers[address]);
-												
-								//interaction[address] = {selectedMoveItem: null, selectedScrollItem: null, selectOffsetX: 0, selectOffsetY: 0, selectTimeId: {}};
-								/*
-								var pointerX = posX;
-								var pointerY = posY;
-												
-								for(var i=items.length-1; i>=0; i--){
-									if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height)){
-										interaction[address].selectedMoveItem = findItemById(items[i].id);
-										interaction[address].selectedScrollItem = null;
-										interaction[address].selectOffsetX = items[i].left - pointerX;
-										interaction[address].selectOffsetY = items[i].top - pointerY;
-										break;
-									}
-								}
-								
-								
-								if(interaction[address].selectedMoveItem != null){
-									var newOrder = moveItemToFront(interaction[address].selectedMoveItem.id);
-									sio.sockets.emit('updateItemOrder', newOrder);
-									console.log("Touch select");
-								}
-								*/
+								pointerPress( address, posX, posY );
 							}
 						}
 						else if( e.flags == FLAG_FIVE_FINGER_HOLD )
@@ -864,16 +705,12 @@ if( config.omicronServerIP )
 							
 							var elem = findItemUnderPointer(posX, posY);
 							
+							// Remove element
 							if( elem != null && remoteInteraction[address].windowManagementMode() )
 							{
 								removeElement(items, elem);
 								broadcast('deleteElement', elem.id);
 							}
-							
-							//if(interaction[address] == null || interaction[address].selectedMoveItem == null) return;
-							
-							//removeItemById( interaction[address].selectedMoveItem.id );
-							//sio.sockets.emit('deleteElement', interaction[address].selectedMoveItem.id );
 						}
 						else if( e.flags == FLAG_THREE_FINGER_HOLD )
 						{
@@ -893,44 +730,21 @@ if( config.omicronServerIP )
 						if( e.flags == FLAG_SINGLE_TOUCH )
 						{
 							// Hide pointer
-							sagePointers[address].stop;
-							broadcast('hideSagePointer', sagePointers[address], "display");
-		
+							hidePointer(address);
+							
 							// Release event
-							if( remoteInteraction[address].windowManagementMode() ){
-								remoteInteraction[address].releaseItem();
-
-							}
-							else if ( remoteInteraction[address].appInteractionMode() ) {
-								var pointerX = sagePointers[address].left
-								var pointerY = sagePointers[address].top
-								
-								var elem = findItemUnderPointer(pointerX, pointerY);
-					 
-								if( elem != null ){           
-									var itemRelX = pointerX - items[i].left;
-									var itemRelY = pointerY - items[i].top - config.titleBarHeight;
-									var now = new Date();
-									broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
-								}
-							}
-		
-							//sio.sockets.emit('hidePointer', sagePointers[address]);
+							pointerRelease(address, posX, posY);
 							
 							console.log("Touch release");
-							//if( interaction[address] == null ) return;
-							//interaction[address].selectedMoveItem = null;
-							//interaction[address].selectedScrollItem = null;
 						}
 					}
 					else
 					{
 					console.log("\t UNKNOWN event type ", e.type);                                        
 					}
-					/////////////////////////////////////////////////////////////////////////////
-					
+
 					if (emit>2) { dstart = Date.now(); emit = 0; }
-				}
+				}// ServiceTypePointer ends ///////////////////////////////////////////
 			}
 		});
 
@@ -949,7 +763,6 @@ if( config.omicronServerIP )
 server.listen(config.port);
 
 console.log('Now serving the app at https://localhost:' + config.port);
-
 
 
 /***************************************************************************************/
@@ -1014,3 +827,112 @@ function moveElementToEnd(list, elem) {
 	list[list.length-1] = elem;
 }
 
+/**** Pointer Functions ********************************************************************/
+
+function createSagePointer( address ) {
+	sagePointers[address] = new sagepointer(address+"_pointer");
+	remoteInteraction[address] = new interaction();
+					
+	broadcast('createSagePointer', sagePointers[address], "display");
+}
+
+function showPointer( address, data ) {
+	console.log("starting pointer: " + address);
+		
+	sagePointers[address].start(data.label, data.color);
+	broadcast('showSagePointer', sagePointers[address], "display");
+}
+
+function hidePointer( address ) {
+	sagePointers[address].stop;
+	broadcast('hideSagePointer', sagePointers[address], "display");
+}
+
+function pointerPress( address, pointerX, pointerY ) {
+    var elem = findItemUnderPointer(pointerX, pointerY);
+		
+	if(elem != null){
+        if( remoteInteraction[address].windowManagementMode() ){
+            remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+        }
+        else if ( remoteInteraction[address].appInteractionMode() ) {
+            var itemRelX = pointerX - items[i].left;
+			var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+			var now = new Date();
+			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+        }        
+            
+		var newOrder = moveItemToFront(elem.id);
+		broadcast('updateItemOrder', newOrder);
+	} 
+	else { //if no item, change pointer mode
+		remoteInteraction[address].toggleModes(); 
+		broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
+	}
+}
+
+// Copied from pointerPress. Eventually a touch gesture will use this to toggle modes
+function togglePointerMode(address) {
+	remoteInteraction[address].toggleModes(); 
+	broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
+}
+
+function pointerRelease(address, pointerX, pointerY) {
+	if( remoteInteraction[address].windowManagementMode() ){
+        remoteInteraction[address].releaseItem();
+
+	}
+	else if ( remoteInteraction[address].appInteractionMode() ) {
+        var pointerX = sagePointers[address].left
+        var pointerY = sagePointers[address].top
+        
+        var elem = findItemUnderPointer(pointerX, pointerY);
+ 
+		if( elem != null ){           
+            var itemRelX = pointerX - items[i].left;
+            var itemRelY = pointerY - items[i].top - config.titleBarHeight;
+            var now = new Date();
+            broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+         }
+	}
+}
+
+function pointerPosition( address, data ) {
+	sagePointers[address].left = data.pointerX;
+	sagePointers[address].top = data.pointerY;
+	if(sagePointers[address].left < 0) sagePointers[address].left = 0;
+	if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
+	if(sagePointers[address].top < 0) sagePointers[address].top = 0;
+	if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
+		
+	broadcast('updateSagePointerPosition', sagePointers[address], "display");
+	
+	var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
+	if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+}
+
+function pointerScrollStart( address, pointerX, pointerY ) {
+	var elem = findItemUnderPointer(pointerX, pointerY);
+		
+	if(elem != null){
+		remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
+		var newOrder = moveItemToFront(elem.id);
+		broadcast('updateItemOrder', newOrder);
+	}
+}
+
+function pointerScroll( address, data ) {
+	var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
+	if(updatedItem != null){
+		broadcast('setItemPositionAndSize', updatedItem);
+		
+		if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
+			clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
+		}
+		
+		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
+			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
+			remoteInteraction[address].selectedScrollItem = null;
+		}, 500);
+	}
+}
