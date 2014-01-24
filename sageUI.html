@@ -461,33 +461,47 @@
 	}
 	
 	function uploadFileToServer(event) {
-		var i;
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
 		var url = event.dataTransfer.getData("Url");
 		var text = event.dataTransfer.getData("Text");
 		if(files.length > 0){
-			var formdata = new FormData();
-			var empty = true;
-			for(i=0; i<files.length; i++){
-				if(files[i].size <= maxUploadSize){ formdata.append("file"+i.toString(), files[i]); empty = false; }
-				else alert("File: " + files[i].name + " is too large (max size is " + (maxUploadSize / (1024*1024)) + " MB)");
-			}
-			if(!empty){
-				xhr = new XMLHttpRequest();
-				xhr.open("POST", "/upload", true);
-				xhr.upload.addEventListener('progress', function(event) {
-					var fileDropText = document.getElementById("fileDropText");
-					var pc = parseInt((event.loaded / event.total) * 100);
-					fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
-					if(pc == 100){
-						setTimeout(function() {
-							fileDropText.innerHTML = "Drag files here to upload";
-						}, 500);
-					}
-				}, false);
-				xhr.send(formdata);
+			var total = {};
+			var loaded = {};
+			var pc = 0;
+			var fileDropText = document.getElementById('fileDropText');
+			
+			for(var i=0; i<files.length; i++){
+				if(files[i].size <= maxUploadSize){
+					var formdata = new FormData();
+					formdata.append("file"+i.toString(), files[i]);
+				
+					xhr = new XMLHttpRequest();
+					xhr.open("POST", "/upload", true);
+					xhr.upload.id = "file"+i.toString();
+					xhr.upload.addEventListener('progress', function(event) {
+						if(!(event.srcElement.id in total)){
+							total[event.srcElement.id] = event.total;
+						}
+						loaded[event.srcElement.id] = event.loaded;
+						
+						var totalSize = 0;
+						var uploaded = 0;
+						for(key in total){ totalSize += total[key]; uploaded += loaded[key]; }
+						pc = Math.floor((uploaded/totalSize) * 100);
+						fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
+						if(pc == 100){
+							setTimeout(function() {
+								if(pc == 100) fileDropText.innerHTML = "Drag files here to upload";
+							}, 500);
+						}
+					}, false);
+					xhr.send(formdata);
+				}
+				else{
+					alert("File: " + files[i].name + " is too large (max size is " + (maxUploadSize / (1024*1024)) + " MB)");
+				}
 			}
 		}
 		else if(url != null || text != null){

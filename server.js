@@ -40,17 +40,6 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
-/*
-var app = express();
-
-app.configure(function(){
-	app.use(express.methodOverride());
-	app.use(express.bodyParser({uploadDir: uploadsFolder, limit: '250mb'}));
-	app.use(express.multipart());
-	app.use(express.static(__dirname + path.sep));
-	app.use(app.router);
-});
-*/
 
 var options = {
   key: fs.readFileSync(path.join("keys", "server.key")),
@@ -59,8 +48,6 @@ var options = {
   requestCert: true,
   rejectUnauthorized: false
 };
-
-//var server = https.createServer(options, app);
 
 var server = https.createServer(options, onRequest);
 
@@ -558,111 +545,6 @@ wsioServer.onconnection(function(wsio) {
 	});
 });
 
-/*
-app.post('/upload', function(request, response) {
-	var fileKeys = Object.keys(request.files);
-	fileKeys.forEach(function(key) {
-		var uploadPath = path.dirname(request.files[key].path);
-		
-		if(request.files[key].type == "image/jpeg" || request.files[key].type == "image/png"){
-			var finalPath = path.join(uploadPath, "images", request.files[key].name);
-			var localPath = finalPath.substring(__dirname.length+1);
-			fs.rename(request.files[key].path, finalPath, function(err) {
-				if(err) throw err;
-				
-				fs.readFile(localPath, function (err, data) {
-					if(err) throw err;
-					
-					loader.loadImage(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-						broadcast('addNewElement', newItem);
-				
-						items.push(newItem);
-						itemCount++;
-				
-						var file = path.basename(localPath);
-						if(savedFiles["image"].indexOf(file) < 0) savedFiles["image"].push(file);
-					});
-				});
-			});
-		}
-		else if(request.files[key].type == "video/mp4"){
-			var finalPath = path.join(uploadPath, "videos", request.files[key].name);
-			var localPath = finalPath.substring(__dirname.length+1);
-			fs.rename(request.files[key].path, finalPath, function(err) {
-				if(err) throw err;
-				
-				loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
-			
-					items.push(newItem);
-					itemCount++;
-				
-					var file = path.basename(localPath);
-					if(savedFiles["video"].indexOf(file) < 0) savedFiles["video"].push(file);
-				});
-			});
-		}
-		else if(request.files[key].type == "application/pdf"){
-			var finalPath = path.join(uploadPath, "pdfs", request.files[key].name);
-			var localPath = finalPath.substring(__dirname.length+1);
-			fs.rename(request.files[key].path, finalPath, function(err) {
-				if(err) throw err;
-				
-				fs.readFile(finalPath, function (err, data) {
-					if(err) throw err;
-					
-					loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-						broadcast('addNewElement', newItem);
-				
-						items.push(newItem);
-						itemCount++;
-						
-						var file = path.basename(localPath);
-						if(savedFiles["pdf"].indexOf(file) < 0) savedFiles["pdf"].push(file);
-					});
-				});
-			});
-		}
-		else if(request.files[key].type == "application/zip"){
-			var finalPath = path.join(uploadPath, "apps", request.files[key].name);
-			var localPath = finalPath.substring(__dirname.length+1);
-			fs.rename(request.files[key].path, finalPath, function(err) {
-				if(err) throw err;
-				
-				var id = "item"+itemCount.toString();
-				loader.loadZipApp(localPath, id, function(newItem, instructions) {
-					// add resource scripts to clients
-					for(var i=0; i<instructions.resources.length; i++){
-						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
-						}
-					}
-		
-					// add item to clients (after waiting 1 second to ensure resources have loaded)
-					setTimeout(function() {
-						broadcast('addNewElement', newItem);
-						
-						items.push(newItem);
-						itemCount++;
-	
-						// set interval timer if specified
-						if(instructions.animation == "timer"){
-							setInterval(function() {
-								var now = new Date();
-								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
-							}, instructions.interval);
-						}
-					}, 1000);
-					
-					var file = path.basename(localPath, path.extname(localPath));
-					if(savedFiles["app"].indexOf(file) < 0) savedFiles["app"].push(file);
-				});
-			});
-		}
-	});
-});
-*/
-
 function uploadFiles(files) {
 	var fileKeys = Object.keys(files);
 	fileKeys.forEach(function(key) {
@@ -670,9 +552,8 @@ function uploadFiles(files) {
 		var type = file.headers['content-type'];
 		var uploadsDir = path.join(__dirname, "uploads");
 		
-		console.log(file);
-		
 		if(type == "image/jpeg" || type == "image/png"){
+			console.log("uploaded image: " + file.originalFilename);
 			var localPath = path.join("uploads", "images", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
@@ -692,6 +573,7 @@ function uploadFiles(files) {
 			});
 		}
 		else if(type == "video/mp4"){
+			console.log("uploaded video: " + file.originalFilename);
 			var localPath = path.join("uploads", "videos", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
@@ -707,13 +589,25 @@ function uploadFiles(files) {
 			});
 		}
 		else if(type == "application/pdf"){
+			console.log("uploaded pdf: " + file.originalFilename);
 			var localPath = path.join("uploads", "pdfs", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
+				fs.readFile(localPath, function (err, data) {
+					if(err) throw err;
+				
+					itemCount++;
+					loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+						broadcast('addNewElement', newItem);
+			
+						items.push(newItem);
+					});
+				});
 			});
 		}
 		else if(type == "application/zip"){
+			console.log("uploaded app: " + file.originalFilename);
 			var localPath = path.join("uploads", "apps", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
