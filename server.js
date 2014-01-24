@@ -16,6 +16,7 @@ var omicronManager = require('node-omicron'); // custom node module
 //var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 var file = "config/desktop-omicron-cfg.json";
+//ar file = "config/iridiumX-omicron-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -837,6 +838,9 @@ function createSagePointer( address ) {
 }
 
 function showPointer( address, data ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	console.log("starting pointer: " + address);
 		
 	sagePointers[address].start(data.label, data.color);
@@ -844,11 +848,17 @@ function showPointer( address, data ) {
 }
 
 function hidePointer( address ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	sagePointers[address].stop;
 	broadcast('hideSagePointer', sagePointers[address], "display");
 }
 
 function pointerPress( address, pointerX, pointerY ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
     var elem = findItemUnderPointer(pointerX, pointerY);
 		
 	if(elem != null){
@@ -873,11 +883,17 @@ function pointerPress( address, pointerX, pointerY ) {
 
 // Copied from pointerPress. Eventually a touch gesture will use this to toggle modes
 function togglePointerMode(address) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	remoteInteraction[address].toggleModes(); 
 	broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
 }
 
 function pointerRelease(address, pointerX, pointerY) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	if( remoteInteraction[address].windowManagementMode() ){
         remoteInteraction[address].releaseItem();
 
@@ -898,6 +914,9 @@ function pointerRelease(address, pointerX, pointerY) {
 }
 
 function pointerPosition( address, data ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	sagePointers[address].left = data.pointerX;
 	sagePointers[address].top = data.pointerY;
 	if(sagePointers[address].left < 0) sagePointers[address].left = 0;
@@ -912,6 +931,9 @@ function pointerPosition( address, data ) {
 }
 
 function pointerScrollStart( address, pointerX, pointerY ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	var elem = findItemUnderPointer(pointerX, pointerY);
 		
 	if(elem != null){
@@ -922,6 +944,9 @@ function pointerScrollStart( address, pointerX, pointerY ) {
 }
 
 function pointerScroll( address, data ) {
+	if( sagePointers[address] == undefined )
+		return;
+		
 	var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
 	if(updatedItem != null){
 		broadcast('setItemPositionAndSize', updatedItem);
