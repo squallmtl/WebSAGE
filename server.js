@@ -4,12 +4,12 @@ var https = require('https');
 var multiparty = require('multiparty');
 var path = require('path');
 var request = require('request');
-var url = require('url');
 
-var websocketIOServer = require('node-websocket.io'); // custom node module
-var loader = require('node-itemloader'); // custom node module
-var interaction = require('node-interaction'); // custom node module
-var sagepointer = require('node-sagepointer'); // custom node module
+var httpserver = require('node-httpserver');                   // custom node module
+var websocketIOServer = require('node-websocket.io');  // custom node module
+var loader = require('node-itemloader');               // custom node module
+var interaction = require('node-interaction');         // custom node module
+var sagepointer = require('node-sagepointer');         // custom node module
  
  
 // CONFIG FILE
@@ -49,52 +49,26 @@ var options = {
   rejectUnauthorized: false
 };
 
-var server = https.createServer(options, onRequest);
-
-function onRequest(req, res) {
-	if(req.method == "GET"){
-		var pathname = "." + url.parse(req.url).pathname;
-		if(pathname == "./") pathname = "./index.html";
-	
-		fs.readFile(pathname, "binary", function(err, data) {
-			if(err){
-				res.writeHead(500, {"Content-Type": "text/plain"});
-				res.write(err + "\n\n");
-				res.end();
-				return;
-			}
-		
-			if     (pathname.indexOf(".html") >= 0)  res.writeHead(200, {"Content-Type": "text/html"});
-			else if(pathname.indexOf(".css")  >= 0)  res.writeHead(200, {"Content-Type": "text/css"});
-			else if(pathname.indexOf(".js")   >= 0)  res.writeHead(200, {"Content-Type": "text/javascript"});
-			else                                     res.writeHead(200, {"Content-Type": "text/plain"});
-		
-			res.write(data, "binary");
+var privateFiles = ["./server.js", "./package.json", "./README.md", "./keys/", "./config"];
+var httpServerApp = new httpserver(privateFiles);
+httpServerApp.post('/upload', function(req, res) {
+	var form = new multiparty.Form();
+	form.parse(req, function(err, fields, files) {
+		if(err){
+			res.writeHead(500, {"Content-Type": "text/plain"});
+			res.write(err + "\n\n");
 			res.end();
-		});
-	}
-	else if(req.method == "POST"){
-		var pathname = url.parse(req.url).pathname;
-		if(pathname == "/upload"){
-			var form = new multiparty.Form();
-			form.parse(req, function(err, fields, files) {
-				if(err){
-					res.writeHead(500, {"Content-Type": "text/plain"});
-					res.write(err + "\n\n");
-					res.end();
-				}
-				
-				uploadFiles(files);
+		}
 		
-				res.writeHead(200, {"Content-Type": "text/plain"});
-				res.write("received upload:\n\n");
-				res.end();
-			});
-        }
-	}
-}
+		uploadFiles(files);
 
+		res.writeHead(200, {"Content-Type": "text/plain"});
+		res.write("received upload:\n\n");
+		res.end();
+	});
+});
 
+var server = https.createServer(options, httpServerApp.onrequest);
 
 var wsioServer = new websocketIOServer(config.port+1);
 
@@ -473,9 +447,9 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('addNewElementFromStoredFiles', function(file) {
+		var localPath = path.join("uploads", file.dir, file.name);
+		
 		if(file.dir == "images"){
-			var localPath = path.join("uploads", file.dir, file.name);
-			
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
@@ -488,8 +462,6 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "videos"){
-			var localPath = path.join("uploads", file.dir, file.name);
-			
 			itemCount++;
 			loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
@@ -498,8 +470,6 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "pdfs"){
-			var localPath = path.join("uploads", file.dir, file.name);
-			
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
@@ -512,10 +482,6 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "apps"){
-			var localPath = path.join("uploads", file.dir, file.name);
-			
-			console.log(localPath);
-			
 			itemCount++;
 			var id = "item"+itemCount.toString();
 			loader.loadApp(localPath, id, function(newItem, instructions) {
@@ -612,6 +578,31 @@ function uploadFiles(files) {
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
+				itemCount++;
+				var id = "item"+itemCount.toString();
+				loader.loadZipApp(localPath, id, function(newItem, instructions) {
+					// add resource scripts to clients
+					for(var i=0; i<instructions.resources.length; i++){
+						if(instructions.resources[i].type == "script"){
+							broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
+						}
+					}
+	
+					// add item to clients (after waiting 1 second to ensure resources have loaded)
+					setTimeout(function() {
+						broadcast('addNewElement', newItem);
+					
+						items.push(newItem);
+
+						// set interval timer if specified
+						if(instructions.animation == "timer"){
+							setInterval(function() {
+								var now = new Date();
+								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+							}, instructions.interval);
+						}
+					}, 1000);
+				});
 			});
 		}
 		else{
