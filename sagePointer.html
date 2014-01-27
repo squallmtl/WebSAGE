@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="utf-,8">
+<title>Sage Pointer</title>
+<script type="text/javascript">
+	function init() {
+		// open SAGE Pointer App in new window
+		var url = window.location.origin + "/sagePointerApp.html";
+		var name = "";
+		var specs = "left=0,top=0,width=300,height=100,location=no";
+		window.open(url, name, specs);
+		
+		// open page in same window - then close
+		var url = "www.google.com";
+		var name = "_self";
+		var specs = "";
+		window.open(url, name, specs);
+		window.close();
+	}	
+</script>
+</head>
+
+<body onload="init()">
+	
+</body>
+</html>
+
