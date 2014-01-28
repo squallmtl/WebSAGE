@@ -4,8 +4,48 @@
 <meta charset="utf-,8">
 <title>SageUI</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
-<script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
+	window.URL = (window.URL || window.webkitURL || window.msURL || window.oURL);
+	navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+	
+	var name = "Default";
+	var col = [180, 180, 180];
+	
+	var wsio;
+	var address;
+	
+	var topBlock;
+	var sageDeviceText;
+	var sagePointerBtn;
+	var screenShareBtn;
+	
+	var fileDrop;
+	var fileDropText;
+	
+	function init() {
+		topBlock = document.getElementById('topBlock');
+		sageDeviceText = document.getElementById('sageDeviceText');
+		sagePointerBtn = document.getElementById('sagePointerBtn');
+		screenShareBtn = document.getElementById('screenShareBtn');
+		
+		fileDrop = document.getElementById('fileDrop');
+		fileDropText = document.getElementById('fileDropText');
+		
+		sageDeviceText.innerHTML = "Controlling display: " + window.location.hostname;
+		
+		resize();
+	}
+	
+	function resize() {
+		var spacing = Math.round(window.innerWidth * 0.02);
+		var fileDropHeight = window.innerHeight - fileDrop.offsetTop - spacing;
+		fileDrop.style.height = fileDropHeight.toString() + "px";
+		
+		var fileDropTextMargin = (fileDropHeight/2) - (fileDropText.clientHeight/2);
+		fileDropText.style.marginTop = fileDropTextMargin.toString() + "px";
+	}
+	
+	/*
 	window.URL = (window.URL || window.webkitURL || window.msURL || window.oURL);
 	navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
 	
@@ -511,23 +551,37 @@
 	function base64ToString(base64) {
 		return btoa(unescape(encodeURIComponent(base64)));
 	}
-	
+	*/
 </script>
 
-<link rel="stylesheet" type="text/css" href="style_mgr.css" media="screen" />
+<link rel="stylesheet" type="text/css" href="style_pointer.css" media="screen" />
 
 </head>
 
-<body onload="init()" onresize="winMgr.resize()">
+<body onload="init()" onresize="resize()">
 	<div id="wrapper">
-		<div id="window">
-			<canvas id="winMgr" style="width: 100%;">HTML5 canvas element not supported</canvas>
+		<div id="topBlock">
+			<div id="topText">
+				<p id="sageDeviceText">Controlling display: </p>
+			</div>
+			<div id="topBtns">
+				<button id="sagePointerBtn" type="button">SAGE Pointer</button>
+				<button id="screenShareBtn" type="button">Share Screen</button>
+				<button id="settingsBtn" type="button"><img src="images/settings.png" width="12" height="12"></img></button>
+			</div>
 		</div>
-		<div id="extraInteraction">
-			<div id="fileUpload">
-				<div id="fileDrop">
-					<p id="fileDropText">Drag files here to upload</p>
-				</div>
+		<div class="clear"></div>
+		<div id="fileDrop">
+			<p id="fileDropText">Drop multimedia files here</p>
+		</div>
+		
+		<canvas id="mediaCanvas" style="display: none;"></canvas>
+        <video id="mediaVideo" style="display: none;"></video>
+        
+		<div class="clear"></div>
+        
+        
+		<!--
 				<label class="fileLabel">Load from Server:</label><button id="serverUploadBtn" type="button">Select Files</button>
 			</div>
 			<div id="sagePointer">
@@ -580,6 +634,7 @@
 			<button id="fileCloseBtn" type="button">Close</button>
 		</div>
 	</div>
+	-->
 </body>
 </html>
 
