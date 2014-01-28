@@ -23,6 +23,13 @@
 	var fileDropText;
 	
 	function init() {
+		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		
+		wsio.open(function() {
+			console.log("open websocket");
+			wsio.emit('addClient', {clientType: "sagePointer"});
+		});
+		
 		topBlock = document.getElementById('topBlock');
 		sageDeviceText = document.getElementById('sageDeviceText');
 		sagePointerBtn = document.getElementById('sagePointerBtn');
