@@ -51,10 +51,10 @@
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
 		});
 		
-		wsio.on('addScript', function(source) {
+		wsio.on('addScript', function(script_data) {
 			var js = document.createElement('script')
   			js.type = "text/javascript";
-  			js.src = source;
+  			js.src = script_data.source;
   			document.head.appendChild(js);
 		});
 		
@@ -302,20 +302,20 @@
 			itemCount += 2;
 		});
 		
-		wsio.on('deleteElement', function(elemId) {
-			var deleteElemTitle = document.getElementById(elemId + "_title");
+		wsio.on('deleteElement', function(elem_data) {
+			var deleteElemTitle = document.getElementById(elem_data.elemId + "_title");
 			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
 			
-			var deleteElem = document.getElementById(elemId);
+			var deleteElem = document.getElementById(elem_data.elemId);
 			deleteElem.parentNode.removeChild(deleteElem);
 		});
 		
-		wsio.on('updateItemOrder', function(idList) {
+		wsio.on('updateItemOrder', function(order) {
 			var i;
 			var zval = 0;
-			for(i=0; i<idList.length; i++){
-				var selectedElemTitle = document.getElementById(idList[i] + "_title");
-				var selectedElem = document.getElementById(idList[i]);
+			for(i=0; i<order.idList.length; i++){
+				var selectedElemTitle = document.getElementById(order.idList[i] + "_title");
+				var selectedElem = document.getElementById(order.idList[i]);
 				
 				selectedElemTitle.style.zIndex = zval.toString();
 				selectedElem.style.zIndex = (zval+1).toString();

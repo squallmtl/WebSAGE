@@ -145,7 +145,7 @@ wsioServer.onconnection(function(wsio) {
             }        
             
 			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', newOrder);
+			broadcast('updateItemOrder', {idList: newOrder});
 		} 
 		else { //if no item, change pointer mode
 		    remoteInteraction[address].toggleModes(); 
@@ -225,9 +225,9 @@ wsioServer.onconnection(function(wsio) {
 		var elem = findItemUnderPointer(pointerX, pointerY);
 		
 		if(elem != null){
-			remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
+			remoteInteraction[address].selectScrollItem(elem);
 			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', newOrder);
+			broadcast('updateItemOrder', {idList: newOrder});
 		}
 	});
 	
@@ -308,7 +308,7 @@ wsioServer.onconnection(function(wsio) {
             if( remoteInteraction[address].windowManagementMode() ){
                 if(data.code == "8" || data.code == "46"){ // backspace or delete
                     removeElement(items, elem);
-                    broadcast('deleteElement', elem.id);
+                    broadcast('deleteElement', {elemId: elem.id});
                 }
             }
             else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
@@ -392,7 +392,7 @@ wsioServer.onconnection(function(wsio) {
 		mediaStreams[data.id][address] = true;
 		
 		if(allTrueDict(mediaStreams[data.id])){
-			var broadcastWS;
+			var broadcastWS = null;
 			for(i=0; i<clients.length; i++){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 				if(clientAddress == data.id) broadcastWS = clients[i];
@@ -487,7 +487,7 @@ wsioServer.onconnection(function(wsio) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
+						broadcast('addScript', {source: path.join(zipFolder, instructions.resources[i].src)});
 					}
 				}
 	
@@ -583,7 +583,7 @@ function uploadFiles(files) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', path.join(zipFolder, instructions.resources[i].src));
+							broadcast('addScript', {source: path.join(zipFolder, instructions.resources[i].src)});
 						}
 					}
 	

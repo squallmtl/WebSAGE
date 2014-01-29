@@ -143,12 +143,12 @@
 			winMgr.addNewElement(elem_data);
 		});
 		
-		wsio.on('deleteElement', function(elemId) {
-			winMgr.deleteElement(elemId);
+		wsio.on('deleteElement', function(elem_data) {
+			winMgr.deleteElement(elem_data.elemId);
 		});
 		
-		wsio.on('updateItemOrder', function(idList) {
-			winMgr.updateItemOrder(idList);
+		wsio.on('updateItemOrder', function(order) {
+			winMgr.updateItemOrder(order.idList);
 		});
 		
 		wsio.on('setItemPosition', function(position_data) {
