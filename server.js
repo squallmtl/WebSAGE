@@ -806,6 +806,32 @@ function moveItemToFront(id) {
 	return itemIds;
 }
 
+function moveItemToBack(id) {
+	var selectedIndex;
+	var selectedItem;
+	var itemIds = [];
+	
+	for(var i=0; i<items.length; i++){
+		if(items[i].id == id){
+			selectedIndex = i;
+			selectedItem = items[selectedIndex];
+			itemIds.push(id);
+			break;
+		}
+	}
+	for(var i=0; i<selectedIndex; i++){
+		items[i] = items[i+1];
+		itemIds.push(items[i].id);
+	}
+	for(var i=selectedIndex+1; i<items.length; i++){
+		items[i] = items[i];
+		itemIds.push(items[i].id);
+	}
+	items[0] = selectedItem;
+	
+	return itemIds;
+}
+
 function allTrueDict(dict) {
 	for(key in dict){
 		if(dict[key] == false) return false;
