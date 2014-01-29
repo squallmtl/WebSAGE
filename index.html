@@ -401,9 +401,11 @@
 			var date = new Date(animate_data.date);
 			
 			var canvasElem = document.getElementById(animate_data.elemId);
-			var child = canvasElem.getElementsByClassName("sageItem");
-			if(child[0].id in canvasItems){
-				canvasItems[child[0].id].draw(date);
+			if(canvasElem != null){
+				var child = canvasElem.getElementsByClassName("sageItem");
+				if(child[0].id in canvasItems){
+					canvasItems[child[0].id].draw(date);
+				}
 			}
 		});
 		
