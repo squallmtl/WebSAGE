@@ -13,9 +13,9 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
