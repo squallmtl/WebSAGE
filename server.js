@@ -248,9 +248,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('keyDown', function(data) {
-	    console.log("keydown");
-
-		if(data.code == 16){ // shift
+	    if(data.code == 16){ // shift
 			remoteInteraction[address].SHIFT = true;
 		}
 		else if(data.code == 17){ // ctrl
@@ -276,17 +274,17 @@ wsioServer.onconnection(function(wsio) {
                 if( elem != null ){            
                     var itemRelX = pointerX - elem.left;
                     var itemRelY = pointerY - elem.top - config.titleBarHeight;
-                    var now = new Date();	
-                    broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now }, "display");  
+                    var now = new Date();
+                    var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now };	
+                    broadcast('eventInItem', event, "display");
+                    broadcast('eventInItem', event, "audioManager");  
                 }
         }
 		
 	});
 		
     wsio.on('keyUp', function(data) {
-        console.log("keyup");
-
-		var pointerX = sagePointers[address].left
+        var pointerX = sagePointers[address].left
 		var pointerY = sagePointers[address].top
 		var elem = findItemUnderPointer(pointerX, pointerY);
 		
@@ -322,17 +320,17 @@ wsioServer.onconnection(function(wsio) {
                     if( elem != null ){            
                         var itemRelX = pointerX - elem.left;
                         var itemRelY = pointerY - elem.top - config.titleBarHeight;
-                        var now = new Date();	
-                        broadcast( 'eventInItem', { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now }, "display");  
+                        var now = new Date();
+                        var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now };	
+                        broadcast('eventInItem', event, "display");
+                        broadcast('eventInItem', event, "audioManager");   
                     }
             }  
 		}
 	});
 	
     wsio.on('keyPress', function(data) {
-        console.log("keypress");
-
-        if(data.code == 9 && (remoteInteraction[address].CTRL)){ // ctrl + tab
+        if(data.code == 9 && (remoteInteraction[address].SHIFT)){ // shift + tab
 			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
 		}
@@ -346,9 +344,10 @@ wsioServer.onconnection(function(wsio) {
              if( elem != null ){            
                 var itemRelX = pointerX - elem.left;
                 var itemRelY = pointerY - elem.top - config.titleBarHeight;
-                var now = new Date();	
-                broadcast( 'eventInItem', { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now }, "display");  
-                broadcast( 'eventInItem', { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now }, "audioManager");  
+                var now = new Date();
+                var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };	
+                broadcast('eventInItem', event, "display");  
+                broadcast('eventInItem', event, "audioManager");  
 
             }   
         }
