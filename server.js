@@ -145,13 +145,16 @@ wsioServer.onconnection(function(wsio) {
             
 			var newOrder = moveItemToFront(elem.id);
 			broadcast('updateItemOrder', {idList: newOrder});
-		} 
+		}
+		
+		// removed pointer press in open space to change modes - also triggered when using sageUI
+		// use shift+tab to switch modes when in sagePointer
+		/* 
 		else { //if no item, change pointer mode
 		    remoteInteraction[address].toggleModes(); 
 		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' ); 
 		}
-		
-		
+		*/
 	});
 	
 	wsio.on('pointerRelease', function() {
@@ -329,7 +332,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
     wsio.on('keyPress', function(data) {
-        if(data.code == 9 && (remoteInteraction[address].SHIFT)){ // shift + tab
+        if(data.code == 9 && remoteInteraction[address].SHIFT && sagePointers[address].visible){ // shift + tab
 			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
 		}
