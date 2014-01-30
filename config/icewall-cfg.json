@@ -1,0 +1,24 @@
+{
+        "config": "icewall",
+        "port": 9090,
+        "resolution": {
+                "width": 3072,
+                "height": 1360
+        },
+        "layout": {
+                "rows": 1,
+                "columns": 2
+        },
+        "displays": [
+                {
+                        "ID": 0,
+                        "row": 0,
+                        "column": 0
+                },
+                {
+                        "ID": 1,
+                        "row": 0,
+                        "column": 1
+                }
+        ]
+}

@@ -27,6 +27,7 @@ echo ""
 
 echo "Trust Server Certificate - Add to DB"
 certutil -d sql:$HOME/.pki/nssdb -L
+certutil -d sql:$HOME/.pki/nssdb -D -t "P,," -n $HOSTNAME -i server.crt
 certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n $HOSTNAME -i server.crt
 certutil -d sql:$HOME/.pki/nssdb -L
 echo ""
