@@ -1,11 +1,10 @@
-//var express = require('express');
 var fs = require('fs');
 var https = require('https');
 var multiparty = require('multiparty');
 var path = require('path');
 var request = require('request');
 
-var httpserver = require('node-httpserver');                   // custom node module
+var httpserver = require('node-httpserver');           // custom node module
 var websocketIOServer = require('node-websocket.io');  // custom node module
 var loader = require('node-itemloader');               // custom node module
 var interaction = require('node-interaction');         // custom node module
@@ -13,9 +12,9 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
  
 // CONFIG FILE
-//var file = "config/desktop-cfg.json";
+var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-var file = "config/iridiumX-cfg.json";
+//var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
