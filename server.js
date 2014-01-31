@@ -510,7 +510,7 @@ function uploadFiles(files) {
 				});
 			});
 		}
-		else if(type == "application/zip"){
+		else if(type == "application/zip" || type == "application/x-zip-compressed" ){
 			console.log("uploaded app: " + file.originalFilename);
 			var localPath = path.join("uploads", "apps", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
