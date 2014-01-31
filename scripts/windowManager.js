@@ -162,15 +162,21 @@ function windowManager(id, ws) {
 		event.preventDefault();
 	};
 	
-	this.keyPress = function(event) {
-		this.wsio.emit('keyPressed', {code: event.keyCode});
+	this.keyDown = function(event) {
+		this.wsio.emit('keyDown', {code: event.keyCode});
 		event.preventDefault();
 	};
 	
-	this.keyRelease = function(event) {
-		this.wsio.emit('keyReleased', {code: event.keyCode});
+	this.keyUp = function(event) {
+		this.wsio.emit('keyUp', {code: event.keyCode});
 		event.preventDefault();
 	}
+	
+    this.keyPress = function(event) {
+		this.wsio.emit('keyPress', {code: event.charCode});
+		event.preventDefault();
+	}
+	
 	
 	this.addNewElement = function(elem_data) {
 		this.items.push(elem_data);

@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
 <meta charset="utf-,8">
-<title>Window Manager</title>
+<title>SageUI</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript" src="scripts/windowManager.js"></script>
 <script type="text/javascript">
@@ -19,6 +19,7 @@
 	var canvasKeyEvents = false;
 	var canvasKeyDownFunc = null;
 	var canvasKeyUpFunc = null;
+	var canvasKeyPressFunc = null;
 	var sensitivity;
 	var selectedFile = null;
 	
@@ -49,8 +50,12 @@
 	var pdfsDir;
 	var videosDir;
 	
+	var maxUploadSize = 500 * (1024*1024); // 500 MB
+	
 	function init() {
 		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		
+		document.title = window.location.hostname.concat(" ", document.title ); 
 		
 		wsio.open(function() {
 			console.log("open websocket");
@@ -95,8 +100,9 @@
 		winMgr = new windowManager("winMgr", wsio);
 		winMgr.draw();
 		
-		canvasKeyDownFunc = winMgr.keyPress.bind(winMgr);
-		canvasKeyUpFunc = winMgr.keyRelease.bind(winMgr);
+		canvasKeyDownFunc = winMgr.keyDown.bind(winMgr);
+		canvasKeyUpFunc = winMgr.keyUp.bind(winMgr);
+		canvasKeyPressFunc = winMgr.keyPress.bind(winMgr);
 		
 		winMgrCanvas = document.getElementById('winMgr');
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
@@ -137,12 +143,12 @@
 			winMgr.addNewElement(elem_data);
 		});
 		
-		wsio.on('deleteElement', function(elemId) {
-			winMgr.deleteElement(elemId);
+		wsio.on('deleteElement', function(elem_data) {
+			winMgr.deleteElement(elem_data.elemId);
 		});
 		
-		wsio.on('updateItemOrder', function(idList) {
-			winMgr.updateItemOrder(idList);
+		wsio.on('updateItemOrder', function(order) {
+			winMgr.updateItemOrder(order.idList);
 		});
 		
 		wsio.on('setItemPosition', function(position_data) {
@@ -198,11 +204,14 @@
 		if(event.target == winMgrCanvas && !canvasKeyEvents){
 			document.addEventListener('keydown', canvasKeyDownFunc, false);
 			document.addEventListener('keyup', canvasKeyUpFunc, false);
+            document.addEventListener('keypress', canvasKeyPressFunc, false);
 			canvasKeyEvents = true;
 		}
 		else if(event.target != winMgrCanvas && canvasKeyEvents){
 			document.removeEventListener('keydown', canvasKeyDownFunc, false);
 			document.removeEventListener('keyup', canvasKeyUpFunc, false);
+            document.removeEventListener('keypress', canvasKeyPressFunc, false);
+
 			canvasKeyEvents = false;
 		}
 	}
@@ -296,6 +305,7 @@
 		mediaStream.onended = function(e) {
 			console.log("ended");
 			broadcasting = false;
+			screenShareBtn.disabled = false;
 		};
 		
 		mediaVideo.src = window.URL.createObjectURL(mediaStream);
@@ -345,11 +355,17 @@
 			document.addEventListener('mouseup', pointerRelease, false);
 			document.addEventListener('mousewheel', pointerScroll, false);
 			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
-			document.addEventListener('keydown', pointerKeyPress, false);
-			document.addEventListener('keyup', pointerKeyRelease, false);
+			document.addEventListener('keydown', pointerKeyDown, false);
+			document.addEventListener('keyup', pointerKeyUp, false);
+            document.addEventListener('keypress', pointerKeyPress, false);
+
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
-			if(canvasKeyEvents) document.removeEventListener('keydown', canvasKeyFunc, false);
+			if(canvasKeyEvents){
+			    document.removeEventListener('keydown', canvasKeyDownFunc, false);
+                document.removeEventListener('keyup', canvasKeyUpFunc, false);
+			    document.removeEventListener('keypress', canvasKeyPressFunc, false);
+            }
 		}
 		else{
 			wsio.emit('stopSagePointer');
@@ -359,8 +375,9 @@
 			document.removeEventListener('mouseup', pointerRelease, false);
 			document.removeEventListener('mousewheel', pointerScroll, false);
 			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
-			document.removeEventListener('keydown', pointerKeyPress, false);
-			document.removeEventListener('keyup', pointerKeyRelease, false);
+			document.removeEventListener('keydown', pointerKeyDown, false);
+			document.removeEventListener('keyup', pointerKeyUp, false);
+            document.removeEventListener('keypress', pointerKeyPress, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
@@ -408,13 +425,34 @@
 		preventDefault(event);
 	}
 	
-	function pointerKeyPress(event) {
-		wsio.emit('keyPressed', {code: event.keyCode});
-		preventDefault(event);
+	function pointerKeyDown(event) {
+	    console.log("keydown");
+	    var code = parseInt(event.keyCode);
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 ) ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyDown', {code: code});
+            preventDefault(event);
+        }
+        if( code == 9 ) //tab is a special case- no keypress event called, but need this event
+        {
+            wsio.emit('keyPress', {code: code});
+            preventDefault(event);
+        }
 	}
 	
-	function pointerKeyRelease(event) {
-		wsio.emit('keyReleased', {code: event.keyCode});
+	function pointerKeyUp(event) {
+		console.log("keyup");
+	    var code = parseInt(event.keyCode);
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 )||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyUp', {code: code});
+            preventDefault(event);
+        }
+	}
+	
+		
+	function pointerKeyPress(event) {
+		console.log("keypress");
+	    var code = parseInt(event.charCode);
+		wsio.emit('keyPress', {code: code});
 		preventDefault(event);
 	}
 	
@@ -423,30 +461,48 @@
 	}
 	
 	function uploadFileToServer(event) {
-		var i;
 		event.preventDefault();
 		
 		var files = event.dataTransfer.files;
 		var url = event.dataTransfer.getData("Url");
 		var text = event.dataTransfer.getData("Text");
 		if(files.length > 0){
-			var formdata = new FormData();
-			for(i=0; i<files.length; i++){
-				formdata.append("file"+i.toString(), files[i]);
-			}
-			xhr = new XMLHttpRequest();
-			xhr.open("POST", "/upload", true);
-			xhr.upload.addEventListener('progress', function(event) {
-				var fileDropText = document.getElementById("fileDropText");
-				var pc = parseInt((event.loaded / event.total) * 100);
-				fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
-				if(pc == 100){
-					setTimeout(function() {
-						fileDropText.innerHTML = "Drag files here to upload";
-					}, 500);
+			var total = {};
+			var loaded = {};
+			var pc = 0;
+			var fileDropText = document.getElementById('fileDropText');
+			
+			for(var i=0; i<files.length; i++){
+				if(files[i].size <= maxUploadSize){
+					var formdata = new FormData();
+					formdata.append("file"+i.toString(), files[i]);
+				
+					xhr = new XMLHttpRequest();
+					xhr.open("POST", "/upload", true);
+					xhr.upload.id = "file"+i.toString();
+					xhr.upload.addEventListener('progress', function(event) {
+						if(!(event.srcElement.id in total)){
+							total[event.srcElement.id] = event.total;
+						}
+						loaded[event.srcElement.id] = event.loaded;
+						
+						var totalSize = 0;
+						var uploaded = 0;
+						for(key in total){ totalSize += total[key]; uploaded += loaded[key]; }
+						pc = Math.floor((uploaded/totalSize) * 100);
+						fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
+						if(pc == 100){
+							setTimeout(function() {
+								if(pc == 100) fileDropText.innerHTML = "Drag files here to upload";
+							}, 500);
+						}
+					}, false);
+					xhr.send(formdata);
 				}
-			}, false);
-			xhr.send(formdata);
+				else{
+					alert("File: " + files[i].name + " is too large (max size is " + (maxUploadSize / (1024*1024)) + " MB)");
+				}
+			}
 		}
 		else if(url != null || text != null){
 			var dataUrl;
@@ -457,6 +513,7 @@
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(ext.length > 3) ext = ext.substring(0,3);
+			ext = ext.toLowerCase();
 			if(youtube >= 0) urlType = "youtube";
 			else if(ext == "jpg" || ext == "png") urlType = "img";
 			else if(ext == "mp4") urlType = "video";
