@@ -13,8 +13,10 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
 // CONFIG FILE
 var file = "config/desktop-cfg.json";
+//var file = "config/desktop-omicron-cfg.json";
 //var file = "config/icewall-cfg.json";
 //var file = "config/icewallTM-cfg.json";
+//var file = "config/icewallRight-omicron-cfg.json";
 //var file = "config/iridium-cfg.json";
 //var file = "config/lyra-cfg.json";
 
@@ -245,8 +247,7 @@ wsioServer.onconnection(function(wsio) {
 		if(elem != null){
 			if( remoteInteraction[address].windowManagementMode() ){
 				if(data.code == "8" || data.code == "46"){ // backspace or delete
-					removeElement(items, elem);
-					broadcast('deleteElement', {elemId: elem.id});
+					deleteElement( elem );
 				}
 			}
 			else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
@@ -759,10 +760,9 @@ if( config.omicronServerIP )
 							var elem = findItemUnderPointer(posX, posY);
 							
 							// Remove element
-							if( elem != null && remoteInteraction[address].windowManagementMode() )
+							if( elem != null )
 							{
-								removeElement(items, elem);
-								broadcast('deleteElement', elem.id);
+								deleteElement( elem );
 							}
 						}
 						else if( e.flags == FLAG_THREE_FINGER_HOLD )
@@ -1017,4 +1017,9 @@ function pointerScroll( address, data ) {
 			remoteInteraction[address].selectedScrollItem = null;
 		}, 500);
 	}
+}
+
+function deleteElement( elem ) {
+	removeElement(items, elem);
+	broadcast('deleteElement', {elemId: elem.id});
 }
