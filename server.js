@@ -98,6 +98,9 @@ wsioServer.onconnection(function(wsio) {
 		if(wsio.clientType == "sageUI"){
 			createSagePointer( address );
 		}
+		if(wsio.clientType == "sagePointer"){
+			createSagePointer( address );
+		}
 		else if(wsio.clientType == "display"){
 			for(var key in sagePointers){
 				wsio.emit('createSagePointer', sagePointers[key]);

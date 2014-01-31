@@ -13,14 +13,26 @@
 	
 	var wsio;
 	var address;
+	var sensitivity;
 	
 	var topBlock;
 	var sageDeviceText;
 	var sagePointerBtn;
 	var screenShareBtn;
+	var mediaStream;
+	var mediaVideo;
+	var mediaCanvas;
+	var mediaCtx;
+	var mediaResolution;
+	var mediaQuality;
+	var mediaWidth;
+	var mediaHeight;
+	var broadcasting;
 	
 	var fileDrop;
 	var fileDropText;
+	
+	var maxUploadSize = 500 * (1024*1024); // 500 MB
 	
 	function init() {
 		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
@@ -34,11 +46,67 @@
 		sageDeviceText = document.getElementById('sageDeviceText');
 		sagePointerBtn = document.getElementById('sagePointerBtn');
 		screenShareBtn = document.getElementById('screenShareBtn');
+		settingsBtn = document.getElementById('settingsBtn');
 		
 		fileDrop = document.getElementById('fileDrop');
 		fileDropText = document.getElementById('fileDropText');
 		
+		sagePointerLabel = document.getElementById('sagePointerLabel');
+		sagePointerColor = document.getElementById('sagePointerColor');
+		settingsOKBtn = document.getElementById('settingsOKBtn');
+		
 		sageDeviceText.innerHTML = "Controlling display: " + window.location.hostname;
+		
+		mediaVideo = document.getElementById('mediaVideo');
+		mediaCanvas = document.getElementById('mediaCanvas');
+		mediaCtx = mediaCanvas.getContext('2d');
+		mediaResolution = 1080; //mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
+		mediaQuality = 7; //mediaQuality = screenShareQuality.value;
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
+		broadcasting = false;
+		
+		if(localStorage["WebSAGE_ptrName"] != null) sagePointerLabel.value = localStorage['WebSAGE_ptrName'];
+		if(localStorage["WebSAGE_ptrColor"] != null) sagePointerColor.value = localStorage['WebSAGE_ptrColor'];
+		
+		// Event Listeners
+		document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+		
+		fileDrop = document.getElementById('fileDrop');
+		fileDrop.addEventListener('dragover', preventDefault, false);
+		fileDrop.addEventListener('dragend', preventDefault, false);
+		fileDrop.addEventListener('drop', uploadFileToServer, false);
+		
+		window.addEventListener('dragover', preventDefault, false);
+		window.addEventListener('dragend', preventDefault, false);
+		window.addEventListener('drop', preventDefault, false);
+		
+		sagePointerBtn.addEventListener('click', startSagePointer, false);
+		screenShareBtn.addEventListener('click', startScreenShare, false);
+		settingsBtn.addEventListener('click', openSettings, false);
+		settingsOKBtn.addEventListener('click', closeSettings, false);
+		
+		// WS Messages
+		wsio.on('setupDisplayConfiguration', function(config) {
+			var displayMin = Math.min(config.totalWidth, config.totalHeight);
+			var thisMin = Math.min(screen.width, screen.height);
+			sensitivity = displayMin/thisMin;
+		});
+
+		wsio.on('initialize', function(data) {
+			address = data.address;
+		});
+		
+		wsio.on('requestNextFrame', function(data) {
+			if(broadcasting){
+				var frame = captureMediaFrame();
+				wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
+			}
+		});
 		
 		resize();
 	}
@@ -50,6 +118,256 @@
 		
 		var fileDropTextMargin = (fileDropHeight/2) - (fileDropText.clientHeight/2);
 		fileDropText.style.marginTop = fileDropTextMargin.toString() + "px";
+	}
+	
+	function preventDefault(event) {
+		event.preventDefault();
+	}
+	
+	function startSagePointer(event) {
+		if(sagePointerLabel.value != ""){
+			name = sagePointerLabel.value;
+		}
+		if(sagePointerColor.value != ""){
+			col[0] = parseInt(sagePointerColor.value.substring(1,3), 16);
+			col[1] = parseInt(sagePointerColor.value.substring(3,5), 16);
+			col[2] = parseInt(sagePointerColor.value.substring(5,7), 16);
+		}
+		
+		localStorage["WebSAGE_ptrName"] = sagePointerLabel.value;
+		localStorage["WebSAGE_ptrColor"] = sagePointerColor.value;
+		
+		sagePointerBtn.requestPointerLock = sagePointerBtn.requestPointerLock || sagePointerBtn.mozRequestPointerLock || sagePointerBtn.webkitRequestPointerLock;
+
+		// Ask the browser to lock the pointer
+		sagePointerBtn.requestPointerLock();
+	}
+	
+	function pointerLockChange() {
+		if(document.pointerLockElement === sagePointerBtn ||  document.mozPointerLockElement === sagePointerBtn || document.webkitPointerLockElement === sagePointerBtn){
+			console.log("pointer locked");
+			wsio.emit('startSagePointer', {label: name, color: col});
+			
+			document.addEventListener('mousedown', pointerPress, false);
+			document.addEventListener('mousemove', pointerMove, false);
+			document.addEventListener('mouseup', pointerRelease, false);
+			document.addEventListener('mousewheel', pointerScroll, false);
+			document.addEventListener('DOMMouseScroll', pointerScrollFF, false);
+			document.addEventListener('keydown', pointerKeyDown, false);
+			document.addEventListener('keyup', pointerKeyUp, false);
+            document.addEventListener('keypress', pointerKeyPress, false);
+			
+			sagePointerBtn.removeEventListener('click', startSagePointer, false);
+		}
+		else{
+			wsio.emit('stopSagePointer');
+			
+			document.removeEventListener('mousedown', pointerPress, false);
+			document.removeEventListener('mousemove', pointerMove, false);
+			document.removeEventListener('mouseup', pointerRelease, false);
+			document.removeEventListener('mousewheel', pointerScroll, false);
+			document.removeEventListener('DOMMouseScroll', pointerScrollFF, false);
+			document.removeEventListener('keydown', pointerKeyDown, false);
+			document.removeEventListener('keyup', pointerKeyUp, false);
+            document.removeEventListener('keypress', pointerKeyPress, false);
+			
+			sagePointerBtn.addEventListener('click', startSagePointer, false);
+		}
+	}
+	
+	function pointerPress(event) {
+		wsio.emit('pointerPress');
+		preventDefault(event);
+	}
+
+	function pointerRelease(event) {
+		wsio.emit('pointerRelease');
+		preventDefault(event);
+	}
+
+	function pointerMove(event) {
+		var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+		wsio.emit('pointerMove', {deltaX: Math.round(movementX*sensitivity), deltaY: Math.round(movementY*sensitivity)});	
+		preventDefault(event);
+	}
+
+	function pointerScroll(event) {
+		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
+		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		wsio.emit('pointerScrollStart');
+		wsio.emit('pointerScroll', {scale: scale});
+		preventDefault(event);
+	}
+
+	function pointerScrollFF(event) {
+		var wheelDelta = -120*event.detail;
+		var scale = 1.0 + Math.abs(wheelDelta)/256;
+		if(wheelDelta < 0) scale = 1.0 / scale;
+		wsio.emit('pointerScrollStart');
+		wsio.emit('pointerScroll', {scale: scale});
+		preventDefault(event);
+	}
+
+	function pointerKeyDown(event) {
+	    console.log("keydown");
+	    var code = parseInt(event.keyCode);
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 ) ||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyDown', {code: code});
+            preventDefault(event);
+        }
+        if( code == 9 ) //tab is a special case- no keypress event called, but need this event
+        {
+            wsio.emit('keyPress', {code: code});
+            preventDefault(event);
+        }
+	}
+
+	function pointerKeyUp(event) {
+		console.log("keyup");
+	    var code = parseInt(event.keyCode);
+        if( code == 8 || (code >= 16 && code != 32 && code <= 46 )||  (code >=91 && code <= 93) || ( code >= 112 && code <= 145 )  ) {
+            wsio.emit('keyUp', {code: code});
+            preventDefault(event);
+        }
+	}
+
+
+	function pointerKeyPress(event) {
+		console.log("keypress");
+	    var code = parseInt(event.charCode);
+		wsio.emit('keyPress', {code: code});
+		preventDefault(event);
+	}
+	
+	function startScreenShare(event) {
+		if(sagePointerLabel.value != ""){
+			name = sagePointerLabel.value;
+		}
+		if(sagePointerColor.value != ""){
+			col[0] = parseInt(sagePointerColor.value.substring(1,3), 16);
+			col[1] = parseInt(sagePointerColor.value.substring(3,5), 16);
+			col[2] = parseInt(sagePointerColor.value.substring(5,7), 16);
+		}
+
+		localStorage["WebSAGE_ptrName"] = sagePointerLabel.value;
+		localStorage["WebSAGE_ptrColor"] = sagePointerColor.value;
+		
+		// start screen share
+		screenShareBtn.disabled = true;
+
+		var streamHeight = Math.min(1080, screen.height);
+		var streamWidth = screen.width/screen.height * streamHeight;
+
+		var constraints = {chromeMediaSource: 'screen', maxWidth: streamWidth, maxHeight: streamHeight};
+		navigator.getUserMedia({video: {mandatory: constraints, optional: []}, audio: false}, streamSuccess, streamFail);
+	}
+
+	function streamSuccess(stream) {
+		console.log("media capture success!");
+
+		mediaStream = stream;
+		mediaStream.onended = function(e) {
+			console.log("ended");
+			broadcasting = false;
+			screenShareBtn.disabled = false;
+		};
+
+		mediaVideo.src = window.URL.createObjectURL(mediaStream);
+		mediaVideo.play();
+
+		var frame = captureMediaFrame();
+		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
+
+		broadcasting = true;
+	}
+
+	function streamFail() {
+		console.log("no access to media capture");
+	}
+	
+	function captureMediaFrame() {
+		mediaCtx.clearRect(0, 0, mediaWidth, mediaHeight);
+		mediaCtx.drawImage(mediaVideo, 0, 0, mediaWidth, mediaHeight);
+		return mediaCanvas.toDataURL("image/jpeg", (mediaQuality/10));
+	}
+	
+	function openSettings(event) {
+		document.getElementById("settings").style.display = "block";
+	}
+	
+	function closeSettings(event) {
+		document.getElementById("settings").style.display = "none";
+	}
+	
+	function uploadFileToServer(event) {
+		event.preventDefault();
+
+		var files = event.dataTransfer.files;
+		var url = event.dataTransfer.getData("Url");
+		var text = event.dataTransfer.getData("Text");
+		if(files.length > 0){
+			var total = {};
+			var loaded = {};
+			var pc = 0;
+			var fileDropText = document.getElementById('fileDropText');
+
+			for(var i=0; i<files.length; i++){
+				if(files[i].size <= maxUploadSize){
+					var formdata = new FormData();
+					formdata.append("file"+i.toString(), files[i]);
+
+					xhr = new XMLHttpRequest();
+					xhr.open("POST", "/upload", true);
+					xhr.upload.id = "file"+i.toString();
+					xhr.upload.addEventListener('progress', function(event) {
+						if(!(event.srcElement.id in total)){
+							total[event.srcElement.id] = event.total;
+						}
+						loaded[event.srcElement.id] = event.loaded;
+
+						var totalSize = 0;
+						var uploaded = 0;
+						for(key in total){ totalSize += total[key]; uploaded += loaded[key]; }
+						pc = Math.floor((uploaded/totalSize) * 100);
+						fileDropText.innerHTML = "File upload... " + pc.toString() + "%";
+						if(pc == 100){
+							setTimeout(function() {
+								if(pc == 100) fileDropText.innerHTML = "Drop multimedia files here";
+							}, 500);
+						}
+					}, false);
+					xhr.send(formdata);
+				}
+				else{
+					alert("File: " + files[i].name + " is too large (max size is " + (maxUploadSize / (1024*1024)) + " MB)");
+				}
+			}
+		}
+		else if(url != null || text != null){
+			var dataUrl;
+			if(url == null) dataUrl = text;
+			else if(text == null) dataUrl = url;
+			else dataUrl = (url.length > text.length) ? url : text;
+			var urlType = "";
+			var youtube = dataUrl.indexOf("www.youtube.com");
+			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
+			if(ext.length > 3) ext = ext.substring(0,3);
+			ext = ext.toLowerCase();
+			if(youtube >= 0) urlType = "youtube";
+			else if(ext == "jpg" || ext == "png") urlType = "img";
+			else if(ext == "mp4") urlType = "video";
+			else if(ext == "pdf") urlType = "pdf";
+			else urlType = "site";  //if all else fails, will try to open in iframe as a webpage
+			console.log("URL: " + dataUrl + ", type: " + urlType);
+
+			if(urlType != "") wsio.emit('addNewWebElement', {type: urlType, src: dataUrl});
+		}
+	}
+	
+	function base64ToString(base64) {
+		return btoa(unescape(encodeURIComponent(base64)));
 	}
 	
 	/*
@@ -587,7 +905,11 @@
         
 		<div class="clear"></div>
         
-        
+        <div id="settings">
+        	<label class="sageLabel">Pointer name:</label><input id="sagePointerLabel" type="text"></input><br />
+			<label class="sageLabel">Pointer color:</label><input id="sagePointerColor" type="color" value="#B4B4B4"></input><br />
+        	<button id="settingsOKBtn" type="button">OK</button>
+        </div>
 		<!--
 				<label class="fileLabel">Load from Server:</label><button id="serverUploadBtn" type="button">Select Files</button>
 			</div>
