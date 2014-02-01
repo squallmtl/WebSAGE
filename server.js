@@ -12,10 +12,11 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
  
 // CONFIG FILE
-var file = "config/desktop-cfg.json";
+//var file = "config/desktop-cfg.json";
 //var file = "config/desktop-omicron-cfg.json";
 //var file = "config/icewall-cfg.json";
 //var file = "config/icewallTM-cfg.json";
+var file = "config/icewallRight-cfg.json";
 //var file = "config/icewallRight-omicron-cfg.json";
 //var file = "config/iridium-cfg.json";
 //var file = "config/lyra-cfg.json";

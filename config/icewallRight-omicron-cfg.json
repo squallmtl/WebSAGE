@@ -1,0 +1,22 @@
+{
+        "config": "icewallRight-omicron",
+        "port": 8080,
+        "resolution": {
+                "width": 3072,
+                "height": 1366
+        },
+        "layout": {
+                "rows": 1,
+                "columns": 1
+        },
+        "displays": [
+                {
+                        "ID": 0,
+                        "row": 0,
+                        "column": 0
+                }
+        ],
+		"omicronServerIP": "131.193.77.211",
+		"omicronMsgPort": 28000,
+		"omicronDataPort": 9123
+}
