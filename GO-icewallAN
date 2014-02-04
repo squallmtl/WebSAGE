@@ -2,12 +2,10 @@
 
 global_param="--new-window --window-size=1536,1366 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
 
-UDD=$HOME/.config/chrome-nfs/thor_tm1
+UDD=$HOME/.config/chrome-nfs/thor_an1
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
 env DISPLAY=:0.0 google-chrome $param 'https://thor.evl.uic.edu:8080?clientID=0' &
-pid=$!
-echo $pid
 
 sleep 1
 export DISPLAY=:0.0
