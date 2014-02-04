@@ -6,6 +6,7 @@ UDD=$HOME/.config/chrome-nfs/thor_an1
 mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
 env DISPLAY=:0.0 google-chrome $param 'https://thor.evl.uic.edu:8080?clientID=0' &
+env DISPLAY=:0.0 google-chrome 'https://thor.evl.uic.edu:8080/audioManager.html' &
 
 sleep 1
 export DISPLAY=:0.0
@@ -16,6 +17,15 @@ aLen=${#arr[@]}
 lastElem=`expr $aLen - 1`
 
 xdotool windowmove ${arr[$lastElem]} 1536 0
+xdotool mousemove --sync 10 10
+xdotool mousemove --sync 0 0
+
+result="$(xdotool search --name 'Audio Manager - Google Chrome')"
+arr=($result)
+aLen=${#arr[@]}
+lastElem=`expr $aLen - 1`
+
+xdotool windowmove ${arr[$lastElem]} 0 1366
 xdotool mousemove --sync 10 10
 xdotool mousemove --sync 0 0
 
