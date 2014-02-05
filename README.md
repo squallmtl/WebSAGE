@@ -9,28 +9,22 @@ Browser based implementation of SAGE. A cluster-based html viewer used for displ
 
 ###### For Windows: ######
 
-Download [7-Zip](http://www.7-zip.org/)
+* Download and install [7-Zip](http://www.7-zip.org/)
+* Download [FFMpeg](http://ffmpeg.zeranoe.com/builds/)
+* Download [Poppler-utils](http://manifestwebdesign.com/2013/01/09/xpdf-and-poppler-utils-on-windows/)
 
-Download [FFMpeg](http://ffmpeg.zeranoe.com/builds/)
+Install FFMpeg
+* Move the FFMpeg 7-zip file to "C:\"
+* Right-click, go to 7-Zip > Extract Here
+* Rename extracted folder to "FFMpeg"
 
-Download [Poppler-utils](http://manifestwebdesign.com/2013/01/09/xpdf-and-poppler-utils-on-windows/)
+Install Poppler
+* Create Folder "C:\Poppler"
+* Move the Poppler-utils zip file to "C:\Poppler"
+* Right-click, go to 7-Zip > Extract Here
 
-
-Move the FFMpeg 7-zip file to "C:\"
-
-Right-click, go to 7-Zip > Extract Here
-
-Rename extracted folder to "FFMpeg"
-
-
-Create Folder "C:\Poppler"
-
-Move the Poppler-utils zip file to "C:\Poppler"
-
-Right-click, go to 7-Zip > Extract Here
-
-
-Add both "C:\FFMpeg" and "C:\Poppler" to you PATH variable
+Set Environment
+* Add both "C:\FFMpeg" and "C:\Poppler" to you PATH variable
 
 
 ###### For Mac OSX: ######
