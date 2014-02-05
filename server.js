@@ -411,6 +411,14 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(file.dir == "pdfs"){
+			itemCount++;
+			loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				broadcast('addNewElement', newItem);
+		
+				items.push(newItem);
+			});
+			
+			/*
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
@@ -421,6 +429,7 @@ wsioServer.onconnection(function(wsio) {
 					items.push(newItem);
 				});
 			});
+			*/
 		}
 		else if(file.dir == "apps"){
 			itemCount++;
