@@ -374,16 +374,21 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(data.type == "pdf"){
-			request({url: data.src, encoding: null}, function(err, response, body) {
+			var filename = data.src.substring(data.src.lastIndexOf("/")+1);
+			var localPath = path.join("uploads", "pdfs", filename);
+			var tmp = fs.createWriteStream(localPath);
+			tmp.on('error', function(err) {
 				if(err) throw err;
-				
+			});
+			tmp.on('close', function() {
 				itemCount++;
-				loader.loadPdf(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+				loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
-				
+		
 					items.push(newItem);
 				});
 			});
+			request(data.src).pipe(tmp);
 		}
 	});
 	
@@ -417,19 +422,6 @@ wsioServer.onconnection(function(wsio) {
 		
 				items.push(newItem);
 			});
-			
-			/*
-			fs.readFile(localPath, function (err, data) {
-				if(err) throw err;
-				
-				itemCount++;
-				loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
-			
-					items.push(newItem);
-				});
-			});
-			*/
 		}
 		else if(file.dir == "apps"){
 			itemCount++;
@@ -510,15 +502,11 @@ function uploadFiles(files) {
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
-				fs.readFile(localPath, function (err, data) {
-					if(err) throw err;
-				
-					itemCount++;
-					loader.loadPdf(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-						broadcast('addNewElement', newItem);
-			
-						items.push(newItem);
-					});
+				itemCount++;
+				loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+		
+					items.push(newItem);
 				});
 			});
 		}

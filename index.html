@@ -204,7 +204,7 @@
 				
 				windowItem.appendChild(pdf);
 				
-				var pdfData = stringToUint8Array(elem_data.src);
+				var pdfData = elem_data.src;
 				var pdfObj = new pdf_canvas();
 				pdfObj.init(elem_data.id + "_pdf", pdfData);
 				pdfItems[elem_data.id + "_pdf"] = pdfObj;
