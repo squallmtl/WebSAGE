@@ -7,7 +7,7 @@ Browser based implementation of SAGE. A cluster-based html viewer used for displ
 * ffmpeg
 * poppler
 
-###### For Windows: ######
+##### For Windows: #####
 
 * Download and install [7-Zip](http://www.7-zip.org/)
 * Download [FFMpeg](http://ffmpeg.zeranoe.com/builds/)
@@ -27,7 +27,7 @@ Set Environment
 * Add both "C:\FFMpeg" and "C:\Poppler" to you PATH variable
 
 
-###### For Mac OSX: ######
+##### For Mac OSX: #####
 
 ```
 brew install ffmpeg 
@@ -35,7 +35,7 @@ brew install poppler --with-glib
 ```
 
 
-To install all Node js modules
+##### To install all Node js modules: #####
 ```
 npm install
 ```
