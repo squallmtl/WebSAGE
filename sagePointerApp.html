@@ -19,6 +19,9 @@
 	var sageDeviceText;
 	var sagePointerBtn;
 	var screenShareBtn;
+	var screenShareResolution;
+	var screenShareQuality;
+	var screenShareQualityIndicator;
 	var mediaStream;
 	var mediaVideo;
 	var mediaCanvas;
@@ -53,6 +56,9 @@
 		
 		sagePointerLabel = document.getElementById('sagePointerLabel');
 		sagePointerColor = document.getElementById('sagePointerColor');
+		screenShareResolution = document.getElementById('screenShareResolution');
+		screenShareQuality = document.getElementById('screenShareQuality');
+		screenShareQualityIndicator = document.getElementById('screenShareQualityIndicator');
 		settingsOKBtn = document.getElementById('settingsOKBtn');
 		
 		sageDeviceText.innerHTML = "Controlling display: " + window.location.hostname;
@@ -60,8 +66,8 @@
 		mediaVideo = document.getElementById('mediaVideo');
 		mediaCanvas = document.getElementById('mediaCanvas');
 		mediaCtx = mediaCanvas.getContext('2d');
-		mediaResolution = 1080; //mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
-		mediaQuality = 7; //mediaQuality = screenShareQuality.value;
+		mediaResolution = mediaResolution = screenShareResolution.options[screenShareResolution.selectedIndex].value;
+		mediaQuality = screenShareQuality.value;
 		mediaHeight = Math.min(mediaResolution, screen.height);
 		mediaWidth = screen.width/screen.height * mediaHeight;
 		mediaCanvas.width = mediaWidth;
@@ -88,6 +94,8 @@
 		sagePointerBtn.addEventListener('click', startSagePointer, false);
 		screenShareBtn.addEventListener('click', startScreenShare, false);
 		settingsBtn.addEventListener('click', openSettings, false);
+		screenShareResolution.addEventListener('change', changeScreenShareResolution, false);
+		screenShareQuality.addEventListener('change', changeScreenShareQuality, false);
 		settingsOKBtn.addEventListener('click', closeSettings, false);
 		
 		// WS Messages
@@ -291,6 +299,20 @@
 		mediaCtx.clearRect(0, 0, mediaWidth, mediaHeight);
 		mediaCtx.drawImage(mediaVideo, 0, 0, mediaWidth, mediaHeight);
 		return mediaCanvas.toDataURL("image/jpeg", (mediaQuality/10));
+	}
+	
+	function changeScreenShareResolution(event) {
+		mediaResolution = parseInt(screenShareResolution.options[screenShareResolution.selectedIndex].value);
+		mediaHeight = Math.min(mediaResolution, screen.height);
+		mediaWidth = screen.width/screen.height * mediaHeight;
+		mediaCanvas.width = mediaWidth;
+		mediaCanvas.height = mediaHeight;
+		console.log("select: " + mediaResolution);
+	}
+	
+	function changeScreenShareQuality(event) {
+		mediaQuality = screenShareQuality.value;
+		screenShareQualityIndicator.innerHTML = mediaQuality;
 	}
 	
 	function openSettings(event) {
@@ -908,6 +930,19 @@
         <div id="settings">
         	<label class="sageLabel">Pointer name:</label><input id="sagePointerLabel" type="text"></input><br />
 			<label class="sageLabel">Pointer color:</label><input id="sagePointerColor" type="color" value="#B4B4B4"></input><br />
+        	
+        	<label class="sageLabel">Screen resolution:</label>
+			<select id="screenShareResolution">
+				<option value="360">360p</option>
+				<option value="480">480p</option>
+				<option value="720">720p</option>
+				<option value="1080" selected="selected">1080p</option>
+			</select><br />
+			<label class="sageLabel">Frame quality:</label>
+			<input id="screenShareQuality" type="range" name="quality" min="1" max="10" step="1" value="5" style="width:100px;">
+				<span id="screenShareQualityIndicator" style="margin-left:5px;">5</span>
+			</input><br />
+        	
         	<button id="settingsOKBtn" type="button">OK</button>
         </div>
 		<!--
