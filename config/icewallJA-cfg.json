@@ -1,0 +1,19 @@
+{
+        "config": "icewallJA",
+        "port": 6060,
+        "resolution": {
+                "width": 1536,
+                "height": 1366
+        },
+        "layout": {
+                "rows": 1,
+                "columns": 1
+        },
+        "displays": [
+                {
+                        "ID": 0,
+                        "row": 0,
+                        "column": 0
+                }
+        ]
+}

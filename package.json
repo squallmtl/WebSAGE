@@ -41,7 +41,6 @@
       "imageinfo": "latest",
       "multiparty": "latest",
       "node-ffprobe": "latest",
-      "pdfutils": "latest",
       "request": "latest",
       "ws": "latest",
       "ytdl": "latest"
@@ -52,7 +51,6 @@
       "imageinfo",
       "multiparty",
       "node-ffprobe",
-	  "pdfutils",
       "request",
       "ws",
       "ytdl"
