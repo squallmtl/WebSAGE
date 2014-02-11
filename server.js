@@ -13,8 +13,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
 // CONFIG FILE
 //var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-var file = "config/iridiumX-cfg.json";
+//var file = "config/iridiumX-cfg.json";
 //var file = "config/lyraX-cfg.json";
+var file = "config/spidey-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -129,6 +130,7 @@ wsioServer.onconnection(function(wsio) {
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
+            broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");  
             }        
             
 			var newOrder = moveItemToFront(elem.id);
@@ -503,6 +505,39 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 	});
+
+    wsio.on('updateWebpageStreamFrame', function(data) {
+        broadcast('updateWebpageStreamFrame', data, "display");
+    });
+
+    wsio.on('receivedWebpageStreamFrame', function(data) {
+		
+        var broadcastWS;
+        for(i=0; i<clients.length; i++){
+            var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+            if(clientAddress == data.id) broadcastWS = clients[i];
+        }
+        
+        if(broadcastWS != null) broadcastWS.emit('requestNextWebpageFrame', null);
+	});
+
+    wsio.on('openNewWebpage', function(data) {
+        var width = 1200;
+        var height = 800;
+        console.log("Opening a new webpage:" + data.url);
+        
+        id = data.id + "_" + itemCount.toString();
+        var web = {src: "", title: "WebBrowser: " + data.url, width: width, height: height};
+		loader.loadWebpage(web.src, id, web.title, web.width, web.height, function(newItem) {
+            console.log(data.id+"_"+ itemCount.toString());
+			broadcast('addNewElement', newItem);
+			
+			items.push(newItem);
+			itemCount++;
+		});
+        var spawn = require("child_process").spawn;
+        spawn('python', ['webBrowser/awesomium/build/webBrowser.py', id, data.url, width, height]);
+    });
 });
 
 app.post('/upload', function(request, response) {

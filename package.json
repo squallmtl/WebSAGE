@@ -33,10 +33,10 @@
       "gm": "latest",
       "imageinfo": "latest",
       "node-ffprobe": "latest",
-      "pdfutils": "latest",
       "request": "latest",
       "socket.io": "latest",
-      "ytdl": "latest"
+      "ytdl": "latest",
+      "ws": "latest"
   },
   "bundledDependencies": [
       "decompress-zip",
@@ -44,10 +44,10 @@
       "gm",
       "imageinfo",
       "node-ffprobe",
-      "pdfutils",
       "request",
       "socket.io",
-      "ytdl"
+      "ytdl",
+      "ws"
   ],
   "devDependencies": {
   },
