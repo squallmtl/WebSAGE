@@ -21,11 +21,19 @@ export PKG_CONFIG_PATH=/usr/X11/lib/pkgconfig
 #### Prerequisites (libraries) ####
 Awesomium: http://www.awesomium.com
 
-boost, libjpeg, libjpeg-turbo, python-pip
+##### Mac OSX #####
+```
+brew install boost libjpeg-turbo
+sudo easy_install pip
+```
+
+##### OpenSuse #####
+```
+sudo zypper in boost-devel libjpeg-turbo python-pip
+```
 
 #### Prerequisites (python libraries) ####
 To install the python prerequisites you can use pip
-
 ```
 sudo pip install Twisted autobahn
 ```
