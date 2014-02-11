@@ -10,6 +10,7 @@
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
+
 <script type="text/javascript">
 	var clientID;
 	var offsetX;
@@ -288,6 +289,35 @@
 					canvasItems[elem_data.id + "_threejs"] = threejsObj;
 				}, false);
 			}
+			// application that needs a HTML container, i.e. a div
+            else if(elem_data.type == "html") {
+            	// create a div to support the application     
+                var dive = document.createElement("div"); 
+                dive.id = elem_data.id + "_html"
+                dive.className = "sageItem";
+                dive.src = elem_data.src; 
+                dive.style.width =  elem_data.width + "px";
+                dive.style.height = elem_data.height + "px";
+                dive.style.backgroundColor = "black";
+                // add the div to the DOM
+                windowItem.appendChild(dive); 
+
+                // attach the associated application script
+				var divJS = document.createElement('script')
+				divJS.type = "text/javascript";
+				divJS.src = elem_data.src;
+				document.head.appendChild(divJS);
+				
+				// when the script is loaded...
+				divJS.addEventListener('load', function(event) {
+					var divObj = new window[elem_data.extra];
+					divObj.init(elem_data.id + "_html", date, elem_data.resrc);
+					divObj.draw(date);
+					// add the object to the canvas list
+					// div eleements behaves almost like a canvas for resize, ...
+					canvasItems[elem_data.id + "_html"] = divObj;
+				}, false);
+            }
             else if(elem_data.type == "site"){       
                 var ifrm = document.createElement("IFRAME"); 
                 ifrm.id = elem_data.id + "_site"
@@ -355,9 +385,19 @@
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
-			child[0].width = Math.round(position_data.elemWidth);
-			child[0].height = Math.round(position_data.elemHeight);
-			
+
+			// if the element is a div, resize should use the style object
+			console.log(child[0].tagName);
+			if(child[0].tagName.toLowerCase() == "div") {
+				child[0].style.width  = Math.round(position_data.elemWidth) + "px";
+				child[0].style.height = Math.round(position_data.elemHeight) + "px";
+			}
+			else{
+				// if it's a canvas, just use width and height
+				child[0].width = Math.round(position_data.elemWidth);
+				child[0].height = Math.round(position_data.elemHeight);
+			}
+			// triggers the resize callback in the application
 			if(child[0].id in canvasItems) canvasItems[child[0].id].resize(date);
 		});
 		
@@ -412,12 +452,13 @@
 		wsio.on('eventInItem', function(event_data){
 			var date = new Date(event_data.date);
 
-            var selectedElem = document.getElementById(event_data.elemId);
+			var selectedElem = document.getElementById(event_data.elemId);
 			var child = selectedElem.getElementsByClassName("sageItem");
-            if( child[0].tagName.toLowerCase() == "canvas" ){
-                if( typeof canvasItems[child[0].id].event === "function" )
-                    canvasItems[child[0].id].event( event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);  
-            }
+			if(child[0].id in canvasItems){
+				if( typeof canvasItems[child[0].id].event === "function" )
+					canvasItems[child[0].id].event( event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);  
+			}
+
             if(child[0].tagName.toLowerCase() == "iframe"){
                 //child[0].contentWindow.postMessage('
             }

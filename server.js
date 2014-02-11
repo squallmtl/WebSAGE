@@ -433,7 +433,7 @@ wsioServer.onconnection(function(wsio) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: path.join(zipFolder, instructions.resources[i].src)});
+						broadcast('addScript', {source: path.join(localPath, instructions.resources[i].src)});
 					}
 				}
 	
@@ -510,6 +510,7 @@ function uploadFiles(files) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
+					if(savedFiles["pdf"].indexOf(file.originalFilename) < 0) savedFiles["pdf"].push(file.originalFilename);
 				});
 			});
 		}
@@ -525,7 +526,7 @@ function uploadFiles(files) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', {source: path.join(zipFolder, instructions.resources[i].src)});
+							broadcast('addScript', {source: path.join(localPath, instructions.resources[i].src)});
 						}
 					}
 	
@@ -534,6 +535,7 @@ function uploadFiles(files) {
 						broadcast('addNewElement', newItem);
 					
 						items.push(newItem);
+						if(savedFiles["app"].indexOf(file.originalFilename) < 0) savedFiles["app"].push(file.originalFilename);
 
 						// set interval timer if specified
 						if(instructions.animation == "timer"){
