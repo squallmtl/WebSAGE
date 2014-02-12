@@ -13,9 +13,9 @@ var sagepointer = require('node-sagepointer'); // custom node module
 // CONFIG FILE
 //var file = "config/desktop-cfg.json";
 //var file = "config/thor-cfg.json";
-//var file = "config/iridiumX-cfg.json";
+var file = "config/iridium-cfg.json";
 //var file = "config/lyraX-cfg.json";
-var file = "config/spidey-cfg.json";
+//var file = "config/spidey-cfg.json";
 
 var json_str = fs.readFileSync(file, 'utf8');
 var config = JSON.parse(json_str);
@@ -536,7 +536,19 @@ wsioServer.onconnection(function(wsio) {
 			itemCount++;
 		});
         var spawn = require("child_process").spawn;
-        spawn('python', ['webBrowser/awesomium/build/webBrowser.py', id, data.url, width, height]);
+        wb = spawn('python', ['webBrowser/awesomium/build/webBrowser.py', id, data.url, width, height]);
+
+	wb.stdout.on('data', function (data) {
+  		console.log('stdout: ' + data);
+	});
+	
+	wb.stderr.on('data', function (data) {
+  		console.log('stderr: ' + data);
+	});
+
+	wb.on('close', function (code) {
+  		console.log('child process exited with code ' + code);
+	});
     });
 });
 

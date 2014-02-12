@@ -154,18 +154,15 @@ private:
         size_t out;
         char* base64 = base64_encode(jpeg_buffer_raw, outbuffer_size, &out);
     
-        //std::ofstream jpegfile("screenshot.jpg", std::ios_base::out | std::ios_base::binary);
-        //jpegfile.write(reinterpret_cast<const char*>(jpeg_buffer_raw), outbuffer_size);
-        //jpegfile.flush();
-
         std::string sBuffer(base64, base64 + out);
+
+	free(rgb);
+        free(base64);
 
         return sBuffer;
 
 
-        free(rgb);
-        free(base64);
-    }
+     }
 
 
 };

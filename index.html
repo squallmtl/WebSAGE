@@ -114,17 +114,17 @@
         	pointerItems[pointer_data.id].draw();
         });
 		
-		wsio.on('updateMediaStreamFrame', function(data) {
-			wsio.emit('receivedMediaStreamFrame', {id: data.id});
-			
-			var screen = document.getElementById(data.id + "_screen");
-			screen.src = stringToBase64(data.src);
-		});
+	wsio.on('updateMediaStreamFrame', function(data) {
+		wsio.emit('receivedMediaStreamFrame', {id: data.id});
+		
+		var screen = document.getElementById(data.id + "_screen");
+		screen.src = stringToBase64(data.src);
+	});
 		
         wsio.on('updateWebpageStreamFrame', function(data) {
-			var webpage = document.getElementById(data.id + "_webpage");
-			webpage.src = "data:image/jpeg;base64," + data.src;
-		});
+		var webpage = document.getElementById(data.id + "_webpage");
+		webpage.src = "data:image/jpeg;base64," + data.src;
+	});
 
 		wsio.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
