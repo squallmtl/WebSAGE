@@ -1,0 +1,35 @@
+#!/bin/sh
+
+
+global_param="--window-size=3072,1360 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files --enable-usermedia-screen-capturing"
+
+UDD=$HOME/.config/chrome-nfs/thor1
+mkdir -p $UDD/Default
+param="$global_param --user-data-dir=$UDD"
+env DISPLAY=:0.0 google-chrome $param 'https://thor.evl.uic.edu:9090?clientID=1' &
+
+env DISPLAY=:0.0 google-chrome 'https://thor.evl.uic.edu:9090/audioManager.html' &
+
+UDD=$HOME/.config/chrome-nfs/thor0
+mkdir -p $UDD/Default
+param="$global_param --user-data-dir=$UDD"
+env DISPLAY=:0.1 google-chrome $param 'https://thor.evl.uic.edu:9090?clientID=0' &
+
+sleep 3
+export DISPLAY=:0.0
+xdotool mousemove --sync 10 10
+xdotool mousemove --sync 0 0
+export DISPLAY=:0.1
+xdotool mousemove --sync 10 10
+xdotool mousemove --sync 0 0
+
+result="$(xdotool search --name 'Audio Manager - Google Chrome')"
+arr=($result)
+aLen=${#arr[@]}
+lastElem=`expr $aLen - 1`
+
+xdotool windowmove ${arr[$lastElem]} 0 1366
+xdotool mousemove --sync 10 10
+xdotool mousemove --sync 0 0
+
+wait

@@ -1,0 +1,27 @@
+{
+        "config": "laptop",
+        "port": 9090,
+        "resolution": {
+                "width": 700,
+                "height": 700
+        },
+        "layout": {
+                "rows": 1,
+                "columns": 2
+        },
+        "displays": [
+                {
+                        "ID": 0,
+                        "row": 0,
+                        "column": 0
+                },
+                {
+                        "ID": 1,
+                        "row": 0,
+                        "column": 1
+                }
+        ],
+		"omicronServerIP": "localhost",
+		"omicronMsgPort": 28000,
+		"omicronDataPort": 9123
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="utf-,8">
+<title>Sage Pointer</title>
+<script type="text/javascript">
+	function init() {
+		// open SAGE Pointer App in new window
+		var url = window.location.origin + "/sagePointerApp.html";
+		var name = "";
+		var specs = "left=0,top=0,width=450,height=125,location=no";
+		var newWin = window.open(url, name, specs);
+		
+		// Popups blocked
+		if(!newWin || newWin.closed || typeof newWin.closed == 'undefined'){ 
+			 alert("please always allow popups from " + window.location.hostname + ", then refresh page");
+		}
+		// sagePointer window successfully opened
+		else{
+			// open page in same window - then close
+			var url = "about:blank";
+			var name = "_self";
+			var specs = "";
+			window.open(url, name, specs);
+			window.close();
+		}
+	}	
+</script>
+</head>
+
+<body onload="init()">
+	
+</body>
+</html>

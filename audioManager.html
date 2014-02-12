@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
 <meta charset="utf-,8">
-<title>Node Test</title>
+<title>Audio Manager</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript">
 	var ws;
@@ -36,10 +36,6 @@
 					vid.ready = true;
 				}, false);
 				
-				vid.addEventListener('playing', function() {
-					console.log("video playing");
-				}, false);
-				
 				console.log(elem_data.src);
 				
 				var source = document.createElement("source");
@@ -66,8 +62,11 @@
 			var selectedElem = document.getElementById(event_data.elemId);
 			if(selectedElem == null) return;
 			
-			if(event_data.code == 32){ // spacebar
-				playPauseVideo(event_data.elemId);
+			if(event_data.eventType == "keyboard"){
+				var character = String.fromCharCode(event_data.data.code);
+				if(character == " "){ // spacebar
+					playPauseVideo(event_data.elemId);
+				}
 			}
 		});
 	}
@@ -104,6 +103,7 @@
 
 <body onload="init()">
 	<div id="main">
+		
 	</div>
 </body>
 </html>

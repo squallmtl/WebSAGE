@@ -19,6 +19,14 @@
       "email": "arthur.nishimoto@gmail.com"
     },
     {
+      "name": "Victor Mateevitsi",
+      "email": "mvictoras@gmail.com"
+    },
+    {
+    	"name": "Krishna Bharadwaj",
+    	"email": "krishnaknbharadwaj@gmail.com"
+    },
+    {
       "name": "Luc Renambot",
       "email": "leluc@mac.com"
     }
@@ -29,25 +37,23 @@
   },
   "dependencies": {
       "decompress-zip": "latest",
-      "express": "latest",
       "gm": "latest",
       "imageinfo": "latest",
+      "multiparty": "latest",
       "node-ffprobe": "latest",
       "request": "latest",
-      "socket.io": "latest",
-      "ytdl": "latest",
-      "ws": "latest"
+      "ws": "latest",
+      "ytdl": "latest"
   },
   "bundledDependencies": [
       "decompress-zip",
-      "express",
       "gm",
       "imageinfo",
+      "multiparty",
       "node-ffprobe",
       "request",
-      "socket.io",
-      "ytdl",
-      "ws"
+      "ws",
+      "ytdl"
   ],
   "devDependencies": {
   },
