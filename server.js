@@ -225,7 +225,8 @@ wsioServer.onconnection(function(wsio) {
 					var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now };	
 					broadcast('eventInItem', event, "display");
 					broadcast('eventInItem', event, "audioManager");  
-				}
+				    broadcast('eventInItem', event, "app");  
+}
 		}
 		
 	});
@@ -270,7 +271,8 @@ wsioServer.onconnection(function(wsio) {
 						var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now };	
 						broadcast('eventInItem', event, "display");
 						broadcast('eventInItem', event, "audioManager");   
-					}
+					    broadcast('eventInItem', event, "app");   
+}
 			}  
 		}
 	});
@@ -279,7 +281,8 @@ wsioServer.onconnection(function(wsio) {
 		if(data.code == 9 && remoteInteraction[address].SHIFT && sagePointers[address].visible){ // shift + tab
 			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
-		}
+		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "app");
+}
 		
 		if ( remoteInteraction[address].appInteractionMode() ) {
 			var pointerX = sagePointers[address].left
@@ -462,7 +465,7 @@ wsioServer.onconnection(function(wsio) {
 
     wsio.on('receivedWebpageStreamFrame', function(data) {
 		
-        var broadcastWS;
+        var broadcastWS = null;
         for(i=0; i<clients.length; i++){
             var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
             if(clientAddress == data.id) broadcastWS = clients[i];
@@ -472,8 +475,8 @@ wsioServer.onconnection(function(wsio) {
 	});
 
     wsio.on('openNewWebpage', function(data) {
-        var width = 1200;
-        var height = 800;
+        var width = 1366;
+        var height = 390;
         console.log("Opening a new webpage:" + data.url);
         
         id = data.id + "_" + itemCount.toString();

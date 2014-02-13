@@ -121,8 +121,8 @@
 		screen.src = stringToBase64(data.src);
 	});
 		
-        wsio.on('updateWebpageStreamFrame', function(data) {
-		var webpage = document.getElementById(data.id + "_webpage");
+    wsio.on('updateWebpageStreamFrame', function(data) {
+        var webpage = document.getElementById(data.id + "_webpage");
 		webpage.src = "data:image/jpeg;base64," + data.src;
 	});
 

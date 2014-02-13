@@ -2,7 +2,7 @@
 
 # phony password
 password=foobar
-server=$HOSTNAME
+server=iridium.evl.optiputer.net
 
 echo "Start: CA"
 openssl genrsa -des3 -out ca.key  -passout pass:$password 1024
@@ -31,8 +31,8 @@ echo ""
 
 echo "Trust Server Certificate - Add to DB"
 certutil -d sql:$HOME/.pki/nssdb -L
-certutil -d sql:$HOME/.pki/nssdb -D -t "P,," -n $HOSTNAME -i server.crt
-certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n $HOSTNAME -i server.crt
+certutil -d sql:$HOME/.pki/nssdb -D -t "P,," -n $server -i server.crt
+certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n $server -i server.crt
 certutil -d sql:$HOME/.pki/nssdb -L
 echo ""
 echo "Finished"
