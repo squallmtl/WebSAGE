@@ -510,6 +510,7 @@ function uploadFiles(files) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
+					
 					if(savedFiles["pdf"].indexOf(file.originalFilename) < 0) savedFiles["pdf"].push(file.originalFilename);
 				});
 			});
@@ -535,6 +536,7 @@ function uploadFiles(files) {
 						broadcast('addNewElement', newItem);
 					
 						items.push(newItem);
+						
 						if(savedFiles["app"].indexOf(file.originalFilename) < 0) savedFiles["app"].push(file.originalFilename);
 
 						// set interval timer if specified
