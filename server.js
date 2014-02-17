@@ -123,6 +123,18 @@ wsioServer.onconnection(function(wsio) {
 			for(var key in sagePointers){
 				wsio.emit('createSagePointer', sagePointers[key]);
 			}
+			var now = new Date();
+			wsio.emit('setSystemTime', {date: now});
+			
+			setTimeout(function() {
+				setInterval(function() {
+					var now = new Date();
+					wsio.emit('setSystemTime', {date: now});
+				}, 60000);
+				
+				var now = new Date();
+				wsio.emit('setSystemTime', {date: now});
+			}, (61-now.getSeconds())*1000);
 		}
 		clients.push(wsio);
 		

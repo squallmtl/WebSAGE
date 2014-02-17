@@ -21,6 +21,7 @@
 	var pointerHeight;
 	var pointerOffsetX; 
 	var pointerOffsetY;
+	var clock;
 
 	var wsio;
 	
@@ -50,6 +51,33 @@
 			pointerHeight = json_cfg.pointerHeight;
 			pointerOffsetX = Math.round(0.025384*pointerHeight); 
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
+			clock = json_cfg.clock
+			
+			var upperBar = document.getElementById('upperBar');
+			upperBar.style.height = titleBarHeight.toString() + "px";
+			upperBar.style.left = "0px";
+			upperBar.style.top = -offsetY.toString() + "px";
+			
+			var time = document.getElementById('time');
+			time.style.position = "absolute";
+			time.style.fontSize = Math.round(titleTextSize) + "px";
+			time.style.left = (-offsetX + titleBarHeight).toString() + "px";
+			time.style.top = (0.05*titleBarHeight).toString() + "px";
+			time.style.color = "#FFFFFF";
+			
+			var machine = document.getElementById('machine');
+			machine.style.position = "absolute";
+			machine.style.fontSize = Math.round(titleTextSize) + "px";
+			machine.style.left = (-offsetX + (8*titleBarHeight)).toString() + "px";
+			machine.style.top = (0.05*titleBarHeight).toString() + "px";
+			machine.style.color = "#FFFFFF";
+			machine.textContent = json_cfg.host + ":" +json_cfg.port.toString();
+		});
+		
+		wsio.on('setSystemTime', function(data) {
+			var time = document.getElementById('time');
+			if(clock == 12) time.textContent = formatAMPM(new Date(data.date));
+			else time.textContent = format24Hr(new Date(data.date));
 		});
 		
 		wsio.on('addScript', function(script_data) {
@@ -487,6 +515,25 @@
 			elem.parentNode.insertBefore(last, elem);
 		}
 	}
+	
+	function formatAMPM(date) {
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
+		var ampm = hours >= 12 ? "pm" : "am";
+		hours = hours % 12;
+		if(hours == 0) hours = 12;
+		var hh = hours.toString();
+		var mm = minutes < 10 ? "0"+minutes.toString() : minutes.toString();
+		return (hh + ":" + mm + ampm);
+	}
+	
+	function format24Hr(date) {
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
+		var hh = hours.toString();
+		var mm = minutes < 10 ? "0"+minutes.toString() : minutes.toString();
+		return (hh + ":" + mm);
+	}
 
 	function stringToBase64(string) {
 		return decodeURIComponent(escape(atob(string)));
@@ -529,6 +576,10 @@
 
 <body onload="init()">
 	<div id="main">
+		<div id="upperBar">
+			<p id="time">12:00am</p>
+			<p id="machine">localhost</p>
+		</div>
 	</div>
 </body>
 </html>
