@@ -1,0 +1,8 @@
+{
+	"main_script": "googlemaps.js",
+	"type": "html",
+	"width": 1400,
+	"height": 400,
+	"resources": [
+	]
+}
