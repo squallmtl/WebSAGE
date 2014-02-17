@@ -1,4 +1,5 @@
 var fs = require('fs');
+var os = require('os');
 var https = require('https');
 var multiparty = require('multiparty');
 var path = require('path');
@@ -10,20 +11,34 @@ var loader = require('node-itemloader');               // custom node module
 var interaction = require('node-interaction');         // custom node module
 var sagepointer = require('node-sagepointer');         // custom node module
  
- 
-// CONFIG FILE
-var file = "config/desktop-cfg.json";
-//var file = "config/desktop-omicron-cfg.json";
-//var file = "config/icewall-cfg.json";
-//var file = "config/icewallKB-cfg.json";
-//var file = "config/icewallJA-cfg.json";
-//var file = "config/icewallTM-cfg.json";
-//var file = "config/icewallAN-cfg.json";
-//var file = "config/icewallRight-omicron-cfg.json";
-//var file = "config/iridium-cfg.json";
-//var file = "config/lyra-cfg.json";
 
-var json_str = fs.readFileSync(file, 'utf8');
+// CONFIG FILE
+var wallfile = null;
+//var wallfile = "config/desktop-cfg.json";
+//var wallfile = "config/desktop-omicron-cfg.json";
+//var wallfile = "config/icewall-cfg.json";
+//var wallfile = "config/icewallKB-cfg.json";
+//var wallfile = "config/icewallJA-cfg.json";
+//var wallfile = "config/icewallTM-cfg.json";
+//var wallfile = "config/icewallAN-cfg.json";
+//var wallfile = "config/icewallRight-omicron-cfg.json";
+//var wallfile = "config/iridium-cfg.json";
+//var wallfile = "config/lyra-cfg.json";
+
+	// If variable not set, use the hostname to find a matching file
+if (wallfile == null) {
+	var hn   = os.hostname();
+	wallfile = path.join("config", hn + "-cfg.json");
+	if (fs.existsSync(wallfile)) {
+		console.log("Found configuration file: ", wallfile);
+	} else {
+		wallfile = path.join("config", "desktop-cfg.json");
+		console.log("Using default configuration file: ", wallfile);		
+	}
+}
+
+
+var json_str = fs.readFileSync(wallfile, 'utf8');
 var config = JSON.parse(json_str);
 config.totalWidth = config.resolution.width * config.layout.columns;
 config.totalHeight = config.resolution.height * config.layout.rows;
