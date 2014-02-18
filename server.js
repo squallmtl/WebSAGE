@@ -13,10 +13,10 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
 
 // CONFIG FILE
-var wallfile = null;
+//var wallfile = null;
 //var wallfile = "config/desktop-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
-//var wallfile = "config/icewall-cfg.json";
+var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
 //var wallfile = "config/icewallJA-cfg.json";
 //var wallfile = "config/icewallTM-cfg.json";
@@ -1061,6 +1061,9 @@ function pointerRelease(address, pointerX, pointerY) {
 	
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
+			if(remoteInteraction[address].selectedResizeItem != null){
+				broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
+			}
 			remoteInteraction[address].releaseItem();
 	}
 	else if ( remoteInteraction[address].appInteractionMode() ) {
