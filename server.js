@@ -206,9 +206,13 @@ wsioServer.onconnection(function(wsio) {
 	    	var pointerX = sagePointers[address].left
 			var pointerY = sagePointers[address].top
 	    
-			var updatedItem = remoteInteraction[address].moveSelectedItem(pointerX, pointerY);
-			if(updatedItem != null){
-				broadcast('setItemPosition', updatedItem);
+			var updatedMoveItem = remoteInteraction[address].moveSelectedItem(pointerX, pointerY);
+			var updatedResizeItem = remoteInteraction[address].resizeSelectedItem(pointerX, pointerY);
+			if(updatedMoveItem != null){
+				broadcast('setItemPosition', updatedMoveItem);
+			}
+			else if(updatedResizeItem != null){
+				broadcast('setItemPositionAndSize', updatedResizeItem);
 			}
 			else{
 				var elem = findItemUnderPointer(pointerX, pointerY);
@@ -1011,9 +1015,10 @@ function pointerPress( address, pointerX, pointerY ) {
 			if( remoteInteraction[address].windowManagementMode() ){
 				var localX = pointerX - elem.left;
 				var localY = pointerY - (elem.top+config.titleBarHeight);
+				var cornerSize = Math.min(elem.width, elem.height) / 5;
 				// bottom right corner - select for drag resize
-				if(localX >= 0.8*elem.width && localY >= 0.8*elem.height){
-					//remoteInteraction[address].selectResizeItem(elem, pointerX, pointerY);
+				if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
+					remoteInteraction[address].selectResizeItem(elem, pointerX, pointerY);
 				}
 				// otherwise - select for move
 				else{
