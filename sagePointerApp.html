@@ -164,6 +164,7 @@
 			document.addEventListener('keydown', pointerKeyDown, false);
 			document.addEventListener('keyup', pointerKeyUp, false);
             document.addEventListener('keypress', pointerKeyPress, false);
+            document.addEventListener('dblclick', pointerDblClick, false);
 			
 			sagePointerBtn.removeEventListener('click', startSagePointer, false);
 		}
@@ -178,6 +179,7 @@
 			document.removeEventListener('keydown', pointerKeyDown, false);
 			document.removeEventListener('keyup', pointerKeyUp, false);
             document.removeEventListener('keypress', pointerKeyPress, false);
+            document.removeEventListener('dblclick', pointerDblClick, false);
 			
 			sagePointerBtn.addEventListener('click', startSagePointer, false);
 		}
@@ -216,6 +218,11 @@
 		wsio.emit('pointerScrollStart');
 		wsio.emit('pointerScroll', {scale: scale});
 		preventDefault(event);
+	}
+
+	function pointerDblClick(event) {
+        wsio.emit('pointerDblClick');
+        preventDefault(event);
 	}
 
 	function pointerKeyDown(event) {
