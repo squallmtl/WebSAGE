@@ -61,6 +61,7 @@
 			
 			var time = document.getElementById('time');
 			time.style.position = "absolute";
+			time.style.whiteSpace = "nowrap";
 			time.style.fontSize = Math.round(titleTextSize) + "px";
 			time.style.left = (-offsetX + titleBarHeight).toString() + "px";
 			time.style.top = (0.05*titleBarHeight).toString() + "px";
@@ -68,6 +69,7 @@
 			
 			var machine = document.getElementById('machine');
 			machine.style.position = "absolute";
+			machine.style.whiteSpace = "nowrap";
 			machine.style.fontSize = Math.round(titleTextSize) + "px";
 			machine.style.left = (-offsetX + (8*titleBarHeight)).toString() + "px";
 			machine.style.top = (0.05*titleBarHeight).toString() + "px";
@@ -367,8 +369,8 @@
             dragCorner.style.height = cornerSize.toString() + "px";
             dragCorner.style.top = (elem_data.height-cornerSize).toString() + "px";
             dragCorner.style.left = (elem_data.width-cornerSize).toString() + "px";
-            dragCorner.style.backgroundColor = "rgba(255,255,255,0.7)";
-            dragCorner.style.border = "2px solid #333333"
+    		dragCorner.style.backgroundColor = "rgba(255,255,255,0.0)";
+            dragCorner.style.border = "none"
             windowItem.appendChild(dragCorner);
 			
 			itemCount += 2;
@@ -394,6 +396,20 @@
 				
 				zval += 2;
 			}
+		});
+		
+		wsio.on('hoverOverItemCorner', function(elem_data) {
+			var selectedElem = document.getElementById(elem_data.elemId);
+			
+			var dragCorner = selectedElem.getElementsByClassName("dragCorner");
+			if(elem_data.flag){
+				dragCorner[0].style.backgroundColor = "rgba(255,255,255,0.7)";
+            	dragCorner[0].style.border = "2px solid #333333"
+            }
+            else{
+            	dragCorner[0].style.backgroundColor = "rgba(255,255,255,0.0)";
+            	dragCorner[0].style.border = "none"
+            }
 		});
 
 		wsio.on('setItemPosition', function(position_data) {

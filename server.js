@@ -203,8 +203,37 @@ wsioServer.onconnection(function(wsio) {
 		broadcast('updateSagePointerPosition', sagePointers[address], "display");
 		
 	    if( remoteInteraction[address].windowManagementMode() ){
-			var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-			if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+	    	var pointerX = sagePointers[address].left
+			var pointerY = sagePointers[address].top
+	    
+			var updatedItem = remoteInteraction[address].moveSelectedItem(pointerX, pointerY);
+			if(updatedItem != null){
+				broadcast('setItemPosition', updatedItem);
+			}
+			else{
+				var elem = findItemUnderPointer(pointerX, pointerY);
+				if(elem != null){
+					var localX = pointerX - elem.left;
+					var localY = pointerY - (elem.top+config.titleBarHeight);
+					var cornerSize = Math.min(elem.width, elem.height) / 5;
+					// bottom right corner - select for drag resize
+					if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
+						if(remoteInteraction[address].hoverCornerItem != null){
+							broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
+						}
+						remoteInteraction[address].setHoverCornerItem(elem);
+						broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, "display");
+					}
+					else if(remoteInteraction[address].hoverCornerItem != null){
+						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
+						remoteInteraction[address].setHoverCornerItem(null);
+					}
+				}
+				else if(remoteInteraction[address].hoverCornerItem != null){
+					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
+					remoteInteraction[address].setHoverCornerItem(null);
+				}
+			}
 		}
 		else if ( remoteInteraction[address].appInteractionMode() ) {		
 			var pointerX = sagePointers[address].left
@@ -974,14 +1003,22 @@ function hidePointer( address ) {
 }
 
 function pointerPress( address, pointerX, pointerY ) {
-	if( sagePointers[address] == undefined )
-		return;
+	if( sagePointers[address] == undefined ) return;
 	
 	// From pointerPress
 	var elem = findItemUnderPointer(pointerX, pointerY);
 		if(elem != null){
 			if( remoteInteraction[address].windowManagementMode() ){
-				remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+				var localX = pointerX - elem.left;
+				var localY = pointerY - (elem.top+config.titleBarHeight);
+				// bottom right corner - select for drag resize
+				if(localX >= 0.8*elem.width && localY >= 0.8*elem.height){
+					//remoteInteraction[address].selectResizeItem(elem, pointerX, pointerY);
+				}
+				// otherwise - select for move
+				else{
+					remoteInteraction[address].selectMoveItem(elem, pointerX, pointerY); //will only go through if window management mode 
+				}
 			}
 			else if ( remoteInteraction[address].appInteractionMode() ) {
 				var itemRelX = pointerX - elem.left;
