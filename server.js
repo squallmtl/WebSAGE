@@ -102,7 +102,6 @@ var mediaStreams = {};
 
 wsioServer.onconnection(function(wsio) {
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-	console.log("New Connection: " + address);
 	
 	wsio.emit('setupDisplayConfiguration', config);
 	wsio.emit('initialize', {address: address});
@@ -112,6 +111,8 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('addClient', function(data) {
+		console.log("New Connection: " + address + " (" + data.clientType + ")");
+		
 		wsio.clientType = data.clientType;
 		if(wsio.clientType == "sageUI"){
 			createSagePointer( address );
@@ -125,16 +126,6 @@ wsioServer.onconnection(function(wsio) {
 			}
 			var now = new Date();
 			wsio.emit('setSystemTime', {date: now});
-			
-			setTimeout(function() {
-				setInterval(function() {
-					var now = new Date();
-					wsio.emit('setSystemTime', {date: now});
-				}, 60000);
-				
-				var now = new Date();
-				wsio.emit('setSystemTime', {date: now});
-			}, (61-now.getSeconds())*1000);
 		}
 		clients.push(wsio);
 		
@@ -509,6 +500,17 @@ wsioServer.onconnection(function(wsio) {
 		}
 	});
 });
+
+var cDate = new Date();
+setTimeout(function() {
+	setInterval(function() {
+		var now = new Date();
+		broadcast('setSystemTime', {date: now}, "display");
+	}, 60000);
+	
+	var now = new Date();
+	broadcast('setSystemTime', {date: now}, "display");
+}, (61-cDate.getSeconds())*1000);
 
 function uploadFiles(files) {
 	var fileKeys = Object.keys(files);

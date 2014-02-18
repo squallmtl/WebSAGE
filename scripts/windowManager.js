@@ -162,6 +162,11 @@ function windowManager(id, ws) {
 		event.preventDefault();
 	};
 	
+	this.mouseDblClick = function(event) {
+		wsio.emit('pointerDblClick');
+		event.preventDefault();
+	}
+	
 	this.keyDown = function(event) {
 		this.wsio.emit('keyDown', {code: event.keyCode});
 		event.preventDefault();

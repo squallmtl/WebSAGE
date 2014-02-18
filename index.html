@@ -179,6 +179,7 @@
 			windowItem.className = "windowItem";
 			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
 			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
+			windowItem.style.overflow = "hidden";
 			windowItem.style.zIndex = (itemCount+1).toString();
 			main.appendChild(windowItem);
 			
@@ -357,6 +358,18 @@
                 windowItem.appendChild(ifrm); 
                 console.log("iframe source:" + elem_data.src);
             }
+            
+            var cornerSize = Math.min(elem_data.width, elem_data.height) / 5;
+            var dragCorner = document.createElement("div");
+            dragCorner.className = "dragCorner";
+            dragCorner.style.position = "absolute";
+            dragCorner.style.width = cornerSize.toString() + "px";
+            dragCorner.style.height = cornerSize.toString() + "px";
+            dragCorner.style.top = (elem_data.height-cornerSize).toString() + "px";
+            dragCorner.style.left = (elem_data.width-cornerSize).toString() + "px";
+            dragCorner.style.backgroundColor = "rgba(255,255,255,0.7)";
+            dragCorner.style.border = "2px solid #333333"
+            windowItem.appendChild(dragCorner);
 			
 			itemCount += 2;
 		});
@@ -412,6 +425,13 @@
 			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
+			
+			var dragCorner = selectedElem.getElementsByClassName("dragCorner");
+			var cornerSize = Math.min(position_data.elemWidth, position_data.elemHeight) / 5;
+			dragCorner[0].style.width = cornerSize.toString() + "px";
+            dragCorner[0].style.height = cornerSize.toString() + "px";
+            dragCorner[0].style.top = (Math.round(position_data.elemHeight)-cornerSize).toString() + "px";
+            dragCorner[0].style.left = (Math.round(position_data.elemWidth)-cornerSize).toString() + "px";
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
 
