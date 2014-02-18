@@ -18,7 +18,6 @@ function googlemaps(){
 
 	this.initialize = function() {
 		this.mapType = google.maps.MapTypeId.HYBRID;
-		this.APIKEY = "AIzaSyBEngu_3hdR3tzZs6yVKho8LxhkEVkfgcw"; // luc's key
 
 		// Enable the visual refresh
 		google.maps.visualRefresh = true;
@@ -88,6 +87,7 @@ function googlemaps(){
 
 		// need a global handler for the callback (i.e. scope pollution)
 		googlemaps_self = this;
+		this.APIKEY = "AIzaSyBEngu_3hdR3tzZs6yVKho8LxhkEVkfgcw"; // luc's key
 		// load google maps
 		addScript('https://maps.googleapis.com/maps/api/js?key=' + this.APIKEY + '&sensor=false&libraries=weather&callback=googlemaps_self.initialize');
 	}

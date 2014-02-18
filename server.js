@@ -174,6 +174,33 @@ wsioServer.onconnection(function(wsio) {
 		pointerPosition( address, data );
 	});
 	
+	// Got double-click event from the pointer
+	wsio.on('pointerDblClick', function(data) {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+		var elem     = findItemUnderPointer(pointerX, pointerY);
+
+		if (elem != null) {
+			if (!elem.isMaximized || elem.isMaximized == 0) {
+				// need to maximize the item
+				var updatedItem = remoteInteraction[address].maximizeSelectedItem(elem, config);
+				if (updatedItem != null) {
+					broadcast('setItemPositionAndSize', updatedItem);
+					// the PDF files need an extra redraw
+					broadcast('finishedResize', {id: elem.id}, "display");
+				}
+			} else {
+				// already maximized, need to restore the item size
+				var updatedItem = remoteInteraction[address].restoreSelectedItem(elem);
+				if (updatedItem != null) {
+					broadcast('setItemPositionAndSize', updatedItem);
+					// the PDF files need an extra redraw
+					broadcast('finishedResize', {id: elem.id}, "display");
+				}
+			}
+		}
+	});
+
 	wsio.on('pointerMove', function(data) {
 		sagePointers[address].left += data.deltaX;
 		sagePointers[address].top += data.deltaY;
@@ -1033,6 +1060,7 @@ function pointerScrollStart( address, pointerX, pointerY ) {
 		broadcast('updateItemOrder', newOrder);
 	}
 }
+
 
 function pointerScroll( address, data ) {
 	if( sagePointers[address] == undefined )
