@@ -7,7 +7,7 @@ mkdir -p $UDD/Default
 param="$global_param --user-data-dir=$UDD"
 env DISPLAY=:0.0 google-chrome $param 'https://thor.evl.uic.edu:7070?clientID=0' &
 
-sleep 1
+sleep 1.5
 export DISPLAY=:0.0
 
 result="$(xdotool search --name 'Node Test - Google Chrome')"

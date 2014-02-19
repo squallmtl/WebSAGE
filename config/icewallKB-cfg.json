@@ -1,5 +1,5 @@
 {
-        "config": "thor.evl.uic.edu",
+        "host": "thor.evl.uic.edu",
         "port": 5050,
         "clock": 12,
         "resolution": {
