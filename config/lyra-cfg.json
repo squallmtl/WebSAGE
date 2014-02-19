@@ -1,6 +1,7 @@
 {
-	"config": "lyra",
+	"config": "lyra.evl.uic.edu",
 	"port": 9090,
+	"clock": 12,
 	"resolution": {
 		"width": 1366,
 		"height": 1536

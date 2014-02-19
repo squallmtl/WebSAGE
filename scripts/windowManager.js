@@ -144,8 +144,8 @@ function windowManager(id, ws) {
 	};
 	
 	this.mouseScroll = function(event) {
-		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
-		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		var scale = 1.0 + Math.abs(event.wheelDelta)/512;
+		if(event.wheelDelta > 0) scale = 1.0 / scale;
 		
 		this.wsio.emit('pointerScrollStart');
 		this.wsio.emit('pointerScroll', {scale: scale});
@@ -154,13 +154,18 @@ function windowManager(id, ws) {
 	
 	this.mouseScrollFF = function(event) {
 		var wheelDelta = -120*event.detail;
-		var scale = 1.0 + Math.abs(wheelDelta)/256;
-		if(wheelDelta < 0) scale = 1.0 / scale;
+		var scale = 1.0 + Math.abs(wheelDelta)/512;
+		if(wheelDelta > 0) scale = 1.0 / scale;
 		
 		this.wsio.emit('pointerScrollStart');
 		this.wsio.emit('pointerScroll', {scale: scale});
 		event.preventDefault();
 	};
+	
+	this.mouseDblClick = function(event) {
+		wsio.emit('pointerDblClick');
+		event.preventDefault();
+	}
 	
 	this.keyDown = function(event) {
 		this.wsio.emit('keyDown', {code: event.keyCode});

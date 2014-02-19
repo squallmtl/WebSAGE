@@ -110,6 +110,7 @@
 		winMgrCanvas.addEventListener('mouseup', winMgr.mouseRelease.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousewheel', winMgr.mouseScroll.bind(winMgr), false);
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
+		winMgrCanvas.addEventListener('dblclick', winMgr.mouseDblClick.bind(winMgr), false);
 		document.addEventListener('mousemove', updateTarget, false);
 		
 		mediaVideo = document.getElementById('mediaVideo');
@@ -358,6 +359,7 @@
 			document.addEventListener('keydown', pointerKeyDown, false);
 			document.addEventListener('keyup', pointerKeyUp, false);
             document.addEventListener('keypress', pointerKeyPress, false);
+            document.addEventListener('dblclick', pointerDblClick, false);
 
 			
 			pointerBtn.removeEventListener('click', startSagePointer, false);
@@ -378,6 +380,7 @@
 			document.removeEventListener('keydown', pointerKeyDown, false);
 			document.removeEventListener('keyup', pointerKeyUp, false);
             document.removeEventListener('keypress', pointerKeyPress, false);
+            document.removeEventListener('dblclick', pointerDblClick, false);
 			
 			pointerBtn.addEventListener('click', startSagePointer, false);
 		}
@@ -409,8 +412,8 @@
 	}
 	
 	function pointerScroll(event) {
-		var scale = 1.0 + Math.abs(event.wheelDelta)/256;
-		if(event.wheelDelta < 0) scale = 1.0 / scale;
+		var scale = 1.0 + Math.abs(event.wheelDelta)/512;
+		if(event.wheelDelta > 0) scale = 1.0 / scale;
 		wsio.emit('pointerScrollStart');
 		wsio.emit('pointerScroll', {scale: scale});
 		preventDefault(event);
@@ -418,11 +421,16 @@
 	
 	function pointerScrollFF(event) {
 		var wheelDelta = -120*event.detail;
-		var scale = 1.0 + Math.abs(wheelDelta)/256;
-		if(wheelDelta < 0) scale = 1.0 / scale;
+		var scale = 1.0 + Math.abs(wheelDelta)/512;
+		if(wheelDelta > 0) scale = 1.0 / scale;
 		wsio.emit('pointerScrollStart');
 		wsio.emit('pointerScroll', {scale: scale});
 		preventDefault(event);
+	}
+	
+	function pointerDblClick(event) {
+        wsio.emit('pointerDblClick');
+        preventDefault(event);
 	}
 	
 	function pointerKeyDown(event) {

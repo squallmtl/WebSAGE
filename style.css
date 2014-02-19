@@ -26,6 +26,12 @@ body {
 	overflow: hidden;
 }
 
+#upperBar {
+	position:absolute;
+	width: 100%;
+	background: rgba(0,0,0,0.5);
+}
+
 .windowItem {
 	position:absolute;
 	border: solid 1px #000000;

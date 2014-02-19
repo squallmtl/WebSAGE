@@ -1,25 +1,20 @@
 {
         "host": "thor.evl.uic.edu",
-        "port": 9090,
+        "port": 6060,
         "clock": 12,
         "resolution": {
-                "width": 3072,
-                "height": 1360
+                "width": 1536,
+                "height": 1366
         },
         "layout": {
                 "rows": 1,
-                "columns": 2
+                "columns": 1
         },
         "displays": [
                 {
                         "ID": 0,
                         "row": 0,
                         "column": 0
-                },
-                {
-                        "ID": 1,
-                        "row": 0,
-                        "column": 1
                 }
         ]
 }

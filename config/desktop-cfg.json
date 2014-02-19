@@ -1,6 +1,7 @@
 {
-        "config": "laptop",
+        "host": "localhost",
         "port": 9090,
+        "clock": 12,
         "resolution": {
                 "width": 700,
                 "height": 700
