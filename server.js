@@ -13,10 +13,10 @@ var sagepointer = require('node-sagepointer');         // custom node module
  
 
 // CONFIG FILE
-//var wallfile = null;
+var wallfile = null;
 //var wallfile = "config/desktop-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
-var wallfile = "config/icewall-cfg.json";
+//var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
 //var wallfile = "config/icewallJA-cfg.json";
 //var wallfile = "config/icewallTM-cfg.json";
@@ -25,9 +25,12 @@ var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/iridium-cfg.json";
 //var wallfile = "config/lyra-cfg.json";
 
-	// If variable not set, use the hostname to find a matching file
+// If variable not set, use the hostname to find a matching file
 if (wallfile == null) {
 	var hn   = os.hostname();
+	var dot = hn.indexOf(".");
+	if(dot >= 0) hn = hn.substring(0, dot);
+	console.log(hn);
 	wallfile = path.join("config", hn + "-cfg.json");
 	if (fs.existsSync(wallfile)) {
 		console.log("Found configuration file: ", wallfile);

@@ -1,5 +1,5 @@
 {
-	"config": "iridium.evl.uic.edu",
+	"host": "iridium.evl.uic.edu",
 	"port": 9090,
 	"clock": 12,
 	"resolution": {
