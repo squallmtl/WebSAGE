@@ -82,19 +82,6 @@ for(var h in config.alternate_hosts){
 	   }).context;
 }
 
-//var certs = {
-//"iridium.evl.optiputer.net":  crypto.createCredentials({ 
-  //key: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-server.key")),
-  //cert: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-server.crt")),
-  //ca: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-ca.crt")),
-    //}).context,
-//"iridium.evl.uic.edu":  crypto.createCredentials({ 
-  //key: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-server.key")),
-  //cert: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-server.crt")),
-  //ca: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-ca.crt")),
-    //}).context
-//};
-
 var options = {
 	// server default keys
   key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
