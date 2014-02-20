@@ -1,5 +1,6 @@
 var fs = require('fs');
 var os = require('os');
+var crypto = require('crypto');
 var https = require('https');
 var multiparty = require('multiparty');
 var path = require('path');
@@ -63,13 +64,53 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
+// build a list of certs to support multi-homed computers
+var certs = {};
+// add the default cert from the hostname specified in the config file
+certs[ config.host ] = crypto.createCredentials({ 
+	key: fs.readFileSync(path.join("keys",  config.host + "-server.key")),
+	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+	ca: fs.readFileSync(path.join("keys",   config.host + "-ca.crt")),
+   }).context;
+
+for(var h in config.alternate_hosts){
+	var alth = config.alternate_hosts[ h ];
+	certs[ alth ] = crypto.createCredentials({ 
+		key: fs.readFileSync(path.join("keys",  alth + "-server.key")),
+		cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
+		ca: fs.readFileSync(path.join("keys",   alth + "-ca.crt")),
+	   }).context;
+}
+
+//var certs = {
+//"iridium.evl.optiputer.net":  crypto.createCredentials({ 
+  //key: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-server.key")),
+  //cert: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-server.crt")),
+  //ca: fs.readFileSync(path.join("keys", "iridium.evl.optiputer.net-ca.crt")),
+    //}).context,
+//"iridium.evl.uic.edu":  crypto.createCredentials({ 
+  //key: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-server.key")),
+  //cert: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-server.crt")),
+  //ca: fs.readFileSync(path.join("keys", "iridium.evl.uic.edu-ca.crt")),
+    //}).context
+//};
 
 var options = {
-  key: fs.readFileSync(path.join("keys", "server.key")),
-  cert: fs.readFileSync(path.join("keys", "server.crt")),
-  ca: fs.readFileSync(path.join("keys", "ca.crt")),
+	// server default keys
+  key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+  cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+  ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
   requestCert: true,
-  rejectUnauthorized: false
+  rejectUnauthorized: false,
+	// callback to handle multi-homed machines
+  SNICallback: function(servername){
+    if(certs.hasOwnProperty(servername)){
+        return certs[servername];
+    } else {
+	console.log("Unknown host, cannot find a certificate for ", servername);
+        return null;
+    }
+  }
 };
 
 var privateFiles = ["./server.js", "./package.json", "./README.md", "./keys/", "./config"];

@@ -1,5 +1,6 @@
 {
 	"host": "iridium.evl.uic.edu",
+	"alternate_hosts": [ "iridium.evl.optiputer.net" ],
 	"port": 9090,
 	"clock": 12,
 	"resolution": {
