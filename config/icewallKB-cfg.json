@@ -1,6 +1,7 @@
 {
-        "config": "icewallKB",
+        "host": "thor.evl.uic.edu",
         "port": 5050,
+        "clock": 12,
         "resolution": {
                 "width": 1536,
                 "height": 1366

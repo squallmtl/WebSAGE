@@ -9,6 +9,13 @@ project(webBrowser)
 
 add_library(webBrowser SHARED webBrowser.cpp)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+IF(APPLE)
+    set (CMAKE_OSX_ARCHITECTURES "i386")
+    set (CMAKE_CXX_FLAGS "-m32")
+ENDIF()
+
 find_package(Boost REQUIRED system thread python)
 
 if(Boost_FOUND)
@@ -30,9 +37,17 @@ else(PYTHONLIBS_FOUND)
 endif(PYTHONLIBS_FOUND)
 
 # Awesomium
+find_package(Awesomium REQUIRED)
+if(AWESOMIUM_FOUND)
+    include_directories(${AWESOMIUM_INCLUDE_PATH})
+    target_link_libraries(webBrowser ${AWESOMIUM_LIBRARIES})
+else(AWESOMIUM_FOUND)
+    message(FATAL_ERROR "Awesomium was not found. Please install awesomium")
+endif(AWESOMIUM_FOUND)
+
 #include_directories(${CMAKE_SOURCE_DIR}/external/awesomium1.7.2/include)
 #target_link_libraries(webBrowser ${CMAKE_SOURCE_DIR}/external/awesomium1.7.2/lib/linux64/libawesomium-1-7.so.2.0)
-target_link_libraries(webBrowser awesomium-1-7)
+#target_link_libraries(webBrowser awesomium-1-7)
 
 find_package(JPEG)
 if(JPEG_FOUND)
@@ -80,8 +95,8 @@ endif(JPEG_FOUND)
 IF(CMAKE_COMPILER_IS_GNUCXX)
   ADD_DEFINITIONS("-Wall")
 ELSE()
-    MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
+    #MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 ENDIF()
 
-file(COPY ${CMAKE_SOURCE_DIR}/external/awesomium1.7.2/lib/linux64/libawesomium-1-7.so.2.0 DESTINATION ${CMAKE_BINARY_DIR})
+#file(COPY ${CMAKE_SOURCE_DIR}/external/awesomium1.7.2/lib/linux64/libawesomium-1-7.so.2.0 DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/webBrowser.py DESTINATION ${CMAKE_BINARY_DIR})

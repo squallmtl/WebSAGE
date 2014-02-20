@@ -10,6 +10,7 @@
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
+
 <script type="text/javascript">
 	var clientID;
 	var offsetX;
@@ -20,6 +21,7 @@
 	var pointerHeight;
 	var pointerOffsetX; 
 	var pointerOffsetY;
+	var clock;
 
 	var wsio;
 	
@@ -49,6 +51,36 @@
 			pointerHeight = json_cfg.pointerHeight;
 			pointerOffsetX = Math.round(0.025384*pointerHeight); 
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
+			clock = json_cfg.clock;
+			
+			var upperBar = document.getElementById('upperBar');
+			upperBar.style.height = titleBarHeight.toString() + "px";
+			upperBar.style.left = "0px";
+			upperBar.style.top = -offsetY.toString() + "px";
+			upperBar.style.zIndex = "9999";
+			
+			var time = document.getElementById('time');
+			time.style.position = "absolute";
+			time.style.whiteSpace = "nowrap";
+			time.style.fontSize = Math.round(titleTextSize) + "px";
+			time.style.left = (-offsetX + titleBarHeight).toString() + "px";
+			time.style.top = (0.05*titleBarHeight).toString() + "px";
+			time.style.color = "#FFFFFF";
+			
+			var machine = document.getElementById('machine');
+			machine.style.position = "absolute";
+			machine.style.whiteSpace = "nowrap";
+			machine.style.fontSize = Math.round(titleTextSize) + "px";
+			machine.style.left = (-offsetX + (8*titleBarHeight)).toString() + "px";
+			machine.style.top = (0.05*titleBarHeight).toString() + "px";
+			machine.style.color = "#FFFFFF";
+			machine.textContent = json_cfg.host + ":" +json_cfg.port.toString();
+		});
+		
+		wsio.on('setSystemTime', function(data) {
+			var time = document.getElementById('time');
+			if(clock == 12) time.textContent = formatAMPM(new Date(data.date));
+			else time.textContent = format24Hr(new Date(data.date));
 		});
 		
 		wsio.on('addScript', function(script_data) {
@@ -154,6 +186,7 @@
 			windowItem.className = "windowItem";
 			windowItem.style.left = (elem_data.left-offsetX).toString() + "px";
 			windowItem.style.top = (elem_data.top+titleBarHeight-offsetY).toString() + "px";
+			windowItem.style.overflow = "hidden";
 			windowItem.style.zIndex = (itemCount+1).toString();
 			main.appendChild(windowItem);
 			
@@ -307,6 +340,35 @@
 					canvasItems[elem_data.id + "_threejs"] = threejsObj;
 				}, false);
 			}
+			// application that needs a HTML container, i.e. a div
+            else if(elem_data.type == "html") {
+            	// create a div to support the application     
+                var dive = document.createElement("div"); 
+                dive.id = elem_data.id + "_html"
+                dive.className = "sageItem";
+                dive.src = elem_data.src; 
+                dive.style.width =  elem_data.width + "px";
+                dive.style.height = elem_data.height + "px";
+                dive.style.backgroundColor = "black";
+                // add the div to the DOM
+                windowItem.appendChild(dive); 
+
+                // attach the associated application script
+				var divJS = document.createElement('script')
+				divJS.type = "text/javascript";
+				divJS.src = elem_data.src;
+				document.head.appendChild(divJS);
+				
+				// when the script is loaded...
+				divJS.addEventListener('load', function(event) {
+					var divObj = new window[elem_data.extra];
+					divObj.init(elem_data.id + "_html", date, elem_data.resrc);
+					divObj.draw(date);
+					// add the object to the canvas list
+					// div eleements behaves almost like a canvas for resize, ...
+					canvasItems[elem_data.id + "_html"] = divObj;
+				}, false);
+            }
             else if(elem_data.type == "site"){       
                 var ifrm = document.createElement("IFRAME"); 
                 ifrm.id = elem_data.id + "_site"
@@ -317,6 +379,18 @@
                 windowItem.appendChild(ifrm); 
                 console.log("iframe source:" + elem_data.src);
             }
+            
+            var cornerSize = Math.min(elem_data.width, elem_data.height) / 5;
+            var dragCorner = document.createElement("div");
+            dragCorner.className = "dragCorner";
+            dragCorner.style.position = "absolute";
+            dragCorner.style.width = cornerSize.toString() + "px";
+            dragCorner.style.height = cornerSize.toString() + "px";
+            dragCorner.style.top = (elem_data.height-cornerSize).toString() + "px";
+            dragCorner.style.left = (elem_data.width-cornerSize).toString() + "px";
+    		dragCorner.style.backgroundColor = "rgba(255,255,255,0.0)";
+            dragCorner.style.border = "none"
+            windowItem.appendChild(dragCorner);
 			
 			itemCount += 2;
 		});
@@ -343,6 +417,20 @@
 			}
 		});
 		
+		wsio.on('hoverOverItemCorner', function(elem_data) {
+			var selectedElem = document.getElementById(elem_data.elemId);
+			
+			var dragCorner = selectedElem.getElementsByClassName("dragCorner");
+			if(elem_data.flag){
+				dragCorner[0].style.backgroundColor = "rgba(255,255,255,0.7)";
+            	dragCorner[0].style.border = "2px solid #333333"
+            }
+            else{
+            	dragCorner[0].style.backgroundColor = "rgba(255,255,255,0.0)";
+            	dragCorner[0].style.border = "none"
+            }
+		});
+
 		wsio.on('setItemPosition', function(position_data) {
 			var date = new Date(position_data.date);
 			
@@ -373,10 +461,26 @@
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
 			
-			var child = selectedElem.getElementsByClassName("sageItem");
-			child[0].width = Math.round(position_data.elemWidth);
-			child[0].height = Math.round(position_data.elemHeight);
+			var dragCorner = selectedElem.getElementsByClassName("dragCorner");
+			var cornerSize = Math.min(position_data.elemWidth, position_data.elemHeight) / 5;
+			dragCorner[0].style.width = cornerSize.toString() + "px";
+            dragCorner[0].style.height = cornerSize.toString() + "px";
+            dragCorner[0].style.top = (Math.round(position_data.elemHeight)-cornerSize).toString() + "px";
+            dragCorner[0].style.left = (Math.round(position_data.elemWidth)-cornerSize).toString() + "px";
 			
+			var child = selectedElem.getElementsByClassName("sageItem");
+
+			// if the element is a div, resize should use the style object
+			if(child[0].tagName.toLowerCase() == "div") {
+				child[0].style.width  = Math.round(position_data.elemWidth) + "px";
+				child[0].style.height = Math.round(position_data.elemHeight) + "px";
+			}
+			else{
+				// if it's a canvas, just use width and height
+				child[0].width = Math.round(position_data.elemWidth);
+				child[0].height = Math.round(position_data.elemHeight);
+			}
+			// triggers the resize callback in the application
 			if(child[0].id in canvasItems) canvasItems[child[0].id].resize(date);
 		});
 		
@@ -431,12 +535,13 @@
 		wsio.on('eventInItem', function(event_data){
 			var date = new Date(event_data.date);
 
-            var selectedElem = document.getElementById(event_data.elemId);
+			var selectedElem = document.getElementById(event_data.elemId);
 			var child = selectedElem.getElementsByClassName("sageItem");
-            if( child[0].tagName.toLowerCase() == "canvas" ){
-                if( typeof canvasItems[child[0].id].event === "function" )
-                    canvasItems[child[0].id].event( event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);  
-            }
+			if(child[0].id in canvasItems){
+				if( typeof canvasItems[child[0].id].event === "function" )
+					canvasItems[child[0].id].event( event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);  
+			}
+
             if(child[0].tagName.toLowerCase() == "iframe"){
                 //child[0].contentWindow.postMessage('
             }
@@ -464,6 +569,25 @@
 			elem.parentNode.replaceChild(elem, last);
 			elem.parentNode.insertBefore(last, elem);
 		}
+	}
+	
+	function formatAMPM(date) {
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
+		var ampm = hours >= 12 ? "pm" : "am";
+		hours = hours % 12;
+		if(hours == 0) hours = 12;
+		var hh = hours.toString();
+		var mm = minutes < 10 ? "0"+minutes.toString() : minutes.toString();
+		return (hh + ":" + mm + ampm);
+	}
+	
+	function format24Hr(date) {
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
+		var hh = hours.toString();
+		var mm = minutes < 10 ? "0"+minutes.toString() : minutes.toString();
+		return (hh + ":" + mm);
 	}
 
 	function stringToBase64(string) {
@@ -507,6 +631,10 @@
 
 <body onload="init()">
 	<div id="main">
+		<div id="upperBar">
+			<p id="time">12:00am</p>
+			<p id="machine">localhost</p>
+		</div>
 	</div>
 </body>
 </html>

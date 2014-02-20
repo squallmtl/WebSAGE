@@ -1,6 +1,7 @@
 {
-        "config": "icewall",
+        "host": "thor.evl.uic.edu",
         "port": 9090,
+        "clock": 12,
         "resolution": {
                 "width": 3072,
                 "height": 1360
