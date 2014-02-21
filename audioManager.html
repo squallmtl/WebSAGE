@@ -35,6 +35,14 @@
 					console.log("video can now play"); // Video is loaded and can be played
 					vid.ready = true;
 				}, false);
+				vid.addEventListener('ended', function() {
+					console.log("video ended");
+					vid.currentTime = 0;
+					vid.pause();
+					vid.style.display = "none";
+					clearInterval(videos[vid.id].interval);
+					wsio.emit('updateVideoTime', {elemId: vid.id, time: videoElem.currentTime, play: true});
+				}, false);
 				
 				console.log(elem_data.src);
 				
