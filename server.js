@@ -7,7 +7,7 @@ var path = require('path');
 var request = require('request');
 
 var httpserver = require('node-httpserver');           // custom node module
-var websocketIOServer = require('node-websocket.io');  // custom node module
+var websocketIO = require('node-websocket.io');        // custom node module
 var loader = require('node-itemloader');               // custom node module
 var interaction = require('node-interaction');         // custom node module
 var sagepointer = require('node-sagepointer');         // custom node module
@@ -120,7 +120,7 @@ httpServerApp.post('/upload', function(req, res) {
 
 var server = https.createServer(options, httpServerApp.onrequest);
 
-var wsioServer = new websocketIOServer(config.port+1);
+var wsioServer = new websocketIO.Server(config.port+1);
 
 var itemCount = 0;
 var items = [];
@@ -132,6 +132,7 @@ var mediaStreams = {};
 
 wsioServer.onconnection(function(wsio) {
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	console.log(address);
 	
 	wsio.emit('setupDisplayConfiguration', config);
 	wsio.emit('initialize', {address: address});
@@ -674,6 +675,23 @@ function uploadFiles(files) {
 		}
 	});
 }
+
+
+
+var remote = new websocketIO('ws://dante.evl.uic.edu:9091');
+remote.on('initialize', function(data) {
+	console.log(data);
+});
+
+console.log("connecting to remote server");
+setTimeout(function() {
+	//var testURL = "https://131.193.77.218:9090/uploads/images/sage.jpg";
+	var testURL = "http://www.ournorthstar.com/wp-content/uploads/2013/10/test1.jpg";
+	
+	remote.emit('addClient', {clientType: "remoteServer"});
+	remote.emit('addNewWebElement', {type: "img", src: testURL});
+}, 1500);
+
 
 /******** Omicron section *****************************************************************/
 var net = require('net');
