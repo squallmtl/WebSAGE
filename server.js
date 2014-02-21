@@ -31,7 +31,6 @@ if (wallfile == null) {
 	var hn   = os.hostname();
 	var dot = hn.indexOf(".");
 	if(dot >= 0) hn = hn.substring(0, dot);
-	console.log(hn);
 	wallfile = path.join("config", hn + "-cfg.json");
 	if (fs.existsSync(wallfile)) {
 		console.log("Found configuration file: ", wallfile);
@@ -94,7 +93,7 @@ var options = {
     if(certs.hasOwnProperty(servername)){
         return certs[servername];
     } else {
-	console.log("Unknown host, cannot find a certificate for ", servername);
+		console.log("Unknown host, cannot find a certificate for ", servername);
         return null;
     }
   }
@@ -1040,7 +1039,6 @@ function hidePointer( address ) {
 function pointerPress( address, pointerX, pointerY ) {
 	if( sagePointers[address] == undefined ) return;
 	
-	// From pointerPress
 	var elem = findItemUnderPointer(pointerX, pointerY);
 		if(elem != null){
 			if( remoteInteraction[address].windowManagementMode() ){
@@ -1112,7 +1110,7 @@ function pointerRelease(address, pointerX, pointerY) {
 function pointerPosition( address, data ) {
 	if( sagePointers[address] == undefined )
 		return;
-	// From pointerPosition
+
 	sagePointers[address].left = data.pointerX;
 	sagePointers[address].top = data.pointerY;
 	if(sagePointers[address].left < 0) sagePointers[address].left = 0;

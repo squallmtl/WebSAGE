@@ -108,6 +108,11 @@
 		winMgrCanvas.addEventListener('mousedown', winMgr.mousePress.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mousemove', winMgr.mouseMove.bind(winMgr), false);
 		winMgrCanvas.addEventListener('mouseup', winMgr.mouseRelease.bind(winMgr), false);
+
+		winMgrCanvas.addEventListener('touchstart', winMgr.touchPress.bind(winMgr), false);
+		winMgrCanvas.addEventListener('touchmove', winMgr.touchMove.bind(winMgr), false);
+		winMgrCanvas.addEventListener('touchend', winMgr.touchRelease.bind(winMgr), false);
+
 		winMgrCanvas.addEventListener('mousewheel', winMgr.mouseScroll.bind(winMgr), false);
 		winMgrCanvas.addEventListener('DOMMouseScroll', winMgr.mouseScrollFF.bind(winMgr), false);
 		winMgrCanvas.addEventListener('dblclick', winMgr.mouseDblClick.bind(winMgr), false);

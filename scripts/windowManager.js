@@ -143,6 +143,53 @@ function windowManager(id, ws) {
 		event.preventDefault();
 	};
 	
+	////////////////////////////////////////////
+	// Initial touch code
+	//   uses only the first touch to move
+	//   compared to move, need to update position on press and release events
+	////////////////////////////////////////////	
+	this.touchPress = function(event) {
+		event.preventDefault();
+
+		// Update "cursor" position
+		var rect = this.element.getBoundingClientRect();
+		this.mouseX = event.changedTouches[0].clientX - rect.left;
+		this.mouseY = event.changedTouches[0].clientY - rect.top;
+		var globalX = this.mouseX / this.scale;
+		var globalY = this.mouseY / this.scale;		
+		this.wsio.emit('pointerPosition', {pointerX: globalX, pointerY: globalY});
+		// Emit the press event
+		this.wsio.emit('pointerPress');
+	};
+	
+	this.touchMove = function(event) {
+		event.preventDefault();
+
+		// Emot the move event
+		var rect = this.element.getBoundingClientRect();
+		this.mouseX = event.changedTouches[0].clientX - rect.left;
+		this.mouseY = event.changedTouches[0].clientY - rect.top;
+		var globalX = this.mouseX / this.scale;
+		var globalY = this.mouseY / this.scale;		
+		this.wsio.emit('pointerPosition', {pointerX: globalX, pointerY: globalY});
+	};
+	
+	this.touchRelease = function(event) {
+		event.preventDefault();
+
+		// Update the "cursor" position
+		var rect = this.element.getBoundingClientRect();
+		this.mouseX = event.changedTouches[0].clientX - rect.left;
+		this.mouseY = event.changedTouches[0].clientY - rect.top;
+		var globalX = this.mouseX / this.scale;
+		var globalY = this.mouseY / this.scale;		
+		this.wsio.emit('pointerPosition', {pointerX: globalX, pointerY: globalY});
+		// Emit the release event
+		this.wsio.emit('pointerRelease');
+	};
+	////////////////////////////////////////////
+
+
 	this.mouseScroll = function(event) {
 		var scale = 1.0 + Math.abs(event.wheelDelta)/512;
 		if(event.wheelDelta > 0) scale = 1.0 / scale;
