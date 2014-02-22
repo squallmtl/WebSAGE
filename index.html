@@ -154,6 +154,8 @@
 	});
 		
     wsio.on('updateWebpageStreamFrame', function(data) {
+        wsio.emit('receivedWebpageStreamFrame', {id: data.id});
+        
         var webpage = document.getElementById(data.id + "_webpage");
 		webpage.src = "data:image/jpeg;base64," + data.src;
 	});

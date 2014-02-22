@@ -10,6 +10,8 @@ var websocketIOServer = require('node-websocket.io');  // custom node module
 var loader = require('node-itemloader');               // custom node module
 var interaction = require('node-interaction');         // custom node module
 var sagepointer = require('node-sagepointer');         // custom node module
+
+var webBrowser = require('node-awesomium');            // custom node module
  
 
 // CONFIG FILE
@@ -52,6 +54,8 @@ config.titleTextSize = Math.round(0.015 * config.totalHeight);
 config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
+
+webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
 var uploadsFolder = path.join(__dirname, "uploads");
 
@@ -104,6 +108,7 @@ var clients = [];
 var sagePointers = {};
 var remoteInteraction = {};
 var mediaStreams = {};
+var webStreams = {};
 
 wsioServer.onconnection(function(wsio) {
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
@@ -542,18 +547,27 @@ wsioServer.onconnection(function(wsio) {
 	});
 
     wsio.on('updateWebpageStreamFrame', function(data) {
+        
+        for(var key in webStreams[data.id]){
+			webStreams[data.id][key] = false;
+		}
+
         broadcast('updateWebpageStreamFrame', data, "display");
     });
 
     wsio.on('receivedWebpageStreamFrame', function(data) {
 		
-        var broadcastWS = null;
-        for(i=0; i<clients.length; i++){
-            var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-            if(clientAddress == data.id) broadcastWS = clients[i];
-        }
+        //var broadcastWS = null;
+        //for(i=0; i<clients.length; i++){
+        //    var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+        //    if(clientAddress == data.id) broadcastWS = clients[i];
+        //}
         
-        if(broadcastWS != null) broadcastWS.emit('requestNextWebpageFrame', null);
+        //if(broadcastWS != null) broadcastWS.emit('requestNextWebpageFrame', null);
+        //console.log("receivedWeb: " + data.id); 
+        data.src = webBrowser.getFrame(data.id);
+        broadcast('updateWebpageStreamFrame', data, "display");
+
 	});
 
     wsio.on('openNewWebpage', function(data) {
@@ -561,29 +575,31 @@ wsioServer.onconnection(function(wsio) {
         var height = 390;
         console.log("Opening a new webpage:" + data.url);
         
-        id = data.id + "_" + itemCount.toString();
+        data.id = data.id + "_" + itemCount.toString();
         var web = {src: "", title: "WebBrowser: " + data.url, width: width, height: height};
-		loader.loadWebpage(web.src, id, web.title, web.width, web.height, function(newItem) {
+		
+        webStreams[data.id] = {};
+        webBrowser.createWindow(data.id, data.url);
+        //console.log("Creating web: " + data.id);
+
+		for(var i=0; i<clients.length; i++){
+			if(clients[i].clientType == "display"){
+				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+				webStreams[data.id][clientAddress] = false;
+			}
+		}
+        
+        loader.loadWebpage(web.src, data.id, web.title, web.width, web.height, function(newItem) {
             console.log(data.id+"_"+ itemCount.toString());
 			broadcast('addNewElement', newItem);
-			
+		   
+            //console.log("loadWebPage: " + data.id);
+            data.src = webBrowser.getFrame(data.id);
+            broadcast('updateWebpageStreamFrame', data, "display");
+	
 			items.push(newItem);
 			itemCount++;
 		});
-        var spawn = require("child_process").spawn;
-        wb = spawn('python', ['webBrowser/awesomium/build/webBrowser.py', id, data.url, width, height]);
-
-	wb.stdout.on('data', function (data) {
-  		console.log('stdout: ' + data);
-	});
-	
-	wb.stderr.on('data', function (data) {
-  		console.log('stderr: ' + data);
-	});
-
-	wb.on('close', function (code) {
-  		console.log('child process exited with code ' + code);
-	});
     });
 });
 
@@ -1183,6 +1199,10 @@ function pointerScroll( address, data ) {
 }
 
 function deleteElement( elem ) {
+    if(elem.type == "webpage") {
+        webBrowser.removeWindow(elem.id);
+    }
+
 	removeElement(items, elem);
 	broadcast('deleteElement', {elemId: elem.id});
 }

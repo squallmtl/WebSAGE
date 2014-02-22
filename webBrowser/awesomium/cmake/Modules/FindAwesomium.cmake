@@ -15,7 +15,7 @@ find_path(AWESOMIUM_INCLUDE_PATH Awesomium/WebCore.h
 	/opt/)
 	
 find_library(AWESOMIUM_LIBRARIES 
-	NAMES awesomium awesomium.lib 
+	NAMES awesomium awesomium.lib awesomium-1-7
 	PATH_SUFFIXES lib64 lib build/lib 
 	PATHS
 	${AWESOMIUM_ROOT}

@@ -53,22 +53,22 @@ class WebBrowserClientProtocol(WebSocketClientProtocol):
         #    if id != msg['data']['id']:
         #        return
 
-        
+
         if 'eventInItem' in msg['callbackName']:
 	    if 'elemId' in msg['data']:
 		if id != msg['data']['elemId']:
 		    return
-            
+
 	    if 'pointerPress' in msg['data']['eventType']:
-                x = int(round(msg['data']['itemRelativeX']))
-                y = int(round(msg['data']['itemRelativeY']))
-                self.p.put({'x': x, 'y': y})
+            x = int(round(msg['data']['itemRelativeX']))
+            y = int(round(msg['data']['itemRelativeY']))
+            self.p.put({'x': x, 'y': y})
         elif 'setItemPositionAndSize' in msg['callbackName']:
             if 'elemId' in msg['data']:
-		if id != msg['data']['elemId']:
-		    return
-            self.nWidth = int(round(msg['data']['elemWidth']))
-            self.nHeight = int(round(msg['data']['elemHeight']))
+		        if id != msg['data']['elemId']:
+		            return
+                self.nWidth = int(round(msg['data']['elemWidth']))
+                self.nHeight = int(round(msg['data']['elemHeight']))
 
     def refreshPage(self, f):
         self.mWidth = int(width)
@@ -94,15 +94,15 @@ class WebBrowserClientProtocol(WebSocketClientProtocol):
             #print "Time2 to calculate screenshot: %f sec " %(end - start)
 
             # resize!
- 	    if self.mWidth != self.nWidth or self.mHeight != self.nHeight:
-		_height = self.nHeight
-		_width = self.nWidth
+ 	        if self.mWidth != self.nWidth or self.mHeight != self.nHeight:
+		        _height = self.nHeight
+		        _width = self.nWidth
             	if self.nHeight > self.totalHeight:
-	            _height = self.totalHeight
- 	    	if self.nWidth > self.totalHeight:
+	                _height = self.totalHeight
+ 	    	    if self.nWidth > self.totalHeight:
                     _width = self.totalWidth
-                    
-		b.resize(_width, _height)
+
+		    b.resize(_width, _height)
                 self.mWidth = self.nWidth
                 self.mHeight = self.nHeight
 
