@@ -556,18 +556,8 @@ wsioServer.onconnection(function(wsio) {
     });
 
     wsio.on('receivedWebpageStreamFrame', function(data) {
-		
-        //var broadcastWS = null;
-        //for(i=0; i<clients.length; i++){
-        //    var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-        //    if(clientAddress == data.id) broadcastWS = clients[i];
-        //}
-        
-        //if(broadcastWS != null) broadcastWS.emit('requestNextWebpageFrame', null);
-        //console.log("receivedWeb: " + data.id); 
         data.src = webBrowser.getFrame(data.id);
         broadcast('updateWebpageStreamFrame', data, "display");
-
 	});
 
     wsio.on('openNewWebpage', function(data) {
@@ -580,7 +570,6 @@ wsioServer.onconnection(function(wsio) {
 		
         webStreams[data.id] = {};
         webBrowser.createWindow(data.id, data.url);
-        //console.log("Creating web: " + data.id);
 
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){
@@ -590,10 +579,8 @@ wsioServer.onconnection(function(wsio) {
 		}
         
         loader.loadWebpage(web.src, data.id, web.title, web.width, web.height, function(newItem) {
-            console.log(data.id+"_"+ itemCount.toString());
 			broadcast('addNewElement', newItem);
 		   
-            //console.log("loadWebPage: " + data.id);
             data.src = webBrowser.getFrame(data.id);
             broadcast('updateWebpageStreamFrame', data, "display");
 	
