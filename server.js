@@ -147,8 +147,11 @@ wsioServer.onconnection(function(wsio) {
 		wsio.clientType = data.clientType;
 		if(wsio.clientType == "sageUI"){
 			createSagePointer( address );
+			for(var i=0; i<items.length; i++){
+				wsio.emit('addNewElement', items[i]);
+			}
 		}
-		if(wsio.clientType == "sagePointer"){
+		else if(wsio.clientType == "sagePointer"){
 			createSagePointer( address );
 		}
 		else if(wsio.clientType == "display"){
@@ -157,12 +160,21 @@ wsioServer.onconnection(function(wsio) {
 			}
 			var now = new Date();
 			wsio.emit('setSystemTime', {date: now});
+			for(var i=0; i<items.length; i++){
+				wsio.emit('addNewElement', items[i]);
+			}
 		}
-		clients.push(wsio);
+		else if(wsio.clientType == "remoteServer"){
+			var remoteIdx = -1;
+			for(var i=0; i<config.remote_sites.length; i++){
+				if(data.host == config.remote_sites[i].host) remoteIdx = i;
+			}
+			if(remoteIdx >= 0){
+				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now online");
+			}
+		}
 		
-		for(i=0; i<items.length; i++){
-			wsio.emit('addNewElement', items[i]);
-		}
+		clients.push(wsio);
 	});
 	
 	wsio.on('startSagePointer', function(data) {
@@ -571,7 +583,7 @@ config.remote_sites.forEach(function(element, index, array) {
 	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
 	var remote = new websocketIO(wsURL, function() {
 		console.log(element.name + " now open!");
-		remote.emit('addClient', {clientType: "remoteServer"});
+		remote.emit('addClient', {clientType: "remoteServer", host: config.host});
 	});
 	remote.on('initialize', function(data) {
 		console.log(data);
