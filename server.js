@@ -15,6 +15,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
@@ -119,6 +120,39 @@ httpServerApp.post('/upload', function(req, res) {
 });
 
 var server = https.createServer(options, httpServerApp.onrequest);
+
+config.remote_sites.forEach(function(element, index, array) {
+	var wsURL = "ws://" + element.host + ":" + element.port.toString();
+	var remote = new websocketIO(wsURL, function() {
+		console.log(element.name + " now open!");
+	});
+});
+/*
+for(var i=0; i<config.remoteSites.length; i++){
+	var wsURL = "ws://" + config.remoteSites[i].host + ":" + config.remoteSites[i].port.toString();
+	var remote = new websocketIO(wsURL, function() {
+		
+	});
+}*/
+/*
+
+var remote = new websocketIO('ws://dante.evl.uic.edu:9091');
+remote.on('initialize', function(data) {
+	console.log(data);
+});
+
+console.log("connecting to remote server");
+setTimeout(function() {
+	//var testURL = "https://131.193.77.218:9090/uploads/images/sage.jpg";
+	var testURL = "http://www.ournorthstar.com/wp-content/uploads/2013/10/test1.jpg";
+	
+	remote.emit('addClient', {clientType: "remoteServer"});
+	remote.emit('addNewWebElement', {type: "img", src: testURL});
+}, 1500);
+
+*/
+
+
 
 var wsioServer = new websocketIO.Server(config.port+1);
 
@@ -675,23 +709,6 @@ function uploadFiles(files) {
 		}
 	});
 }
-
-
-
-var remote = new websocketIO('ws://dante.evl.uic.edu:9091');
-remote.on('initialize', function(data) {
-	console.log(data);
-});
-
-console.log("connecting to remote server");
-setTimeout(function() {
-	//var testURL = "https://131.193.77.218:9090/uploads/images/sage.jpg";
-	var testURL = "http://www.ournorthstar.com/wp-content/uploads/2013/10/test1.jpg";
-	
-	remote.emit('addClient', {clientType: "remoteServer"});
-	remote.emit('addNewWebElement', {type: "img", src: testURL});
-}, 1500);
-
 
 /******** Omicron section *****************************************************************/
 var net = require('net');
