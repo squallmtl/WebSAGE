@@ -138,6 +138,15 @@ wsioServer.onconnection(function(wsio) {
 	wsio.emit('initialize', {address: address});
 	
 	wsio.onclose(function() {
+		if(wsio.clientType == "remoteServer"){
+			var remoteIdx = -1;
+			for(var i=0; i<config.remote_sites.length; i++){
+				if(wsio.host == config.remote_sites[i].host) remoteIdx = i;
+			}
+			if(remoteIdx >= 0){
+				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
+			}
+		}
 		removeElement(clients, wsio);
 	});
 	
@@ -166,8 +175,9 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
+			wsio.host = data.host;
 			for(var i=0; i<config.remote_sites.length; i++){
-				if(data.host == config.remote_sites[i].host) remoteIdx = i;
+				if(wsio.host == config.remote_sites[i].host) remoteIdx = i;
 			}
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now online");
@@ -582,7 +592,7 @@ var remoteSites = [];
 config.remote_sites.forEach(function(element, index, array) {
 	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
 	var remote = new websocketIO(wsURL, function() {
-		console.log(element.name + " now open!");
+		console.log("connected to " + element.name);
 		remote.emit('addClient', {clientType: "remoteServer", host: config.host});
 	});
 	remote.on('initialize', function(data) {
