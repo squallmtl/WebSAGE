@@ -146,7 +146,8 @@ wsioServer.onconnection(function(wsio) {
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
 				remoteSites[remoteIdx].connected = false;
-				broadcast('connectedToRemoteSite', remoteSites[remoteIdx], "display");
+				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
+				broadcast('connectedToRemoteSite', site, "display");
 			}
 		}
 		removeElement(clients, wsio);
@@ -173,7 +174,8 @@ wsioServer.onconnection(function(wsio) {
 				wsio.emit('addNewElement', items[i]);
 			}
 			for(var i=0; i<remoteSites.length; i++){
-				wsio.emit('addRemoteSite', remoteSites[i]);
+				var site = {name: remoteSites[i].name, connected: remoteSites[i].connected, width: remoteSites[i].width, height: remoteSites[i].height, pos: remoteSites[i].pos};
+				wsio.emit('addRemoteSite', site);
 			}
 		}
 		else if(wsio.clientType == "remoteServer"){
@@ -186,7 +188,8 @@ wsioServer.onconnection(function(wsio) {
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now online");
 				remoteSites[remoteIdx].connected = true;
-				broadcast('connectedToRemoteSite', remoteSites[remoteIdx], "display");
+				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
+				broadcast('connectedToRemoteSite', site, "display");
 			}
 		}
 		
@@ -431,7 +434,6 @@ wsioServer.onconnection(function(wsio) {
 				var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };	
 				broadcast('eventInItem', event, "display");  
 				broadcast('eventInItem', event, "audioManager");  
-
 			}   
 		}
 		
