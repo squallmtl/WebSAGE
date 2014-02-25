@@ -74,7 +74,7 @@
 			machine.style.left = (-offsetX + (6*titleBarHeight)).toString() + "px";
 			machine.style.top = (0.05*titleBarHeight).toString() + "px";
 			machine.style.color = "#FFFFFF";
-			machine.textContent = json_cfg.host + ":" +json_cfg.port.toString();
+			machine.textContent = "https://" + json_cfg.host + ":" +json_cfg.port.toString() + "/(sagePointer.html | sageUI.html)";
 		});
 		
 		wsio.on('setSystemTime', function(data) {

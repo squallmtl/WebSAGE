@@ -1146,10 +1146,29 @@ function pointerRelease(address, pointerX, pointerY) {
 	
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
-			if(remoteInteraction[address].selectedResizeItem != null){
-				broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
+		if(remoteInteraction[address].selectedResizeItem != null){
+			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
+			remoteInteraction[address].releaseItem(true);
+		}
+		if(remoteInteraction[address].selectedMoveItem != null){
+			var remoteIdx = -1;
+			for(var i=0; i<remoteSites.length; i++){
+				if(sagePointers[address].left >= remoteSites[i].pos && sagePointers[address].left <= remoteSites[i].pos+remoteSites[i].width && 
+				   sagePointers[address].top >= 2 && sagePointers[address].top <= remoteSites[i].height){
+					remoteIdx = i;
+					break;
+				}
 			}
-			remoteInteraction[address].releaseItem();
+			if(remoteIdx < 0){
+				remoteInteraction[address].releaseItem(true);
+			}
+			else{
+				var updatedItem = remoteInteraction[address].releaseItem(false);
+				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+				console.log(remoteInteraction[address].selectedMoveItem);
+				remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: null, src: null});
+			}
+		}
 	}
 	else if ( remoteInteraction[address].appInteractionMode() ) {
 		var elem = findItemUnderPointer(pointerX, pointerY);
