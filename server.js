@@ -185,11 +185,18 @@ wsioServer.onconnection(function(wsio) {
 			for(var i=0; i<config.remote_sites.length; i++){
 				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
 			}
-			if(remoteIdx >= 0){
-				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now online");
-				remoteSites[remoteIdx].connected = true;
-				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-				broadcast('connectedToRemoteSite', site, "display");
+			
+			// connect to remote server (create two way connectivity)
+			if(remoteIdx >= 0 && remoteSites[remoteIdx].wsio.ws.readyState != 1){
+				var wsURL = "ws://" + data.host + ":" + (data.port+1).toString();
+				console.log(wsURL);
+				var remote = new websocketIO(wsURL, function() {
+					console.log("connected to " + remoteSites[remoteIdx].name);
+					remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
+					remoteSites[remoteIdx].connected = true;
+					var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
+					broadcast('connectedToRemoteSite', site, "display");
+				});
 			}
 		}
 		
@@ -602,7 +609,7 @@ config.remote_sites.forEach(function(element, index, array) {
 	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
 	var remote = new websocketIO(wsURL, function() {
 		console.log("connected to " + element.name);
-		remote.emit('addClient', {clientType: "remoteServer", host: config.host});
+		remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
 		remoteSites[index].connected = true;
 	});
 	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
