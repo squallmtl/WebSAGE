@@ -52,6 +52,7 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
+var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
 var uploadsFolder = path.join(__dirname, "uploads");
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
@@ -500,7 +501,7 @@ wsioServer.onconnection(function(wsio) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadImage(body, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
 					broadcast('addNewElement', newItem);
 				
 					items.push(newItem);
@@ -509,7 +510,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "video"){
 			itemCount++;
-			loader.loadVideo(data.src, "item"+itemCount.toString(), data.src.substring(data.src.lastIndexOf("/")+1), function(newItem) {
+			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
@@ -524,7 +525,7 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 		else if(data.type == "pdf"){
-			var filename = data.src.substring(data.src.lastIndexOf("/")+1);
+			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
 			var localPath = path.join("uploads", "pdfs", filename);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
@@ -532,7 +533,7 @@ wsioServer.onconnection(function(wsio) {
 			});
 			tmp.on('close', function() {
 				itemCount++;
-				loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -544,13 +545,14 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('addNewElementFromStoredFiles', function(file) {
 		var localPath = path.join("uploads", file.dir, file.name);
+		var url = hostOrigin + encodeURI(localPath);
 		
 		if(file.dir == "images"){
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadImage(data, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadImage(data, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
@@ -559,7 +561,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(file.dir == "videos"){
 			itemCount++;
-			loader.loadVideo(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			loader.loadVideo(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
 		
 				items.push(newItem);
@@ -567,7 +569,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(file.dir == "pdfs"){
 			itemCount++;
-			loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			loader.loadPdf(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
 		
 				items.push(newItem);
@@ -641,6 +643,7 @@ function uploadFiles(files) {
 		if(type == "image/jpeg" || type == "image/png"){
 			console.log("uploaded image: " + file.originalFilename);
 			var localPath = path.join("uploads", "images", file.originalFilename);
+			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
@@ -648,7 +651,7 @@ function uploadFiles(files) {
 					if(err) throw err;
 					
 					itemCount++;
-					loader.loadImage(data, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+					loader.loadImage(data, url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
 						broadcast('addNewElement', newItem);
 				
 						items.push(newItem);
@@ -661,11 +664,12 @@ function uploadFiles(files) {
 		else if(type == "video/mp4"){
 			console.log("uploaded video: " + file.originalFilename);
 			var localPath = path.join("uploads", "videos", file.originalFilename);
+			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadVideo(localPath, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+				loader.loadVideo(localPath, url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
@@ -677,11 +681,12 @@ function uploadFiles(files) {
 		else if(type == "application/pdf"){
 			console.log("uploaded pdf: " + file.originalFilename);
 			var localPath = path.join("uploads", "pdfs", file.originalFilename);
+			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadPdf(localPath, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -1163,11 +1168,11 @@ function pointerRelease(address, pointerX, pointerY) {
 				remoteInteraction[address].releaseItem(true);
 			}
 			else{
-				var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
-				var source0 = encodeURI(hostOrigin + "uploads/images/Blackhawks Parade.jpg");
-				var source1 = encodeURI(hostOrigin + "uploads/videos/Direct Wall Interaction in SAGE.mp4");
-				
-				remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: "img", src: source0});
+				var source = remoteInteraction[address].selectedMoveItem.url;
+				if(source != null){
+					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + source);
+					remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: remoteInteraction[address].selectedMoveItem.type, src: source});
+				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
 			}
