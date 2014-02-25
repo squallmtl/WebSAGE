@@ -496,7 +496,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('addNewWebElement', function(data) {
 		if(data.type == "img"){
-			request({url: data.src, encoding: null}, function(err, response, body) {
+			request({url: data.src, headers: {'User-Agent': 'request'}, encoding: null}, function(err, response, body) {
 				if(err) throw err;
 				
 				itemCount++;
@@ -538,7 +538,7 @@ wsioServer.onconnection(function(wsio) {
 					items.push(newItem);
 				});
 			});
-			request(data.src).pipe(tmp);
+			request({url: data.src, headers: {'User-Agent': 'request'}}).pipe(tmp);
 		}
 	});
 	
@@ -1163,10 +1163,14 @@ function pointerRelease(address, pointerX, pointerY) {
 				remoteInteraction[address].releaseItem(true);
 			}
 			else{
+				var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
+				var source0 = encodeURI(hostOrigin + "uploads/iamges/sage.jpg");
+				var source1 = encodeURI(hostOrigin + "uploads/videos/Direct Wall Interaction in SAGE.mp4");
+				console.log(source0);
+				console.log("Ready: " + remoteSites[remoteIdx].wsio.ws.readyState);
+				remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: "img", src: source0});
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
-				console.log(remoteInteraction[address].selectedMoveItem);
-				remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: null, src: null});
 			}
 		}
 	}
