@@ -141,18 +141,18 @@ wsioServer.onconnection(function(wsio) {
 		if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
 			for(var i=0; i<config.remote_sites.length; i++){
-				if(wsio.host == config.remote_sites[i].host) remoteIdx = i;
+				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
 			}
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
+				remoteSites[remoteIdx].connected = false;
+				broadcast('connectedToRemoteSite', remoteSites[remoteIdx], "display");
 			}
 		}
 		removeElement(clients, wsio);
 	});
 	
 	wsio.on('addClient', function(data) {
-		console.log("New Connection: " + address + " (" + data.clientType + ")");
-		
 		wsio.clientType = data.clientType;
 		if(wsio.clientType == "sageUI"){
 			createSagePointer( address );
@@ -172,19 +172,26 @@ wsioServer.onconnection(function(wsio) {
 			for(var i=0; i<items.length; i++){
 				wsio.emit('addNewElement', items[i]);
 			}
+			for(var i=0; i<remoteSites.length; i++){
+				wsio.emit('addRemoteSite', remoteSites[i]);
+			}
 		}
 		else if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
-			wsio.host = data.host;
+			wsio.remoteAddress.address = data.host;
+			address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 			for(var i=0; i<config.remote_sites.length; i++){
-				if(wsio.host == config.remote_sites[i].host) remoteIdx = i;
+				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
 			}
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now online");
+				remoteSites[remoteIdx].connected = true;
+				broadcast('connectedToRemoteSite', remoteSites[remoteIdx], "display");
 			}
 		}
 		
 		clients.push(wsio);
+		console.log("New Connection: " + address + " (" + wsio.clientType + ")");
 	});
 	
 	wsio.on('startSagePointer', function(data) {
@@ -588,20 +595,21 @@ wsioServer.onconnection(function(wsio) {
 });
 
 /******** Remote Site Collaboration ******************************************************/
-var remoteSites = [];
+var remoteSites = new Array(config.remote_sites.length);
 config.remote_sites.forEach(function(element, index, array) {
 	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
 	var remote = new websocketIO(wsURL, function() {
 		console.log("connected to " + element.name);
 		remote.emit('addClient', {clientType: "remoteServer", host: config.host});
+		remoteSites[index].connected = true;
 	});
-	remote.on('initialize', function(data) {
-		console.log(data);
-	});
-	remoteSites.push(remote);
+	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
+	var rHeight = config.titleBarHeight - 4;
+	var rPos = (0.5*config.totalWidth) + ((rWidth+2)*(index-(remoteSites.length/2))) + 1;
+	remoteSites[index] = {name: element.name, wsio: remote, connected: false, width: rWidth, height: rHeight, pos: rPos};
 });
 
-
+/******** System Time - Updated Every Minute *********************************************/
 var cDate = new Date();
 setTimeout(function() {
 	setInterval(function() {
@@ -613,6 +621,7 @@ setTimeout(function() {
 	broadcast('setSystemTime', {date: now}, "display");
 }, (61-cDate.getSeconds())*1000);
 
+/******** File Upload From SAGE UI / SAGE Pointer ****************************************/
 function uploadFiles(files) {
 	var fileKeys = Object.keys(files);
 	fileKeys.forEach(function(key) {

@@ -83,6 +83,40 @@
 			else time.textContent = format24Hr(new Date(data.date));
 		});
 		
+		wsio.on('addRemoteSite', function(data) {
+			var upperBar = document.getElementById('upperBar');
+			
+			var remote = document.createElement('div');
+			remote.id = data.name;
+			remote.style.position = "absolute";
+			remote.style.textAlign = "center";
+			remote.style.width = data.width.toString() + "px";
+			remote.style.height = data.height.toString() + "px";
+			remote.style.left = (-offsetX + data.pos).toString() + "px";
+			remote.style.top = (-offsetY+2).toString() + "px";
+			if(data.connected) remote.style.backgroundColor = "#379982";
+			else remote.style.backgroundColor = "#AD2A2A";
+			
+			var name = document.createElement('p');
+			//name.style.position = "absolute";
+			name.style.whiteSpace = "nowrap";
+			name.style.fontSize = Math.round(titleTextSize) + "px";
+			name.style.left = (-offsetX + (8*titleBarHeight)).toString() + "px";
+			name.style.top = (0.05*titleBarHeight).toString() + "px";
+			name.style.color = "#FFFFFF";
+			name.textContent = data.name;
+			
+			remote.appendChild(name);
+			
+			upperBar.appendChild(remote);
+		});
+		
+		wsio.on('connectedToRemoteSite', function(data) {
+			var remote = document.getElementById(data.name);
+			if(data.connected) remote.style.backgroundColor = "#379982";
+			else remote.style.backgroundColor = "#AD2A2A";
+		});
+		
 		wsio.on('addScript', function(script_data) {
 			var js = document.createElement('script')
   			js.type = "text/javascript";
