@@ -116,6 +116,10 @@
 			}
 		});
 		
+		wsio.on('stopMediaCapture', function() {
+			if(mediaStream != null) mediaStream.stop();
+		});
+		
 		resize();
 	}
 	
@@ -287,6 +291,7 @@
 			console.log("ended");
 			broadcasting = false;
 			screenShareBtn.disabled = false;
+			wsio.emit('stopMediaStream', {id: address});
 		};
 
 		mediaVideo.src = window.URL.createObjectURL(mediaStream);

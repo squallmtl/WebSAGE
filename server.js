@@ -495,6 +495,12 @@ wsioServer.onconnection(function(wsio) {
 		}
 	});
 	
+	wsio.on('stopMediaStream', function(data) {
+		var elem = findItemById(data.id);
+		
+		if(elem != null) deleteElement( elem );
+	});
+	
 	wsio.on('addNewWebElement', function(data) {
 		if(data.type == "img"){
 			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
@@ -1023,6 +1029,13 @@ function findItemUnderPointer(pointerX, pointerY) {
 	return null;
 }
 
+function findItemById(id) {
+	for(var i=0; i<items.length; i++){
+		if(items[i].id == id) return items[i];
+	}
+	return null;
+}
+
 function moveItemToFront(id) {
 	var selectedIndex;
 	var selectedItem;
@@ -1241,6 +1254,15 @@ function pointerScroll( address, data ) {
 }
 
 function deleteElement( elem ) {
-	removeElement(items, elem);
 	broadcast('deleteElement', {elemId: elem.id});
+	if(elem.type == "screen"){
+		var broadcastWS = null;
+		for(i=0; i<clients.length; i++){
+			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+			if(clientAddress == elem.id) broadcastWS = clients[i];
+		}
+		
+		if(broadcastWS != null) broadcastWS.emit('stopMediaCapture');
+	}
+	removeElement(items, elem);
 }

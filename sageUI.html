@@ -23,7 +23,7 @@
 	var sensitivity;
 	var selectedFile = null;
 	
-	var mediaStream;
+	var mediaStream = null;
 	var mediaResolution;
 	var mediaQuality;
 	var mediaHeight;
@@ -193,6 +193,10 @@
 				wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
 			}
 		});
+		
+		wsio.on('stopMediaCapture', function() {
+			if(mediaStream != null) mediaStream.stop();
+		});
 	}
 	
 	function createFileList(files, type, dir) {
@@ -312,6 +316,8 @@
 			console.log("ended");
 			broadcasting = false;
 			screenShareBtn.disabled = false;
+			mediaStream = null;
+			wsio.emit('stopMediaStream', {id: address});
 		};
 		
 		mediaVideo.src = window.URL.createObjectURL(mediaStream);
