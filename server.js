@@ -17,10 +17,10 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-var wallfile = "config/tmarrinan-cfg.json";
+//var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
-//var wallfile = "config/icewall-cfg.json";
+var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
 //var wallfile = "config/icewallJA-cfg.json";
 //var wallfile = "config/icewallTM-cfg.json";
@@ -81,6 +81,7 @@ else{
 			var output_ext = path.extname(config.background);
 			var output_base = path.basename(config.background, output_ext); 
 			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
+			console.log(output);
 			gm(config.background).crop(config.resolution.width, config.resolution.height, x, y).write(output, function (err) {
 				if(err) throw err;
 			});
@@ -88,7 +89,8 @@ else{
 	}
 	else{
 		console.log("Warning: could not use background image - not correct resolution");
-		console.log(bg_info.width + "x" + bg_info.height);
+		console.log("Image:   " + bg_info.width + "x" + bg_info.height);
+		console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 	}
 }
 

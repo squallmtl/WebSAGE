@@ -40,7 +40,7 @@
 					vid.currentTime = 0;
 					vid.pause();
 					vid.style.display = "none";
-					clearInterval(videos[vid.id].interval);
+					//clearInterval(videos[vid.id].interval);
 					wsio.emit('updateVideoTime', {elemId: vid.id, time: videoElem.currentTime, play: true});
 				}, false);
 				
