@@ -5,7 +5,7 @@
 # and run ./GO
 #
 
-servers="localhost iridium.evl.uic.edu iridium.evl.optiputer.net thor.evl.uic.edu thor.evl.optiputer.net dante.evl.uic.edu evl-77dhcp235.evl.uic.edu lyra.evl.uic.edu lyra.evl.optiputer.net"
+servers="localhost 127.0.0.1"
 
 for f in `echo $servers`
 do
