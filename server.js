@@ -189,6 +189,7 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
+                    processResize(updatedItem);
 				}
 			} else {
 				// already maximized, need to restore the item size
@@ -197,6 +198,7 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
+                    processResize(updatedItem);
 				}
 			}
 		}
@@ -383,7 +385,9 @@ wsioServer.onconnection(function(wsio) {
 				var now = new Date();
 				var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };	
 				broadcast('eventInItem', event, "display");  
-				broadcast('eventInItem', event, "audioManager");  
+				broadcast('eventInItem', event, "audioManager"); 
+                // Send it to the webBrowser
+                webBrowser.keyPress(elem.id, data.code);
 
 			}   
 		}
@@ -1087,6 +1091,9 @@ function pointerPress( address, pointerX, pointerY ) {
 				var now = new Date();
 				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");  
             			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");  
+                // Send the pointer press to node-modules
+                // Send it to the webBrowser
+                webBrowser.click(elem.id, itemRelX, itemRelY);
 			}        
 			
 			var newOrder = moveItemToFront(elem.id);
@@ -1120,6 +1127,7 @@ function pointerRelease(address, pointerX, pointerY) {
 	if( remoteInteraction[address].windowManagementMode() ){
 			if(remoteInteraction[address].selectedResizeItem != null){
 				broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
+                processResize(updatedItem);
 			}
 			remoteInteraction[address].releaseItem();
 	}
@@ -1180,6 +1188,7 @@ function pointerScroll( address, data ) {
 		
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
+            processResize(updatedItem); 
 			remoteInteraction[address].selectedScrollItem = null;
 		}, 500);
 	}
@@ -1192,4 +1201,9 @@ function deleteElement( elem ) {
 
 	removeElement(items, elem);
 	broadcast('deleteElement', {elemId: elem.id});
+}
+
+function processResize( elem ) {
+    console.log("Resize: " + Math.round(elem.elemWidth) + " ID: " + elem.elemId);
+    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight)); 
 }
