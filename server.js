@@ -1,8 +1,10 @@
-var fs = require('fs');
-var os = require('os');
 var crypto = require('crypto');
+var fs = require('fs');
+var gm = require('gm');
 var https = require('https');
+var imageinfo = require('imageinfo');
 var multiparty = require('multiparty');
+var os = require('os');
 var path = require('path');
 var request = require('request');
 
@@ -64,6 +66,32 @@ for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImag
 for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
+
+if(config.background.substring(0, 1) == "#" && config.background.length == 7){
+	// background is a color
+}
+else{
+	// divide background image if necessary
+	var bg_info = imageinfo(fs.readFileSync(config.background));
+	if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
+		for(var i=0; i<config.displays.length; i++){
+			var x = config.displays[i].column * config.resolution.width;
+			var y = config.displays[i].row * config.resolution.height;
+			var output_dir = path.dirname(config.background);
+			var output_ext = path.extname(config.background);
+			var output_base = path.basename(config.background, output_ext); 
+			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
+			gm(config.background).crop(config.resolution.width, config.resolution.height, x, y).write(output, function (err) {
+				if(err) throw err;
+			});
+		}
+	}
+	else{
+		console.log("Warning: could not use background image - not correct resolution");
+		console.log(bg_info.width + "x" + bg_info.height);
+	}
+}
+
 
 // build a list of certs to support multi-homed computers
 var certs = {};
