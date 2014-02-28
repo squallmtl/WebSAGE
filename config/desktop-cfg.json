@@ -1,5 +1,6 @@
 {
         "host": "localhost",
+        "alternate_hosts": [],
         "port": 9090,
         "clock": 12,
         "resolution": {

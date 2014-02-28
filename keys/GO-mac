@@ -1,0 +1,13 @@
+#!/bin/sh
+
+#
+# to generate a list of certificates, add the server name in the list below
+# and run ./GO
+#
+
+servers="localhost 127.0.0.1"
+
+for f in `echo $servers`
+do
+	./init_webserver.cmd $f
+done
