@@ -705,6 +705,15 @@ config.remote_sites.forEach(function(element, index, array) {
 		remoteSites[index].connected = true;
 	});
 	
+	remote.clientType = "remoteServer";
+	
+	remote.onclose(function() {
+		console.log("Remote site \"" + config.remote_sites[index].name + "\" now offline");
+		remoteSites[index].connected = false;
+		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
+		broadcast('connectedToRemoteSite', site, "display");
+	});
+	
 	remote.on('addNewElementFromRemoteServer', function(data) {
 		console.log("[CLIENT] received element from server: " + data.src);
 		if(data.type == "img"){
