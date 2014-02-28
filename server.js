@@ -1318,7 +1318,7 @@ function pointerRelease(address, pointerX, pointerY) {
 				var source = remoteInteraction[address].selectedMoveItem.url;
 				if(source != null){
 					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + source);
-					remoteSites[remoteIdx].wsio.emit('addNewWebElement', {type: remoteInteraction[address].selectedMoveItem.type, src: source});
+					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source});
 				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
