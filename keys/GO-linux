@@ -2,7 +2,7 @@
 
 #
 # to generate a list of certificates, add the server name in the list below
-# and run ./GO
+# and run ./GO-linux
 #
 
 servers="localhost 127.0.0.1"
