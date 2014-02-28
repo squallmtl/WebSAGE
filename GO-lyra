@@ -2,6 +2,9 @@
 
 tentakel pkill chrome -HUP
 
+server=lyra.evl.optiputer.net
+#server=lyra.evl.uic.edu
+
 global_param="--window-size=1366,1536 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
 
 for i in {1..36}
@@ -12,5 +15,5 @@ do
 	mkdir -p $UDD/Default
 	param="$global_param --user-data-dir=$UDD"
 	client=$(expr $i - 1)
-	ssh -fx $node "env DISPLAY=:0.0 google-chrome $param 'http://lyra.evl.uic.edu:9090?clientID=$client'" &
+	ssh -fx $node "env DISPLAY=:0.0 google-chrome $param 'https://$server:9090?clientID=$client'" &
 done

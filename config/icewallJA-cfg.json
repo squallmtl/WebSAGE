@@ -1,20 +1,24 @@
 {
-        "host": "thor.evl.uic.edu",
-        "port": 6060,
-        "clock": 12,
-        "resolution": {
-                "width": 1536,
-                "height": 1366
-        },
-        "layout": {
-                "rows": 1,
-                "columns": 1
-        },
-        "displays": [
-                {
-                        "ID": 0,
-                        "row": 0,
-                        "column": 0
-                }
-        ]
+	"host": "thor.evl.uic.edu",
+	"port": 6060,
+	"clock": 12,
+	"resolution": {
+		"width": 1536,
+		"height": 1360
+	},
+	"layout": {
+		"rows": 1,
+		"columns": 1
+	},
+	"displays": [
+		{
+			"ID": 0,
+			"row": 0,
+			"column": 0
+		}
+	],
+	"alternate_hosts": [
+		"localhost",
+		"127.0.0.1"
+	]
 }
