@@ -17,13 +17,13 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
 //var wallfile = "config/icewallJA-cfg.json";
-var wallfile = "config/icewallTM-cfg.json";
+//var wallfile = "config/icewallTM-cfg.json";
 //var wallfile = "config/icewallAN-cfg.json";
 //var wallfile = "config/icewallRight-omicron-cfg.json";
 //var wallfile = "config/iridium-cfg.json";
@@ -215,8 +215,14 @@ wsioServer.onconnection(function(wsio) {
 				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
 			}
 			
-			// connect to remote server (create two way connectivity)
-			if(remoteIdx >= 0 && remoteSites[remoteIdx].wsio.ws.readyState != 1){
+			// add remote server websocket to array
+			if(remoteIdx >= 0){
+				remoteSites[remoteIdx].wsio = wsio;
+				remoteSites[remoteIdx].connected = true;
+				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
+				broadcast('connectedToRemoteSite', site, "display");
+			}
+			/* && remoteSites[remoteIdx].wsio.ws.readyState != 1){
 				var wsURL = "ws://" + data.host + ":" + (data.port+1).toString();
 				console.log(wsURL);
 				var remote = new websocketIO(wsURL, function() {
@@ -226,7 +232,7 @@ wsioServer.onconnection(function(wsio) {
 					var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
 					broadcast('connectedToRemoteSite', site, "display");
 				});
-			}
+			}*/
 		}
 		
 		clients.push(wsio);
@@ -637,6 +643,55 @@ wsioServer.onconnection(function(wsio) {
 			});
 		}
 	});
+	
+	// Remote site
+	wsio.on('addNewElementFromRemoteServer', function(data) {
+		if(data.type == "img"){
+			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
+				if(err) throw err;
+				
+				itemCount++;
+				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+					broadcast('addNewElement', newItem);
+				
+					items.push(newItem);
+				});
+			});
+		}
+		else if(data.type == "video"){
+			itemCount++;
+			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+			});
+		}
+		else if(data.type == "youtube"){
+			itemCount++;
+			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+			});
+		}
+		else if(data.type == "pdf"){
+			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
+			var localPath = path.join("uploads", "pdfs", filename);
+			var tmp = fs.createWriteStream(localPath);
+			tmp.on('error', function(err) {
+				if(err) throw err;
+			});
+			tmp.on('close', function() {
+				itemCount++;
+				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+		
+					items.push(newItem);
+				});
+			});
+			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+	});
 });
 
 /******** Remote Site Collaboration ******************************************************/
@@ -648,6 +703,55 @@ config.remote_sites.forEach(function(element, index, array) {
 		remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
 		remoteSites[index].connected = true;
 	});
+	
+	remote.on('addNewElementFromRemoteServer', function(data) {
+		if(data.type == "img"){
+			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
+				if(err) throw err;
+				
+				itemCount++;
+				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+					broadcast('addNewElement', newItem);
+				
+					items.push(newItem);
+				});
+			});
+		}
+		else if(data.type == "video"){
+			itemCount++;
+			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+			});
+		}
+		else if(data.type == "youtube"){
+			itemCount++;
+			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+			});
+		}
+		else if(data.type == "pdf"){
+			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
+			var localPath = path.join("uploads", "pdfs", filename);
+			var tmp = fs.createWriteStream(localPath);
+			tmp.on('error', function(err) {
+				if(err) throw err;
+			});
+			tmp.on('close', function() {
+				itemCount++;
+				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+					broadcast('addNewElement', newItem);
+		
+					items.push(newItem);
+				});
+			});
+			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+	});
+	
 	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
 	var rHeight = config.titleBarHeight - 4;
 	var rPos = (0.5*config.totalWidth) + ((rWidth+2)*(index-(remoteSites.length/2))) + 1;
