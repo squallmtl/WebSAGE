@@ -4,24 +4,24 @@
 	"clock": 12,
 	"background": "images/background/chicago_skyline_thor.jpg",
 	"resolution": {
-			"width": 3072,
-			"height": 1360
+		"width": 3072,
+		"height": 1360
 	},
 	"layout": {
-			"rows": 1,
-			"columns": 2
+		"rows": 1,
+		"columns": 2
 	},
 	"displays": [
-			{
-					"ID": 0,
-					"row": 0,
-					"column": 0
-			},
-			{
-					"ID": 1,
-					"row": 0,
-					"column": 1
-			}
+		{
+			"ID": 0,
+			"row": 0,
+			"column": 0
+		},
+		{
+			"ID": 1,
+			"row": 0,
+			"column": 1
+		}
 	],
 	"alternate_hosts": [
 		"localhost",

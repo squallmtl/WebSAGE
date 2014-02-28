@@ -39,7 +39,24 @@ brew install poppler --with-glib
 ```
 
 
-##### To install all Node js modules: #####
+=======
+
+##### Setup Node js (Mac OSX and Linux): #####
+Open keys/GO
+Edit ```servers``` to be a list of hostnames for your server
 ```
+cd <WebSAGE_directory>
 npm install
+cd keys/
+./GO
 ```
+
+=======
+
+##### Run WebSAGE: #####
+```
+cd <WebSAGE_directory>
+node server.js
+```
+
+

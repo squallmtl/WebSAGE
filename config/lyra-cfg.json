@@ -1,5 +1,5 @@
 {
-	"config": "lyra.evl.uic.edu",
+	"host": "lyra.evl.uic.edu",
 	"port": 9090,
 	"clock": 12,
 	"resolution": {
@@ -191,5 +191,10 @@
 			"row": 1,
 			"column": 17
 		}
+	],
+	"alternate_hosts": [
+		"localhost",
+		"127.0.0.1",
+		"lyra.evl.optiputer.net"
 	]
 }

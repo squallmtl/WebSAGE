@@ -34,15 +34,10 @@ openssl x509 -req -days 365 -in server.csr -signkey $server-server.key -out $ser
 echo ""
 echo ""
 
-echo "Trust Server Certificate - Add to DB"
-# list the DB
-certutil -d sql:$HOME/.pki/nssdb -L
-# delete the previous server key
-certutil -d sql:$HOME/.pki/nssdb -D -n $server
 # add the new key
-certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n $server -i $server-server.crt
-# print the DB again
-certutil -d sql:$HOME/.pki/nssdb -L
+# sudo /usr/bin/security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain localhost-server.crt
+/usr/bin/security add-trusted-cert -d -r trustRoot localhost-server.crt
+
 echo ""
 echo "Finished"
 
