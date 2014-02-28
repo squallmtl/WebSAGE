@@ -2,6 +2,7 @@
 	"host": "lyra.evl.uic.edu",
 	"port": 9090,
 	"clock": 12,
+	"background": "#333333",
 	"resolution": {
 		"width": 1366,
 		"height": 1536
