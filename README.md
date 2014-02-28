@@ -39,7 +39,7 @@ Add lines with list of hostnames for your server
 ```
 cd <WebSAGE_directory>
 npm install
-cd keys/
+cd keys\
 .\GO-windows.bat
 ```
 
