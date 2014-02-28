@@ -21,5 +21,17 @@
 	"alternate_hosts": [
 		"localhost",
 		"127.0.0.1"
+	],
+	"remote_sites": [
+		{
+			"name": "Cyber-Commons",
+			"host": "iridium.evl.uic.edu",
+			"port": 9090
+		},
+		{
+			"name": "CAVE2",
+			"host": "lyra.evl.uic.edu",
+			"port": 9090
+		}
 	]
 }

@@ -5,9 +5,10 @@ global_param="--new-window --window-size=1536,1360 --kiosk --disable-popup-block
 # Launch Audio Manager
 UDD=$HOME/.config/chrome-nfs/thor_ja_audio
 mkdir -p $UDD/Default
-audio_param="--window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
+audio_param="--new-window --window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
 env DISPLAY=:0.1 google-chrome $audio_param 'https://localhost:6060/audioManager.html' &
 
+sleep 1.5
 
 # Launch Display (client 0)
 UDD=$HOME/.config/chrome-nfs/thor_ja_0

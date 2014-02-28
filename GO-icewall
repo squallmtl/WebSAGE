@@ -1,12 +1,12 @@
 #!/bin/sh
 
 
-global_param="--window-size=3072,1360 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
+global_param="--new-window --window-size=3072,1360 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
 
 # Launch Audio Manager
 UDD=$HOME/.config/chrome-nfs/thor_audio
 mkdir -p $UDD/Default
-audio_param="--window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
+audio_param="--new-window --window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
 env DISPLAY=:0.0 google-chrome $audio_param 'https://localhost:9090/audioManager.html' &
 
 sleep 1.5

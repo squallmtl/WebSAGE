@@ -5,9 +5,10 @@ global_param="--new-window --window-size=1536,1360 --kiosk --disable-popup-block
 # Launch Audio Manager
 UDD=$HOME/.config/chrome-nfs/thor_an_audio
 mkdir -p $UDD/Default
-audio_param="--window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
+audio_param="--new-window --window-size=768,1360 --allow-file-access-from-files --user-data-dir=$UDD"
 env DISPLAY=:0.0 google-chrome $audio_param 'https://localhost:8080/audioManager.html' &
 
+sleep 1.5
 
 # Launch Display (client 0)
 UDD=$HOME/.config/chrome-nfs/thor_an_0
@@ -26,6 +27,7 @@ aLen=${#arr[@]}
 lastElem=`expr $aLen - 1`
 
 xdotool windowmove ${arr[$lastElem]} 1536 0
+
 
 # Move Display Client to the proper screen
 result="$(xdotool search --name 'Node Test - Google Chrome')"
