@@ -53,13 +53,16 @@
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
 			clock = json_cfg.clock;
 			
-			var ext = json_cfg.background.lastIndexOf(".");
-			if(ext >= 0){
-				var bg_img = json_cfg.background.substring(0, ext) + "_" + clientID + json_cfg.background.substring(ext);
-				document.body.style.background = "url(" + bg_img + ") top left no-repeat";
+			// background color
+			if(json_cfg.background.substring(0, 1) == "#" && json_cfg.background.length == 7){
+				document.body.style.background = json_cfg.background;
 			}
 			else{
-				document.body.style.background = json_cfg.background;
+				var ext = json_cfg.background.lastIndexOf(".");
+				if(ext >= 0){
+					var bg_img = json_cfg.background.substring(0, ext) + "_" + clientID + json_cfg.background.substring(ext);
+					document.body.style.background = "url(" + bg_img + ") top left no-repeat";
+				}
 			}
 			
 			var upperBar = document.getElementById('upperBar');

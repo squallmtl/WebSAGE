@@ -67,10 +67,8 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
-if(config.background.substring(0, 1) == "#" && config.background.length == 7){
-	// background is a color
-}
-else{
+// background not a color
+if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 	// divide background image if necessary
 	var bg_info = imageinfo(fs.readFileSync(config.background));
 	if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
