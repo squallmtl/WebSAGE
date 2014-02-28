@@ -646,6 +646,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	// Remote site
 	wsio.on('addNewElementFromRemoteServer', function(data) {
+		console.log("[SERVER] received element from server: " + data.src);
 		if(data.type == "img"){
 			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 				if(err) throw err;
@@ -705,6 +706,7 @@ config.remote_sites.forEach(function(element, index, array) {
 	});
 	
 	remote.on('addNewElementFromRemoteServer', function(data) {
+		console.log("[CLIENT] received element from server: " + data.src);
 		if(data.type == "img"){
 			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 				if(err) throw err;
