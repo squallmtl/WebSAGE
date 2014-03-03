@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
 <meta charset="utf-,8">
-<title>Node Test</title>
+<title>WebSAGE site index</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
 
 <script type="text/javascript">
@@ -15,9 +15,52 @@
 			if(xhr.readyState == 4 && xhr.status == 200){
 				json_cfg = JSON.parse(xhr.responseText);
 				console.log(json_cfg);
+				
+				initializePageList();
 			}
 		};
 		xhr.send();
+	}
+	
+	function initializePageList() {
+		var userInteraction = document.getElementById('userInteraction');
+		var audio = document.getElementById('audio');
+		var display = document.getElementById('display');
+		
+		// User Interaction
+		var sageUI = document.createElement('p');
+		var sageUI_link = document.createElement('a');
+		sageUI_link.textContent = "SAGE UI";
+		sageUI_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/sageUI.html";
+		sageUI.appendChild(sageUI_link);
+		var sagePointer = document.createElement('p');
+		var sagePointer_link = document.createElement('a');
+		sagePointer_link.textContent = "SAGE Pointer";
+		sagePointer_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/sagePointer.html";
+		sagePointer.appendChild(sagePointer_link);
+		
+		userInteraction.appendChild(sageUI);
+		userInteraction.appendChild(sagePointer);
+		
+		// Audio
+		var audioManager = document.createElement('p');
+		var audioManager_link = document.createElement('a');
+		audioManager_link.textContent = "Audio Manager";
+		audioManager_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/audioManager.html";
+		audioManager.appendChild(audioManager_link);
+		
+		audio.appendChild(audioManager);
+		
+		// Display
+		for(var i=0; i<json_cfg.displays.length; i++){
+			var displayClient = document.createElement('p');
+			var displayClient_link = document.createElement('a');
+			displayClient_link.textContent = "Display (client " + i.toString() + ")";
+			displayClient_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/?clientID=" + i.toString();
+			displayClient.appendChild(displayClient_link);
+		
+			display.appendChild(displayClient);
+		}
 	}
 </script>
 
@@ -27,7 +70,15 @@
 
 <body onload="init()">
 	<div id="main">
-		
+		<div id="userInteraction" class="siteType">
+			<h2>User Interaction Pages</h2>
+		</div>
+		<div id="audio" class="siteType">
+			<h2>Audio Pages</h2>
+		</div>
+		<div id="display" class="siteType">
+			<h2>Display Pages</h2>
+		</div>
 	</div>
 </body>
 </html>

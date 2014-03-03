@@ -1155,7 +1155,7 @@ if( config.omicronServerIP )
 /***************************************************************************************/
 
 // Start the https server
-index.listen(config.port-1);
+index.listen(config.index_port);
 server.listen(config.port);
 
 console.log('Now serving the app at https://localhost:' + config.port);

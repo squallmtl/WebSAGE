@@ -86,7 +86,7 @@
 			machine.style.left = (-offsetX + (6*titleBarHeight)).toString() + "px";
 			machine.style.top = (0.05*titleBarHeight).toString() + "px";
 			machine.style.color = "#FFFFFF";
-			machine.textContent = "https://" + json_cfg.host + ":" +json_cfg.port.toString() + "/(sagePointer.html | sageUI.html)";
+			if(json_cfg.show_url) machine.textContent = json_cfg.host + ":" +json_cfg.index_port.toString();
 		});
 		
 		wsio.on('setSystemTime', function(data) {
@@ -659,8 +659,8 @@
 <body onload="init()">
 	<div id="main">
 		<div id="upperBar">
-			<p id="time">12:00am</p>
-			<p id="machine">localhost</p>
+			<p id="time"></p>
+			<p id="machine"></p>
 		</div>
 	</div>
 </body>

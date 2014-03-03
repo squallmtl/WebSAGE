@@ -1,8 +1,10 @@
 {
 	"host": "iridium.evl.uic.edu",
 	"port": 9090,
+	"index_port": 9292,
 	"clock": 12,
 	"background": "images/background/chicago_skyline_iridium.jpg",
+	"show_url": true,
 	"resolution": {
 		"width": 4098,
 		"height": 768
