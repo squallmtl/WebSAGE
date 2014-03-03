@@ -1,0 +1,44 @@
+{
+	"host": "131.193.77.235",
+	"port": 9090,
+	"index_port": 80,
+	"clock": 24,
+	"background": "images/background/evl1.jpg",
+	"show_url": true,
+	"resolution": {
+		"width": 2560,
+		"height": 1600
+	},
+	"layout": {
+		"rows": 1,
+		"columns": 1
+	},
+	"displays": [
+		{
+			"ID": 0,
+			"row": 0,
+			"column": 0
+		}
+	],
+	"alternate_hosts": [
+		"localhost",
+		"127.0.0.1"
+	],
+	"remote_sites": [
+		{
+			"name": "IceWallTM",
+			"host": "thor.evl.uic.edu",
+			"port": 7070
+		},
+		{
+			"name": "Cyber-Commons",
+			"host": "iridium.evl.uic.edu",
+			"port": 9090
+		},
+		{
+			"name": "CAVE2",
+			"host": "lyra.evl.uic.edu",
+			"port": 9090
+		}
+	]
+}
