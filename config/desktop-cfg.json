@@ -25,5 +25,7 @@
 	],
 	"alternate_hosts": [
 		"127.0.0.1"
+	],
+	"remote_sites": [
 	]
 }
