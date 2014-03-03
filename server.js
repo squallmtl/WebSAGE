@@ -1,6 +1,7 @@
 var crypto = require('crypto');
 var fs = require('fs');
 var gm = require('gm');
+var http = require('http');
 var https = require('https');
 var imageinfo = require('imageinfo');
 var multiparty = require('multiparty');
@@ -51,8 +52,9 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
+var public_https = "public_HTTPS";
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
-var uploadsFolder = path.join(__dirname, "uploads");
+var uploadsFolder = path.join(public_https, "uploads");
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
 var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
@@ -67,17 +69,18 @@ for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i])
 // background not a color
 if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 	// divide background image if necessary
-	var bg_info = imageinfo(fs.readFileSync(config.background));
+	var bg_file = path.join(public_https, config.background);
+	var bg_info = imageinfo(fs.readFileSync(bg_file));
 	if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
 		for(var i=0; i<config.displays.length; i++){
 			var x = config.displays[i].column * config.resolution.width;
 			var y = config.displays[i].row * config.resolution.height;
-			var output_dir = path.dirname(config.background);
-			var output_ext = path.extname(config.background);
-			var output_base = path.basename(config.background, output_ext); 
+			var output_dir = path.dirname(bg_file);
+			var output_ext = path.extname(bg_file);
+			var output_base = path.basename(bg_file, output_ext); 
 			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
 			console.log(output);
-			gm(config.background).crop(config.resolution.width, config.resolution.height, x, y).write(output, function (err) {
+			gm(bg_file).crop(config.resolution.width, config.resolution.height, x, y).write(output, function (err) {
 				if(err) throw err;
 			});
 		}
@@ -126,9 +129,14 @@ var options = {
   }
 };
 
-var privateFiles = ["./server.js", "./package.json", "./README.md", "./keys/", "./config"];
-var httpServerApp = new httpserver(privateFiles);
-httpServerApp.post('/upload', function(req, res) {
+var httpServerIndex = new httpserver("public_HTTP");
+httpServerIndex.httpGET('/config', function(req, res) {
+	res.writeHead(200, {"Content-Type": "text/plain"});
+	res.write(JSON.stringify(config));
+	res.end();
+});
+var httpsServerApp = new httpserver("public_HTTPS");
+httpsServerApp.httpPOST('/upload', function(req, res) {
 	var form = new multiparty.Form();
 	form.parse(req, function(err, fields, files) {
 		if(err){
@@ -145,7 +153,9 @@ httpServerApp.post('/upload', function(req, res) {
 	});
 });
 
-var server = https.createServer(options, httpServerApp.onrequest);
+
+var index = http.createServer(httpServerIndex.onrequest);
+var server = https.createServer(options, httpsServerApp.onrequest);
 var wsioServer = new websocketIO.Server(config.port+1);
 
 var itemCount = 0;
@@ -563,7 +573,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(uploadsFolder, "pdfs", filename);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
@@ -581,7 +591,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('addNewElementFromStoredFiles', function(file) {
-		var localPath = path.join("uploads", file.dir, file.name);
+		var localPath = path.join(uploadsFolder, file.dir, file.name);
 		var url = hostOrigin + encodeURI(localPath);
 		
 		if(file.dir == "images"){
@@ -674,7 +684,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(uploadsFolder, "pdfs", filename);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
@@ -743,7 +753,7 @@ config.remote_sites.forEach(function(element, index, array) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(uploadsFolder, "pdfs", filename);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
@@ -784,11 +794,10 @@ function uploadFiles(files) {
 	fileKeys.forEach(function(key) {
 		var file = files[key][0];
 		var type = file.headers['content-type'];
-		var uploadsDir = path.join(__dirname, "uploads");
 		
 		if(type == "image/jpeg" || type == "image/png"){
 			console.log("uploaded image: " + file.originalFilename);
-			var localPath = path.join("uploads", "images", file.originalFilename);
+			var localPath = path.join(uploadsFolder, "images", file.originalFilename);
 			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
@@ -809,7 +818,7 @@ function uploadFiles(files) {
 		}
 		else if(type == "video/mp4"){
 			console.log("uploaded video: " + file.originalFilename);
-			var localPath = path.join("uploads", "videos", file.originalFilename);
+			var localPath = path.join(uploadsFolder, "videos", file.originalFilename);
 			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
@@ -826,7 +835,7 @@ function uploadFiles(files) {
 		}
 		else if(type == "application/pdf"){
 			console.log("uploaded pdf: " + file.originalFilename);
-			var localPath = path.join("uploads", "pdfs", file.originalFilename);
+			var localPath = path.join(uploadsFolder, "pdfs", file.originalFilename);
 			var url = hostOrigin + encodeURI(localPath);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
@@ -843,7 +852,7 @@ function uploadFiles(files) {
 		}
 		else if(type == "application/zip" || type == "application/x-zip-compressed" ){
 			console.log("uploaded app: " + file.originalFilename);
-			var localPath = path.join("uploads", "apps", file.originalFilename);
+			var localPath = path.join(uploadsFolder, "apps", file.originalFilename);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
@@ -1146,6 +1155,7 @@ if( config.omicronServerIP )
 /***************************************************************************************/
 
 // Start the https server
+index.listen(config.port-1);
 server.listen(config.port);
 
 console.log('Now serving the app at https://localhost:' + config.port);
