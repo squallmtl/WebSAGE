@@ -542,6 +542,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('receivedRemoteMediaStreamFrame', function(data) {
 		console.log("receivedRemoteMediaStreamFrame: " + data.id);
+		console.log(mediaStreams[data.id]);
 		
 		mediaStreams[data.id][address] = true;
 		
