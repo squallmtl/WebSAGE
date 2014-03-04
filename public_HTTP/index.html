@@ -6,8 +6,15 @@
 
 <script type="text/javascript">
 	var json_cfg;
+	var hostname;
+	var port;
 	
 	function init() {
+		hostname = window.location.hostname;
+		port = window.location.port;
+		if(window.location.protocol == "http:" && port == "") port = "80";
+		if(window.location.protocol == "https:" && port == "") port = "443";
+	
 		xhr = new XMLHttpRequest();
 		xhr.open("GET", "/config", true);
 		xhr.onreadystatechange = function() {
@@ -26,16 +33,21 @@
 		var audio = document.getElementById('audio');
 		var display = document.getElementById('display');
 		
+		var https_port = ":" + json_cfg.port.toString();
+		if(https_port == ":443") https_port = "";
+		
 		// User Interaction
 		var sageUI = document.createElement('p');
 		var sageUI_link = document.createElement('a');
 		sageUI_link.textContent = "SAGE UI";
-		sageUI_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/sageUI.html";
+		sageUI_link.href = "https://" + json_cfg.host + https_port + "/sageUI.html";
+		sageUI_link.target = "_blank";
 		sageUI.appendChild(sageUI_link);
 		var sagePointer = document.createElement('p');
 		var sagePointer_link = document.createElement('a');
 		sagePointer_link.textContent = "SAGE Pointer";
-		sagePointer_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/sagePointer.html";
+		sagePointer_link.href = "https://" + json_cfg.host + https_port + "/sagePointer.html";
+		sagePointer_link.target = "_blank";
 		sagePointer.appendChild(sagePointer_link);
 		
 		userInteraction.appendChild(sageUI);
@@ -45,7 +57,8 @@
 		var audioManager = document.createElement('p');
 		var audioManager_link = document.createElement('a');
 		audioManager_link.textContent = "Audio Manager";
-		audioManager_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/audioManager.html";
+		audioManager_link.href = "https://" + json_cfg.host + https_port + "/audioManager.html";
+		audioManager_link.target = "_blank";
 		audioManager.appendChild(audioManager_link);
 		
 		audio.appendChild(audioManager);
@@ -55,7 +68,8 @@
 			var displayClient = document.createElement('p');
 			var displayClient_link = document.createElement('a');
 			displayClient_link.textContent = "Display (client " + i.toString() + ")";
-			displayClient_link.href = "https://" + json_cfg.host + ":" + json_cfg.port + "/?clientID=" + i.toString();
+			displayClient_link.href = "https://" + json_cfg.host + https_port + "/?clientID=" + i.toString();
+			displayClient_link.target = "_blank";
 			displayClient.appendChild(displayClient_link);
 		
 			display.appendChild(displayClient);

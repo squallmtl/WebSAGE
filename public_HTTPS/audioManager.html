@@ -5,12 +5,19 @@
 <title>Audio Manager</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
 <script type="text/javascript">
-	var ws;
+	var wsio;
+	var hostname;
+	var port;
 	
 	var videos = {};
 	
 	function init() {
-		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
+		hostname = window.location.hostname;
+		port = window.location.port;
+		if(window.location.protocol == "http:" && port == "") port = "80";
+		if(window.location.protocol == "https:" && port == "") port = "443";
+		
+		wsio = new websocketIO(hostname, parseInt(port)+1);
 		console.log("Connected to server: ", window.location.origin);
 		
 		wsio.open(function() {
