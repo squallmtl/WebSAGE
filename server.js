@@ -557,7 +557,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "video"){
 			itemCount++;
-			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
@@ -573,14 +573,15 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join(uploadsFolder, "pdfs", filename);
+			var url = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(public_https, url);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
 			});
 			tmp.on('close', function() {
 				itemCount++;
-				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -591,15 +592,16 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('addNewElementFromStoredFiles', function(file) {
-		var localPath = path.join(uploadsFolder, file.dir, file.name);
-		var url = hostOrigin + encodeURI(localPath);
+		var url = path.join("uploads", file.dir, file.name);
+		var external_url = hostOrigin + encodeURI(url);
+		var localPath = path.join(public_https, url);
 		
 		if(file.dir == "images"){
 			fs.readFile(localPath, function (err, data) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadImage(data, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadImage(data, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
@@ -608,7 +610,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(file.dir == "videos"){
 			itemCount++;
-			loader.loadVideo(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
 		
 				items.push(newItem);
@@ -616,7 +618,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(file.dir == "pdfs"){
 			itemCount++;
-			loader.loadPdf(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 				broadcast('addNewElement', newItem);
 		
 				items.push(newItem);
@@ -625,11 +627,11 @@ wsioServer.onconnection(function(wsio) {
 		else if(file.dir == "apps"){
 			itemCount++;
 			var id = "item"+itemCount.toString();
-			loader.loadApp(localPath, id, function(newItem, instructions) {
+			loader.loadApp(localPath, url, id, function(newItem, instructions) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: path.join(localPath, instructions.resources[i].src)});
+						broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
 					}
 				}
 	
@@ -668,7 +670,7 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "video"){
 			itemCount++;
-			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
@@ -684,14 +686,15 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join(uploadsFolder, "pdfs", filename);
+			var url = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(public_https, url);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
 			});
 			tmp.on('close', function() {
 				itemCount++;
-				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -737,7 +740,7 @@ config.remote_sites.forEach(function(element, index, array) {
 		}
 		else if(data.type == "video"){
 			itemCount++;
-			loader.loadVideo(data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
@@ -753,14 +756,15 @@ config.remote_sites.forEach(function(element, index, array) {
 		}
 		else if(data.type == "pdf"){
 			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var localPath = path.join(uploadsFolder, "pdfs", filename);
+			var url = path.join("uploads", "pdfs", filename);
+			var localPath = path.join(public_https, url);
 			var tmp = fs.createWriteStream(localPath);
 			tmp.on('error', function(err) {
 				if(err) throw err;
 			});
 			tmp.on('close', function() {
 				itemCount++;
-				loader.loadPdf(localPath, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -797,8 +801,9 @@ function uploadFiles(files) {
 		
 		if(type == "image/jpeg" || type == "image/png"){
 			console.log("uploaded image: " + file.originalFilename);
-			var localPath = path.join(uploadsFolder, "images", file.originalFilename);
-			var url = hostOrigin + encodeURI(localPath);
+			var url = path.join("uploads", "images", file.originalFilename);
+			var external_url = hostOrigin + encodeURI(url);
+			var localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
@@ -806,7 +811,7 @@ function uploadFiles(files) {
 					if(err) throw err;
 					
 					itemCount++;
-					loader.loadImage(data, url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+					loader.loadImage(data, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
 						broadcast('addNewElement', newItem);
 				
 						items.push(newItem);
@@ -818,13 +823,14 @@ function uploadFiles(files) {
 		}
 		else if(type == "video/mp4"){
 			console.log("uploaded video: " + file.originalFilename);
-			var localPath = path.join(uploadsFolder, "videos", file.originalFilename);
-			var url = hostOrigin + encodeURI(localPath);
+			var url = path.join("uploads", "videos", file.originalFilename);
+			var external_url = hostOrigin + encodeURI(url);
+			var localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadVideo(localPath, url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
+				loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
 					broadcast('addNewElement', newItem);
 			
 					items.push(newItem);
@@ -835,13 +841,14 @@ function uploadFiles(files) {
 		}
 		else if(type == "application/pdf"){
 			console.log("uploaded pdf: " + file.originalFilename);
-			var localPath = path.join(uploadsFolder, "pdfs", file.originalFilename);
-			var url = hostOrigin + encodeURI(localPath);
+			var url = path.join("uploads", "pdfs", file.originalFilename);
+			var external_url = hostOrigin + encodeURI(url);
+			var localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
 				itemCount++;
-				loader.loadPdf(localPath, url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
 					broadcast('addNewElement', newItem);
 		
 					items.push(newItem);
@@ -852,17 +859,20 @@ function uploadFiles(files) {
 		}
 		else if(type == "application/zip" || type == "application/x-zip-compressed" ){
 			console.log("uploaded app: " + file.originalFilename);
-			var localPath = path.join(uploadsFolder, "apps", file.originalFilename);
+			var ext = path.extname(file.originalFilename);
+			var url = path.join("uploads", "apps", path.basename(file.originalFilename, ext));
+			var external_url = hostOrigin + encodeURI(url);
+			var localPath = path.join(public_https, url) + ext;
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 				
 				itemCount++;
 				var id = "item"+itemCount.toString();
-				loader.loadZipApp(localPath, id, function(newItem, instructions) {
+				loader.loadZipApp(localPath, url, id, function(newItem, instructions) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', {source: path.join(localPath, instructions.resources[i].src)});
+							broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
 						}
 					}
 	
@@ -872,7 +882,8 @@ function uploadFiles(files) {
 					
 						items.push(newItem);
 						
-						if(savedFiles["app"].indexOf(file.originalFilename) < 0) savedFiles["app"].push(file.originalFilename);
+						var appName = path.basename(file.originalFilename, ext);
+						if(savedFiles["app"].indexOf(appName) < 0) savedFiles["app"].push(appName);
 
 						// set interval timer if specified
 						if(instructions.animation == "timer"){
