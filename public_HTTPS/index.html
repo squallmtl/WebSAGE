@@ -313,6 +313,20 @@
 				
 				windowItem.appendChild(screen);
 			}
+			else if(elem_data.type == "remote_screen"){
+				wsio.emit('receivedRemoteMediaStreamFrame', {id: elem_data.id});
+				
+				var screen = document.createElement("img");
+				screen.id = elem_data.id + "_remote_screen";
+				screen.className = "sageItem";
+				screen.aspectRatio = elem_data.aspect;
+				screen.width = elem_data.width;
+				screen.height = elem_data.height;
+				screen.src = "data:image/jpeg;base64," + stringToBase64(elem_data.src);
+				screen.draggable = false;
+				
+				windowItem.appendChild(screen);
+			}
 			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
 				canvas.id = elem_data.id + "_canvas"

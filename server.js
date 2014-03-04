@@ -217,6 +217,7 @@ wsioServer.onconnection(function(wsio) {
 		else if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
 			wsio.remoteAddress.address = data.host;
+			wsio.remoteAddress.port = data.port;
 			address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 			for(var i=0; i<config.remote_sites.length; i++){
 				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
@@ -498,7 +499,6 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('startNewMediaStream', function(data) {
-		console.log("starting media stream");
 		mediaStreams[data.id] = {};
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){
@@ -536,6 +536,25 @@ wsioServer.onconnection(function(wsio) {
 			}
 			
 			if(broadcastWS != null) broadcastWS.emit('requestNextFrame', null);
+		}
+	});
+	
+	wsio.on('receivedRemoteMediaStreamFrame', function(data) {
+		mediaStreams[data.id][address] = true;
+		
+		if(allTrueDict(mediaStreams[data.id])){
+			var broadcastWS = null;
+			var serverAddress = data.id.substring(6).split("|")[0];
+			var broadcastAddress = data.id.substring(6).split("|")[1];
+			for(i=0; i<clients.length; i++){
+				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+				if(clientAddress == serverAddress) broadcastWS = clients[i];
+			}
+			
+			if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
+			
+			console.log("server:" + serverAddress);
+			console.log("broadcast:" + broadcastAddress);
 		}
 	});
 	
@@ -706,27 +725,25 @@ wsioServer.onconnection(function(wsio) {
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
 		else if(data.type == "screen"){
-			mediaStreams[data.id] = {};
+			var id = "remote" + config.host + ":" + config.port + "|" + data.id;
+		
+			mediaStreams[id] = {};
 			for(var i=0; i<clients.length; i++){
 				if(clients[i].clientType == "display"){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[data.id][clientAddress] = false;
+					mediaStreams[id][clientAddress] = false;
 				}
 			}
 			
-			loader.loadRemoteScreen(data.src, data.id, data.title, function(newItem) {
+			loader.loadRemoteScreen(data.src, id, data.title, function(newItem) {
 				console.log("REMOTE SCREEN");
 				console.log(newItem);
-			});
-			
-			/*
-			loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
+				
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
 				itemCount++;
 			});
-			*/
 		}
 		else{
 			console.log("unknown type: " + data.type);
