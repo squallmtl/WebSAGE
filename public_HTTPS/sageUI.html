@@ -552,11 +552,13 @@
 	}
 	
 	function base64ToString(base64) {
-		return decodeURIComponent(escape(atob(base64)));
+		//return decodeURIComponent(escape(atob(base64)));
+		return atob(base64);
 	}
 
 	function stringToBase64(string) {
-		return btoa(unescape(encodeURIComponent(string)));
+		//return btoa(unescape(encodeURIComponent(string)));
+		return btoa(string);
 	}
 	
 </script>

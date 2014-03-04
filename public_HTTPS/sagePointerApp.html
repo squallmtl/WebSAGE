@@ -311,7 +311,8 @@
 		mediaVideo.play();
 
 		var frame = captureMediaFrame();
-		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
+		var raw = atob(frame.split(",")[1]);
+		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: raw, width: screen.width, height: screen.height});
 
 		broadcasting = true;
 	}
@@ -414,7 +415,8 @@
 	}
 	
 	function base64ToString(base64) {
-		return decodeURIComponent(escape(atob(base64)));
+		//return decodeURIComponent(escape(atob(base64)));
+		return atob(base64);
 	}
 </script>
 

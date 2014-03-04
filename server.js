@@ -498,6 +498,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('startNewMediaStream', function(data) {
+		console.log("starting media stream");
 		mediaStreams[data.id] = {};
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){
