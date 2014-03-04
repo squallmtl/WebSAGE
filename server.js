@@ -230,17 +230,6 @@ wsioServer.onconnection(function(wsio) {
 				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
 				broadcast('connectedToRemoteSite', site, "display");
 			}
-			/* && remoteSites[remoteIdx].wsio.ws.readyState != 1){
-				var wsURL = "ws://" + data.host + ":" + (data.port+1).toString();
-				console.log(wsURL);
-				var remote = new websocketIO(wsURL, function() {
-					console.log("connected to " + remoteSites[remoteIdx].name);
-					remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
-					remoteSites[remoteIdx].connected = true;
-					var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-					broadcast('connectedToRemoteSite', site, "display");
-				});
-			}*/
 		}
 		
 		clients.push(wsio);
@@ -737,8 +726,6 @@ wsioServer.onconnection(function(wsio) {
 			
 			loader.loadRemoteScreen(data.src, id, data.title, function(newItem) {
 				console.log("REMOTE SCREEN");
-				console.log(newItem);
-				
 				broadcast('addNewElement', newItem);
 			
 				items.push(newItem);
@@ -748,6 +735,14 @@ wsioServer.onconnection(function(wsio) {
 		else{
 			console.log("unknown type: " + data.type);
 		}
+	});
+	
+	wsio.on('requestNextRemoteFrame', function(data) {
+		var stream = findElementById(data.id);
+		console.log("send stream to ...");
+		console.log(wsio.remoteAddress);
+		
+		//wsio.emit();
 	});
 });
 
@@ -771,7 +766,7 @@ config.remote_sites.forEach(function(element, index, array) {
 	});
 	
 	remote.on('addNewElementFromRemoteServer', function(data) {
-		console.log("received element from server: " + data.src);
+		//console.log("received element from server: " + data.src);
 		if(data.type == "img"){
 			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 				if(err) throw err;
@@ -818,6 +813,36 @@ config.remote_sites.forEach(function(element, index, array) {
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
+		else if(data.type == "screen"){
+			var id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
+		
+			mediaStreams[id] = {};
+			for(var i=0; i<clients.length; i++){
+				if(clients[i].clientType == "display"){
+					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+					mediaStreams[id][clientAddress] = false;
+				}
+			}
+			
+			loader.loadRemoteScreen(data.src, id, data.title, function(newItem) {
+				console.log("REMOTE SCREEN");
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+				itemCount++;
+			});
+		}
+		else{
+			console.log("unknown type: " + data.type);
+		}
+	});
+	
+	remote.on('requestNextRemoteFrame', function(data) {
+		var stream = findElementById(data.id);
+		console.log("send stream to ...");
+		console.log(wsio.remoteAddress);
+		
+		//wsio.emit();
 	});
 	
 	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
