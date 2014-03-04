@@ -518,6 +518,8 @@ wsioServer.onconnection(function(wsio) {
 		for(var key in mediaStreams[data.id]){
 			mediaStreams[data.id][key] = false;
 		}
+		var streamItem = findItemById(data.id);
+		if(streamItem != null) streamItem.src = data.src;
 		
 		broadcast('updateMediaStreamFrame', data, "display");
 	});
@@ -701,6 +703,28 @@ wsioServer.onconnection(function(wsio) {
 				});
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+		else if(data.type == "screen"){
+			mediaStreams[data.id] = {};
+			for(var i=0; i<clients.length; i++){
+				if(clients[i].clientType == "display"){
+					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+					mediaStreams[data.id][clientAddress] = false;
+				}
+			}
+			
+			loader.loadRemoteScreen(data.src, data.id, data.title, function(newItem) {
+				console.log(newItem);
+			}
+			
+			/*
+			loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
+				broadcast('addNewElement', newItem);
+			
+				items.push(newItem);
+				itemCount++;
+			});
+			*/
 		}
 	});
 });
@@ -1345,7 +1369,7 @@ function pointerRelease(address, pointerX, pointerY) {
 				var source = remoteInteraction[address].selectedMoveItem.url;
 				if(source != null){
 					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + source);
-					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source});
+					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source, title: remoteInteraction[address].selectedMoveItem.title});
 				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
