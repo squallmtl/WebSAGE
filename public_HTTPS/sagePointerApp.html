@@ -120,10 +120,6 @@
 			if(broadcasting){
 				var frame = captureMediaFrame();
 				var raw = base64ToString(frame.split(",")[1]);
-				console.log(frame.substring(0, 50));
-				console.log(frame.split(",")[1].substring(0, 50));
-				console.log(base64ToString(frame).substring(0, 50));
-				console.log(base64ToString(frame.split(",")[1]).substring(0, 50));
 				//wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
 				wsio.emit('updateMediaStreamFrame', {id: address, src: raw});
 			}
@@ -311,7 +307,7 @@
 		mediaVideo.play();
 
 		var frame = captureMediaFrame();
-		var raw = atob(frame.split(",")[1]);
+		var raw = base64ToString(frame.split(",")[1]);
 		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: raw, width: screen.width, height: screen.height});
 
 		broadcasting = true;
