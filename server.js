@@ -514,6 +514,16 @@ wsioServer.onconnection(function(wsio) {
 		broadcast('updateMediaStreamFrame', data, "display");
 	});
 	
+	wsio.on('updateRemoteMediaStreamFrame', function(data) {
+		for(var key in mediaStreams[data.id]){
+			mediaStreams[data.id][key] = false;
+		}
+		var streamItem = findItemById(data.id);
+		if(streamItem != null) streamItem.src = data.src;
+		
+		broadcast('updateRemoteMediaStreamFrame', data, "display");
+	});
+	
 	wsio.on('receivedMediaStreamFrame', function(data) {
 		mediaStreams[data.id][address] = true;
 		
@@ -739,10 +749,8 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
-		console.log("send stream to ...");
-		console.log(wsio.remoteAddress);
 		
-		//wsio.emit();
+		wsio.emit('updateRemoteMediaStreamFrame', {id: data.id, src: stream.src});
 	});
 });
 
@@ -816,7 +824,7 @@ config.remote_sites.forEach(function(element, index, array) {
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
 		else if(data.type == "screen"){
-			var id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
+			var id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
 		
 			mediaStreams[id] = {};
 			for(var i=0; i<clients.length; i++){
@@ -841,10 +849,8 @@ config.remote_sites.forEach(function(element, index, array) {
 	
 	remote.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
-		console.log("send stream to ...");
-		console.log(remote.remoteAddress);
 		
-		//wsio.emit();
+		remote.emit('updateRemoteMediaStreamFrame', {id: data.id, src: stream.src});
 	});
 	
 	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
