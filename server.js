@@ -724,13 +724,13 @@ wsioServer.onconnection(function(wsio) {
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
 		else if(data.type == "screen"){
-			var id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
+			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
 		
-			mediaStreams[id] = {};
+			mediaStreams[remote_id] = {};
 			for(var i=0; i<clients.length; i++){
 				if(clients[i].clientType == "display"){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[id][clientAddress] = false;
+					mediaStreams[remote_id][clientAddress] = false;
 				}
 			}
 			
@@ -750,7 +750,8 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
 		
-		wsio.emit('updateRemoteMediaStreamFrame', {id: data.id, src: stream.src});
+		var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
+		wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 	});
 });
 
@@ -824,13 +825,13 @@ config.remote_sites.forEach(function(element, index, array) {
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
 		else if(data.type == "screen"){
-			var id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
+			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
 		
-			mediaStreams[id] = {};
+			mediaStreams[remote_id] = {};
 			for(var i=0; i<clients.length; i++){
 				if(clients[i].clientType == "display"){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[id][clientAddress] = false;
+					mediaStreams[remote_id][clientAddress] = false;
 				}
 			}
 			
@@ -850,7 +851,8 @@ config.remote_sites.forEach(function(element, index, array) {
 	remote.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
 		
-		remote.emit('updateRemoteMediaStreamFrame', {id: data.id, src: stream.src});
+		var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
+		remote.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 	});
 	
 	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
