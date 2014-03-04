@@ -725,7 +725,7 @@ wsioServer.onconnection(function(wsio) {
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
 		else if(data.type == "screen"){
-			var id = "remote" + config.host + ":" + config.port + "|" + data.id;
+			var id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
 		
 			mediaStreams[id] = {};
 			for(var i=0; i<clients.length; i++){
