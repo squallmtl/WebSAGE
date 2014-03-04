@@ -305,6 +305,7 @@
 		mediaVideo.play();
 
 		var frame = captureMediaFrame();
+		frame = frame.split(",")[1];
 		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
 
 		broadcasting = true;
