@@ -738,7 +738,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('requestNextRemoteFrame', function(data) {
-		var stream = findElementById(data.id);
+		var stream = findItemById(data.id);
 		console.log("send stream to ...");
 		console.log(wsio.remoteAddress);
 		
@@ -838,9 +838,9 @@ config.remote_sites.forEach(function(element, index, array) {
 	});
 	
 	remote.on('requestNextRemoteFrame', function(data) {
-		var stream = findElementById(data.id);
+		var stream = findItemById(data.id);
 		console.log("send stream to ...");
-		console.log(wsio.remoteAddress);
+		console.log(remote.remoteAddress);
 		
 		//wsio.emit();
 	});
