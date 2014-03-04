@@ -308,7 +308,7 @@
 				screen.aspectRatio = elem_data.aspect;
 				screen.width = elem_data.width;
 				screen.height = elem_data.height;
-				screen.src = stringToBase64(elem_data.src);
+				screen.src = "data:image/jpeg;base64," + stringToBase64(elem_data.src);
 				screen.draggable = false;
 				
 				windowItem.appendChild(screen);

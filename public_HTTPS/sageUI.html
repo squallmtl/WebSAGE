@@ -197,7 +197,8 @@
 		wsio.on('requestNextFrame', function(data) {
 			if(broadcasting){
 				var frame = captureMediaFrame();
-				wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
+				var raw = base64ToString(frame.split(",")[1]);
+				wsio.emit('updateMediaStreamFrame', {id: address, src: raw});
 			}
 		});
 		
@@ -331,8 +332,9 @@
 		mediaVideo.play();
 		
 		var frame = captureMediaFrame();
-		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: base64ToString(frame), width: screen.width, height: screen.height});
-		
+		var raw = base64ToString(frame.split(",")[1]);
+		wsio.emit('startNewMediaStream', {id: address, title: name+": Shared Screen", src: raw, width: screen.width, height: screen.height});
+
 		broadcasting = true;
 	}
 	

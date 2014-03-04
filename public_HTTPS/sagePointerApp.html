@@ -120,7 +120,6 @@
 			if(broadcasting){
 				var frame = captureMediaFrame();
 				var raw = base64ToString(frame.split(",")[1]);
-				//wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
 				wsio.emit('updateMediaStreamFrame', {id: address, src: raw});
 			}
 		});
