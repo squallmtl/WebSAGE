@@ -211,7 +211,10 @@
 		});
 		
 		wsio.on('updateRemoteMediaStreamFrame', function(data) {
-			console.log("received next frame");
+			wsio.emit('receivedRemoteMediaStreamFrame', {id: data.id});
+			
+			var screen = document.getElementById(data.id + "_remote_screen");
+			screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
 		});
 		
 		wsio.on('addNewElement', function(elem_data) {		
