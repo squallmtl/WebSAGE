@@ -714,8 +714,9 @@ wsioServer.onconnection(function(wsio) {
 			}
 			
 			loader.loadRemoteScreen(data.src, data.id, data.title, function(newItem) {
+				console.log("REMOTE SCREEN");
 				console.log(newItem);
-			}
+			});
 			
 			/*
 			loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
@@ -725,6 +726,9 @@ wsioServer.onconnection(function(wsio) {
 				itemCount++;
 			});
 			*/
+		}
+		else{
+			console.log("unknown type: " + data.type);
 		}
 	});
 });
