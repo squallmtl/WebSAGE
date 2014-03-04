@@ -657,7 +657,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	// Remote site
 	wsio.on('addNewElementFromRemoteServer', function(data) {
-		console.log("received element from server: " + data.src);
+		//console.log("received element from server: " + data.src);
 		if(data.type == "img"){
 			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 				if(err) throw err;
@@ -1374,7 +1374,7 @@ function pointerRelease(address, pointerX, pointerY) {
 				if(source == null) source = remoteInteraction[address].selectedMoveItem.src;
 				if(source != null){
 					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + remoteInteraction[address].selectedMoveItem.title);
-					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source, title: remoteInteraction[address].selectedMoveItem.title});
+					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, id: remoteInteraction[address].selectedMoveItem.id, src: source, title: remoteInteraction[address].selectedMoveItem.title});
 				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
