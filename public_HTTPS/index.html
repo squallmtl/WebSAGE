@@ -212,7 +212,7 @@
 		
 		wsio.on('updateRemoteMediaStreamFrame', function(data) {
 			console.log("received next frame");
-		}
+		});
 		
 		wsio.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
