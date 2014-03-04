@@ -1370,14 +1370,12 @@ function pointerRelease(address, pointerX, pointerY) {
 				remoteInteraction[address].releaseItem(true);
 			}
 			else{
-				/*var source = remoteInteraction[address].selectedMoveItem.url;
+				var source = remoteInteraction[address].selectedMoveItem.url;
+				if(source == null) source = remoteInteraction[address].selectedMoveItem.src;
 				if(source != null){
-					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + source);
+					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + remoteInteraction[address].selectedMoveItem.title);
 					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source, title: remoteInteraction[address].selectedMoveItem.title});
-				}*/
-				console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + remoteInteraction[address].selectedMoveItem.title);
-				remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, src: source, title: remoteInteraction[address].selectedMoveItem.title});
-				
+				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
 				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
 			}
