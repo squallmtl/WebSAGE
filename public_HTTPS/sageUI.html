@@ -551,12 +551,12 @@
 		}
 	}
 	
-	function stringToBase64(string) {
-		return decodeURIComponent(escape(atob(string)));
+	function base64ToString(base64) {
+		return decodeURIComponent(escape(atob(base64)));
 	}
 
-	function base64ToString(base64) {
-		return btoa(unescape(encodeURIComponent(base64)));
+	function stringToBase64(string) {
+		return btoa(unescape(encodeURIComponent(string)));
 	}
 	
 </script>

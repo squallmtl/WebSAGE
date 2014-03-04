@@ -119,7 +119,7 @@
 		wsio.on('requestNextFrame', function(data) {
 			if(broadcasting){
 				var frame = captureMediaFrame();
-				var raw = btoa(frame.split(",")[1]);
+				var raw = base64ToString(frame.split(",")[1]);
 				console.log(frame.substring(0, 50));
 				console.log(frame.split(",")[1].substring(0, 50));
 				console.log(base64ToString(frame).substring(0, 50));
@@ -414,7 +414,7 @@
 	}
 	
 	function base64ToString(base64) {
-		return btoa(unescape(encodeURIComponent(base64)));
+		return decodeURIComponent(escape(atob(base64)));
 	}
 </script>
 
