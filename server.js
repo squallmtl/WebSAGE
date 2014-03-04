@@ -515,6 +515,8 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('updateRemoteMediaStreamFrame', function(data) {
+		console.log("updateRemoteMediaStreamFrame: " + data.id);
+		
 		for(var key in mediaStreams[data.id]){
 			mediaStreams[data.id][key] = false;
 		}
@@ -539,6 +541,8 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('receivedRemoteMediaStreamFrame', function(data) {
+		console.log("receivedRemoteMediaStreamFrame: " + data.id);
+		
 		mediaStreams[data.id][address] = true;
 		
 		if(allTrueDict(mediaStreams[data.id])){
