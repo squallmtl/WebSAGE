@@ -734,7 +734,7 @@ wsioServer.onconnection(function(wsio) {
 				}
 			}
 			
-			loader.loadRemoteScreen(data.src, id, data.title, function(newItem) {
+			loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
 				console.log("REMOTE SCREEN");
 				broadcast('addNewElement', newItem);
 			
@@ -835,7 +835,7 @@ config.remote_sites.forEach(function(element, index, array) {
 				}
 			}
 			
-			loader.loadRemoteScreen(data.src, id, data.title, function(newItem) {
+			loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
 				console.log("REMOTE SCREEN");
 				broadcast('addNewElement', newItem);
 			
