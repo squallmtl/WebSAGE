@@ -125,7 +125,7 @@
 				console.log(base64ToString(frame).substring(0, 50));
 				console.log(base64ToString(frame.split(",")[1]).substring(0, 50));
 				//wsio.emit('updateMediaStreamFrame', {id: address, src: base64ToString(frame)});
-				wsio.emit('updateMediaStreamFrame', {id: address, src: raw});
+				wsio.emit('updateMediaStreamFrame', {id: address, src: frame.split(",")[1]});
 			}
 		});
 		
