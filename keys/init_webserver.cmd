@@ -36,7 +36,7 @@ echo ""
 
 # add the new key
 # sudo /usr/bin/security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain localhost-server.crt
-/usr/bin/security add-trusted-cert -d -r trustRoot localhost-server.crt
+/usr/bin/security add-trusted-cert -d -r trustRoot $server-server.crt
 
 echo ""
 echo "Finished"
