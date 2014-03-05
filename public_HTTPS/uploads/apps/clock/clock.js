@@ -93,7 +93,7 @@ function clock(){
         
         // minute hand
         handSize = radius * 0.60; // 60% of the radius
-        var min = date.getMinutes();
+        var min = date.getMinutes() + sec/60;
         
         theta = (6 * Math.PI / 180);
         x = centerX + handSize * Math.cos(min*theta - Math.PI/2);
@@ -112,7 +112,7 @@ function clock(){
         
         // hour hand
         handSize = radius * 0.40; // 40% of the radius
-        var hour = date.getHours();
+        var hour = date.getHours() + min/60;
         
         theta = (30 * Math.PI / 180);
         x = centerX + handSize * Math.cos(hour * theta - Math.PI/2);

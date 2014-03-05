@@ -759,12 +759,32 @@ wsioServer.onconnection(function(wsio) {
 var remoteSites = new Array(config.remote_sites.length);
 config.remote_sites.forEach(function(element, index, array) {
 	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
+	
+	var remote = createRemoteConnection(wsURL, element, index);
+	
+	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
+	var rHeight = config.titleBarHeight - 4;
+	var rPos = (0.5*config.totalWidth) + ((rWidth+2)*(index-(remoteSites.length/2))) + 1;
+	remoteSites[index] = {name: element.name, wsio: remote, connected: false, width: rWidth, height: rHeight, pos: rPos};
+
+	// attempt to connect every 15 seconds, if connection failed
+	setInterval(function() {
+		if(!remoteSites[index].connected){
+			var remote = createRemoteConnection(wsURL, element, index);
+			remoteSites[index].wsio = remote;
+		}
+	}, 15000);
+});
+
+function createRemoteConnection(wsURL, element, index) {
 	var remote = new websocketIO(wsURL, function() {
 		console.log("connected to " + element.name);
 		remote.remoteAddress.address = element.host;
 		remote.remoteAddress.port = element.port+1;
 		remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
 		remoteSites[index].connected = true;
+		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
+		broadcast('connectedToRemoteSite', site, "display");
 	});
 	
 	remote.clientType = "remoteServer";
@@ -855,11 +875,8 @@ config.remote_sites.forEach(function(element, index, array) {
 		remote.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 	});
 	
-	var rWidth = Math.min((0.5*config.totalWidth)/remoteSites.length, config.titleBarHeight*6) - 2;
-	var rHeight = config.titleBarHeight - 4;
-	var rPos = (0.5*config.totalWidth) + ((rWidth+2)*(index-(remoteSites.length/2))) + 1;
-	remoteSites[index] = {name: element.name, wsio: remote, connected: false, width: rWidth, height: rHeight, pos: rPos};
-});
+	return remote;
+}
 
 /******** System Time - Updated Every Minute *********************************************/
 var cDate = new Date();
