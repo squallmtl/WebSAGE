@@ -21,7 +21,7 @@
 	var pointerHeight;
 	var pointerOffsetX; 
 	var pointerOffsetY;
-	var clock;
+	var clock_type;
 	
 	var wsio;
 	var hostname;
@@ -58,7 +58,7 @@
 			pointerHeight = json_cfg.pointerHeight;
 			pointerOffsetX = Math.round(0.025384*pointerHeight); 
 			pointerOffsetY = Math.round(0.060805*pointerHeight);
-			clock = json_cfg.clock;
+			clock_type = json_cfg.clock;
 			
 			// background color
 			if(json_cfg.background.substring(0, 1) == "#" && json_cfg.background.length == 7){
@@ -102,7 +102,7 @@
 		
 		wsio.on('setSystemTime', function(data) {
 			var time = document.getElementById('time');
-			if(clock == 12) time.textContent = formatAMPM(new Date(data.date));
+			if(clock_type == 12) time.textContent = formatAMPM(new Date(data.date));
 			else time.textContent = format24Hr(new Date(data.date));
 		});
 		
@@ -121,11 +121,8 @@
 			else remote.style.backgroundColor = "#AD2A2A";
 			
 			var name = document.createElement('p');
-			//name.style.position = "absolute";
 			name.style.whiteSpace = "nowrap";
 			name.style.fontSize = Math.round(titleTextSize) + "px";
-			name.style.left = (-offsetX + (8*titleBarHeight)).toString() + "px";
-			name.style.top = (0.05*titleBarHeight).toString() + "px";
 			name.style.color = "#FFFFFF";
 			name.textContent = data.name;
 			
