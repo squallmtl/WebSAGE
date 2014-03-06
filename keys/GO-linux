@@ -5,7 +5,7 @@
 # and run ./GO-linux
 #
 
-servers="localhost 127.0.0.1 iridium.evl.uic.edu iridium.evl.optiputer.net"
+servers="localhost 127.0.0.1"
 
 for f in `echo $servers`
 do
