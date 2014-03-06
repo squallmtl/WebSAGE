@@ -778,7 +778,7 @@ config.remote_sites.forEach(function(element, index, array) {
 });
 
 function createRemoteConnection(wsURL, element, index) {
-	var remote = new websocketIO(wsURL, function() {
+	var remote = new websocketIO(wsURL, false, function() {
 		console.log("connected to " + element.name);
 		remote.remoteAddress.address = element.host;
 		remote.remoteAddress.port = element.port+1;
