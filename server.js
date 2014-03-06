@@ -536,7 +536,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('updateRemoteMediaStreamFrame', function(data) {
 		mediaStreams[data.id].ready = true;
-		for(var key in mediaStreams[data.id]){
+		for(var key in mediaStreams[data.id].clients){
 			mediaStreams[data.id].clients[key] = false;
 		}
 		var streamItem = findItemById(data.id);
