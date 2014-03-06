@@ -7,6 +7,7 @@ END
 
 echo ""
 echo ""
+sleep 1
 
 #global_param="--new-window --window-size=1920,1080 --kiosk --disable-popup-blocking --nfirst-run --use-gl --enable-accelerated-compositing --allow-file-access-from-files"
 
