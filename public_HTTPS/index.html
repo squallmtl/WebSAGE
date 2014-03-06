@@ -38,7 +38,7 @@
 		if(window.location.protocol == "http:" && port == "") port = "80";
 		if(window.location.protocol == "https:" && port == "") port = "443";
 		
-		wsio = new websocketIO(hostname, parseInt(port)+1);
+		wsio = new websocketIO(window.location.protocol, hostname, parseInt(port));
 		console.log("Connected to server: ", window.location.origin);
 		
 		wsio.open(function() {

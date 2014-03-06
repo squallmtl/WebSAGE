@@ -60,7 +60,7 @@
 		if(window.location.protocol == "http:" && port == "") port = "80";
 		if(window.location.protocol == "https:" && port == "") port = "443";
 		
-		wsio = new websocketIO(hostname, parseInt(port)+1);
+		wsio = new websocketIO(window.location.protocol, hostname, parseInt(port));
 		
 		document.title = window.location.hostname.concat(" ", document.title ); 
 		

@@ -1,5 +1,6 @@
-function websocketIO(host, port) {
+function websocketIO(protocol, host, port) {
 	this.ws = null;
+	this.protocol = protocol == "https:" ? "wss" : "ws";
 	this.host = host;
 	this.port = port;
 	this.messages = {};
@@ -7,8 +8,8 @@ function websocketIO(host, port) {
 	this.open = function(callback) {
 		var _this = this;
 		
-		console.log("ws://" + this.host + ":" + this.port);
-		this.ws = new WebSocket("ws://" + this.host + ":" + this.port);
+		console.log(this.protocol + "://" + this.host + ":" + this.port);
+		this.ws = new WebSocket(this.protocol + "://" + this.host + ":" + this.port);
 		this.ws.binaryType = "arraybuffer";
 		
 		this.ws.onopen = callback;

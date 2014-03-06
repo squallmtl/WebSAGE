@@ -156,7 +156,8 @@ httpsServerApp.httpPOST('/upload', function(req, res) {
 
 var index = http.createServer(httpServerIndex.onrequest);
 var server = https.createServer(options, httpsServerApp.onrequest);
-var wsioServer = new websocketIO.Server(config.port+1);
+var wsioServer = new websocketIO.Server({server: server});
+
 
 var itemCount = 0;
 var items = [];
@@ -758,7 +759,7 @@ wsioServer.onconnection(function(wsio) {
 /******** Remote Site Collaboration ******************************************************/
 var remoteSites = new Array(config.remote_sites.length);
 config.remote_sites.forEach(function(element, index, array) {
-	var wsURL = "ws://" + element.host + ":" + (element.port+1).toString();
+	var wsURL = "wss://" + element.host + ":" + element.port.toString();
 	
 	var remote = createRemoteConnection(wsURL, element, index);
 	
