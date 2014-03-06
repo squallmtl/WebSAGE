@@ -187,6 +187,21 @@ wsioServer.onconnection(function(wsio) {
 				broadcast('connectedToRemoteSite', site, "display");
 			}
 		}
+		else if(wsio.clientType == "sageUI"){
+			hidePointer( address );
+			delete sagePointers[address];
+			delete remoteInteraction[address];
+		}
+		else if(wsio.clientType == "sagePointer"){
+			hidePointer( address );
+			delete sagePointers[address];
+			delete remoteInteraction[address];
+		}
+		else if(wsio.clientType == "display"){
+			for(key in mediaStreams){
+				delete mediaStreams[key].clients[address];
+			}
+		}
 		removeElement(clients, wsio);
 	});
 	
@@ -213,6 +228,9 @@ wsioServer.onconnection(function(wsio) {
 			for(var i=0; i<remoteSites.length; i++){
 				var site = {name: remoteSites[i].name, connected: remoteSites[i].connected, width: remoteSites[i].width, height: remoteSites[i].height, pos: remoteSites[i].pos};
 				wsio.emit('addRemoteSite', site);
+			}
+			for(key in mediaStreams){
+				mediaStreams[key].clients[address] = false;
 			}
 		}
 		else if(wsio.clientType == "remoteServer"){
@@ -489,11 +507,11 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('startNewMediaStream', function(data) {
-		mediaStreams[data.id] = {};
+		mediaStreams[data.id] = {ready: true, clients: {}};
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				mediaStreams[data.id][clientAddress] = false;
+				mediaStreams[data.id].clients[clientAddress] = false;
 			}
 		}
 		
@@ -506,8 +524,9 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('updateMediaStreamFrame', function(data) {
-		for(var key in mediaStreams[data.id]){
-			mediaStreams[data.id][key] = false;
+		mediaStreams[data.id].ready = true;
+		for(var key in mediaStreams[data.id].clients){
+			mediaStreams[data.id].clients[key] = false;
 		}
 		var streamItem = findItemById(data.id);
 		if(streamItem != null) streamItem.src = data.src;
@@ -516,8 +535,9 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('updateRemoteMediaStreamFrame', function(data) {
+		mediaStreams[data.id].ready = true;
 		for(var key in mediaStreams[data.id]){
-			mediaStreams[data.id][key] = false;
+			mediaStreams[data.id].clients[key] = false;
 		}
 		var streamItem = findItemById(data.id);
 		if(streamItem != null) streamItem.src = data.src;
@@ -526,9 +546,10 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('receivedMediaStreamFrame', function(data) {
-		mediaStreams[data.id][address] = true;
-		
-		if(allTrueDict(mediaStreams[data.id])){
+		mediaStreams[data.id].clients[address] = true;
+		if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
+			mediaStreams[data.id].ready = false;
+			
 			var broadcastWS = null;
 			for(i=0; i<clients.length; i++){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
@@ -540,9 +561,10 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('receivedRemoteMediaStreamFrame', function(data) {
-		mediaStreams[data.id][address] = true;
-		
-		if(allTrueDict(mediaStreams[data.id])){
+		mediaStreams[data.id].clients[address] = true;
+		if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
+			mediaStreams[data.id].ready = false;
+			
 			var broadcastWS = null;
 			var serverAddress = data.id.substring(6).split("|")[0];
 			var broadcastAddress = data.id.substring(6).split("|")[1];
@@ -552,9 +574,6 @@ wsioServer.onconnection(function(wsio) {
 			}
 			
 			if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
-			
-			console.log("server:" + serverAddress);
-			console.log("broadcast:" + broadcastAddress);
 		}
 	});
 	
@@ -726,12 +745,12 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
-		
-			mediaStreams[remote_id] = {};
+			
+			mediaStreams[remote_id] = {ready: true, clients: {}};
 			for(var i=0; i<clients.length; i++){
 				if(clients[i].clientType == "display"){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[remote_id][clientAddress] = false;
+					mediaStreams[remote_id].clients[clientAddress] = false;
 				}
 			}
 			
@@ -848,11 +867,11 @@ function createRemoteConnection(wsURL, element, index) {
 		else if(data.type == "screen"){
 			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
 		
-			mediaStreams[remote_id] = {};
+			mediaStreams[remote_id] = {ready: true, clients: {}};
 			for(var i=0; i<clients.length; i++){
 				if(clients[i].clientType == "display"){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[remote_id][clientAddress] = false;
+					mediaStreams[remote_id].clients[clientAddress] = false;
 				}
 			}
 			
@@ -1366,7 +1385,7 @@ function hidePointer( address ) {
 		return;
 	
 	// From stopSagePointer
-	sagePointers[address].stop;
+	sagePointers[address].stop();
 	broadcast('hideSagePointer', sagePointers[address], "display");
 }
 
