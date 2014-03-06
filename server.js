@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-var wallfile = "config/tmarrinan-cfg.json";
+//var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
