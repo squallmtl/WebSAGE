@@ -769,9 +769,10 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
-		
-		var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
-		wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+		if(stream != null){		
+			var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
+			wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+		}
 	});
 });
 
@@ -891,8 +892,10 @@ function createRemoteConnection(wsURL, element, index) {
 	remote.on('requestNextRemoteFrame', function(data) {
 		var stream = findItemById(data.id);
 		
-		var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
-		remote.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+		if(stream != null){	
+			var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
+			remote.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+		}
 	});
 	
 	return remote;
