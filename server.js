@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -507,6 +507,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 	
 	wsio.on('startNewMediaStream', function(data) {
+		console.log("received new stream: " + data.id);
 		mediaStreams[data.id] = {ready: true, clients: {}};
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){

@@ -38,7 +38,7 @@
 		{
 			"name": "Cyber-Commons",
 			"host": "iridium.evl.uic.edu",
-			"port": 9090
+			"port": 443
 		},
 		{
 			"name": "CAVE2",
