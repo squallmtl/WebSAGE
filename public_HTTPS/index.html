@@ -580,8 +580,6 @@
 			var sentTime = new Date(video_data.sent);
 			var delay = serverTime.getTime() - sentTime.getTime();
 			var videoTime = video_data.time + (delay/1000);
-			console.log("video delay: " + delay.toString() + "ms");
-			console.log("video time: " + videoTime.toString() + "sec");
 			
 			var selectedElem = document.getElementById(video_data.elemId);
 			
