@@ -586,13 +586,13 @@
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
-			var diff = Math.abs(child[0].currentTime - videoTime);
+			var diff = videoTime - child[0].currentTime;
 			
-			if(diff > 0.034){
+			if(Math.abs(diff > 0.034)){
 				console.log("video time requires adjustment:");
 				console.log("  current time: " + child[0].currentTime);
 				console.log("  video time:   " + videoTime);
-				console.log("  difference:   " + Math.abs(child[0].currentTime - videoTime));
+				console.log("  difference:   " + diff);
 				
 				seekTimes.push(diff);
 				var avgSeek = average(seekTimes);
