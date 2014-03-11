@@ -172,7 +172,7 @@ wsioServer.onconnection(function(wsio) {
 	console.log(address);
 	
 	wsio.emit('setupDisplayConfiguration', config);
-	wsio.emit('initialize', {address: address});
+	wsio.emit('initialize', {address: address, time: new Date()});
 	
 	wsio.onclose(function() {
 		if(wsio.clientType == "remoteServer"){

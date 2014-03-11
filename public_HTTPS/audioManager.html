@@ -8,6 +8,7 @@
 	var wsio;
 	var hostname;
 	var port;
+	var dt;
 	
 	var videos = {};
 	
@@ -24,6 +25,13 @@
 		wsio.open(function() {
 			console.log("open websocket");
 			wsio.emit('addClient', {clientType: "audioManager"});
+		});
+		
+		wsio.on('initialize', function(data) {
+			var serverTime = new Date(data.time);
+			var clientTime = new Date();
+			
+			dt = clientTime - serverTime;
 		});
 		
 		wsio.on('addNewElement', function(elem_data) {
@@ -48,8 +56,10 @@
 					vid.currentTime = 0;
 					vid.pause();
 					vid.style.display = "none";
-					//clearInterval(videos[vid.id].interval);
-					wsio.emit('updateVideoTime', {elemId: vid.id, time: videoElem.currentTime, play: true});
+					clearInterval(videos[vid.id].interval);
+					var clientTime = new Date();
+					var serverTime = new Date(clientTime.getTime() - dt);
+					wsio.emit('updateVideoTime', {elemId: vid.id, time: vid.currentTime, play: false, sent: serverTime});
 				}, false);
 				
 				console.log(elem_data.src);
@@ -69,9 +79,12 @@
 			}
 		});
 		
-		wsio.on('deleteElement', function(elemId) {
-			var deleteElem = document.getElementById(elemId);
-			if(deleteElem != null) deleteElem.parentNode.removeChild(deleteElem);
+		wsio.on('deleteElement', function(elem_data) {
+			var deleteElem = document.getElementById(elem_data.elemId);
+			if(deleteElem != null){
+				clearInterval(videos[deleteElem.id].interval);
+				deleteElem.parentNode.removeChild(deleteElem);
+			}
 		});
 		
 		wsio.on('eventInItem', function(event_data) {
@@ -98,17 +111,23 @@
 		if(videoElem.paused == true){
 			videoElem.play();
 			videoElem.style.display = "block";
+			var clientTime = new Date();
+			var serverTime = new Date(clientTime.getTime() - dt);
 			
-			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
+			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true, sent: serverTime});
 			videos[videoElem.id].interval = setInterval(function() {
-				wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true});
+				var clientTime = new Date();
+				var serverTime = new Date(clientTime.getTime() - dt);
+				wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: true, sent: serverTime});
 			}, 2000);
 		}
 		else{
 			videoElem.pause();
 			videoElem.style.display = "none";
 			clearInterval(videos[videoElem.id].interval);
-			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: false});
+			var clientTime = new Date();
+			var serverTime = new Date(clientTime.getTime() - dt);
+			wsio.emit('updateVideoTime', {elemId: videoElem.id, time: videoElem.currentTime, play: false, sent: serverTime});
 		}
 	}
 </script>

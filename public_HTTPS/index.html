@@ -26,6 +26,7 @@
 	var wsio;
 	var hostname;
 	var port;
+	var dt;
 	
 	var itemCount = 0;
 	var pdfItems = {};
@@ -48,7 +49,14 @@
 		
 		clientID = parseInt(getParameterByName("clientID"));
 		console.log("clientID: " + clientID);
-
+		
+		wsio.on('initialize', function(data) {
+			var serverTime = new Date(data.time);
+			var clientTime = new Date();
+			
+			dt = clientTime - serverTime;
+		});
+		
 		wsio.on('setupDisplayConfiguration', function(json_cfg) {
 			offsetX = json_cfg.displays[clientID].column * json_cfg.resolution.width;
 			offsetY = json_cfg.displays[clientID].row * json_cfg.resolution.height;
@@ -567,13 +575,27 @@
 		});
 		
 		wsio.on('updateVideoItemTime', function(video_data) {
+			var clientTime = new Date();
+			var serverTime = new Date(clientTime.getTime() - dt);
+			var sentTime = new Date(video_data.sent);
+			var delay = serverTime.getTime() - sentTime.getTime();
+			var videoTime = video_data.time + (delay/1000);
+			console.log("video delay: " + delay.toString() + "ms");
+			console.log("video time: " + videoTime.toString() + "sec");
+			
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
-			child[0].currentTime = video_data.time;
+			if(Math.abs(child[0].currentTime - videoTime) > 0.033){
+				console.log("video time requires adjustment:");
+				console.log("  current time: " + child[0].currentTime);
+				console.log("  video time:   " + videoTime);
+				console.log("  difference:   " + Math.abs(child[0].currentTime - videoTime));
+				child[0].currentTime = videoTime;
+			}
 			
 			if(video_data.play && child[0].paused) child[0].play();
-			else if(!video_data.play) child[0].pause();
+			else if(!video_data.play && !child[0].paused) child[0].pause();
 		});
 		
 		wsio.on('animateCanvas', function(animate_data) {
