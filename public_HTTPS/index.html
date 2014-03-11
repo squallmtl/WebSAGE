@@ -27,6 +27,7 @@
 	var hostname;
 	var port;
 	var dt;
+	var seekTimes = [];
 	
 	var itemCount = 0;
 	var pdfItems = {};
@@ -109,6 +110,7 @@
 		});
 		
 		wsio.on('setSystemTime', function(data) {
+			// must update date to construct based on (year, month, day, hours, minutes, seconds, milliseconds)
 			var time = document.getElementById('time');
 			if(clock_type == 12) time.textContent = formatAMPM(new Date(data.date));
 			else time.textContent = format24Hr(new Date(data.date));
@@ -584,17 +586,17 @@
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
-			if(Math.abs(child[0].currentTime - videoTime) > 0.033){
+			var diff = Math.abs(child[0].currentTime - videoTime);
+			
+			if(diff > 0.034){
 				console.log("video time requires adjustment:");
 				console.log("  current time: " + child[0].currentTime);
 				console.log("  video time:   " + videoTime);
 				console.log("  difference:   " + Math.abs(child[0].currentTime - videoTime));
 				
-				// slow, but accurate
-				//child[0].currentTime = videoTime;
-				
-				// fast, but loses some accuracy
-				child[0].fastSeek(videoTime);
+				seekTimes.push(diff);
+				var avgSeek = average(seekTimes);
+				child[0].currentTime = videoTime + avgSeek;
 			}
 			
 			if(video_data.play && child[0].paused) child[0].play();
@@ -698,6 +700,15 @@
         }
 
         return uint8Array;
+    }
+    
+    function average(arr) {
+    	var l = arr.length;
+    	var sum = 0;
+    	for(var i=0; i<l; i++){
+    		sum += arr[i];
+    	}
+    	return sum / l;
     }
     
 	function getParameterByName(name) {
