@@ -589,7 +589,12 @@
 				console.log("  current time: " + child[0].currentTime);
 				console.log("  video time:   " + videoTime);
 				console.log("  difference:   " + Math.abs(child[0].currentTime - videoTime));
-				child[0].currentTime = videoTime;
+				
+				// slow, but accurate
+				//child[0].currentTime = videoTime;
+				
+				// fast, but loses some accuracy
+				child[0].fastSeek(videoTime);
 			}
 			
 			if(video_data.play && child[0].paused) child[0].play();
