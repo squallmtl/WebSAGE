@@ -588,7 +588,7 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 			var diff = videoTime - child[0].currentTime;
 			
-			if(Math.abs(diff > 0.034)){
+			if(video_data.play && !child[0].paused && Math.abs(diff > 0.034)){
 				console.log("video time requires adjustment:");
 				console.log("  current time: " + child[0].currentTime);
 				console.log("  video time:   " + videoTime);
