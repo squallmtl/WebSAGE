@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-var wallfile = "config/tmarrinan-cfg.json";
+//var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -178,7 +178,7 @@ wsioServer.onconnection(function(wsio) {
 		if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
 			for(var i=0; i<config.remote_sites.length; i++){
-				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
+				if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
 			}
 			if(remoteIdx >= 0){
 				console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
@@ -239,7 +239,7 @@ wsioServer.onconnection(function(wsio) {
 			wsio.remoteAddress.port = data.port;
 			address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 			for(var i=0; i<config.remote_sites.length; i++){
-				if(wsio.remoteAddress.address == config.remote_sites[i].host) remoteIdx = i;
+				if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
 			}
 			
 			// add remote server websocket to array

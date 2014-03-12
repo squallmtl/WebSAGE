@@ -1,5 +1,5 @@
 {
-	"host": "131.193.77.218",
+	"host": "131.193.76.128",
 	"port": 9090,
 	"index_port": 9292,
 	"clock": 12,
@@ -43,7 +43,7 @@
 		{
 			"name": "CAVE2",
 			"host": "lyra.evl.uic.edu",
-			"port": 9090
+			"port": 443
 		}
 	]
 }

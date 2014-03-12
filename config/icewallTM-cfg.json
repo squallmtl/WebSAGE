@@ -28,16 +28,16 @@
 		{
 			"name": "Cyber-Commons",
 			"host": "iridium.evl.uic.edu",
-			"port": 9090
+			"port": 443
 		},
 		{
 			"name": "CAVE2",
 			"host": "lyra.evl.uic.edu",
-			"port": 9090
+			"port": 443
 		},
 		{
 			"name": "Tommy",
-			"host": "131.193.77.218",
+			"host": "131.193.76.128",
 			"port": 9090
 		}
 	]
