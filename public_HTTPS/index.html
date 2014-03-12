@@ -27,7 +27,8 @@
 	var hostname;
 	var port;
 	var dt;
-	var seekTimes = [];
+	var preSeek = {};
+	var seekTimes = {};
 	
 	var itemCount = 0;
 	var pdfItems = {};
@@ -283,8 +284,9 @@
 				vid.style.backgroundColor = "#333333";
 				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
+				seekTimes[vid.id] = [];
 				vid.addEventListener('canplay', function() {
-					console.log(new Date().getTime());
+					if(vid.id in preSeek && !vid.paused) seekTimes[vid.id].push((new Date().getTime() - preSeek[vid.id]) / 1000);
 					console.log("video can now play"); // Video is loaded and can be played
 				}, false);
 				
@@ -595,12 +597,12 @@
 				console.log("  video time:   " + videoTime);
 				console.log("  difference:   " + diff);
 				
-				seekTimes.push(diff);
-				var avgSeek = average(seekTimes);
+				//seekTimes.push(diff);
+				var avgSeek = average(seekTimes[child[0].id]);
+				console.log("  avg-seek:     " + avgSeek);
 				
-				console.log(new Date().getTime());
-				//child[0].currentTime = videoTime + avgSeek;
-				child[0].currentTime = videoTime + diff;
+				preSeek[child[0].id] = new Date().getTime();
+				child[0].currentTime = videoTime + avgSeek;
 			}
 			
 			if(video_data.play && child[0].paused) child[0].play();
