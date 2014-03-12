@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -80,13 +80,43 @@ if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 			var output_base = path.basename(bg_file, output_ext); 
 			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
 			console.log(output);
-			gm(bg_file).crop(config.resolution.width, config.resolution.height, x, y).write(output, function (err) {
+			gm(bg_file).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
 				if(err) throw err;
 			});
 		}
 	}
 	else{
-		console.log("Warning: could not use background image - not correct resolution");
+		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
+		var out_res = config.totalWidth.toString() + "x" + config.totalHeight.toString();
+		
+		var cols = Math.ceil(config.totalWidth / bg_info.width);
+		var rows = Math.ceil(config.totalHeight / bg_info.height);
+		var tile = cols.toString() + "x" + rows.toString();
+		
+		var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
+		for(var i=0; i<rows*cols; i++){
+			gmTile = gmTile.in(bg_file);
+		}
+		
+		var tmpImg = path.join(public_https, "images", "background", "tmp_background.jpg");
+		gmTile.write(tmpImg, function(err) {
+			if(err) throw err;
+			
+			for(var i=0; i<config.displays.length; i++){
+				var x = config.displays[i].column * config.resolution.width;
+				var y = config.displays[i].row * config.resolution.height;
+				var output_dir = path.dirname(bg_file);
+				var output_ext = path.extname(bg_file);
+				var output_base = path.basename(bg_file, output_ext); 
+				var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
+				console.log(output);
+				gm(tmpImg).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
+					if(err) throw err;
+				});
+			}
+		});
+		
+		console.log("Warning: image resolution did not match display environment - tiling image");
 		console.log("Image:   " + bg_info.width + "x" + bg_info.height);
 		console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 	}
