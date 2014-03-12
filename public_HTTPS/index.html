@@ -284,6 +284,7 @@
 				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
 				vid.addEventListener('canplay', function() {
+					console.log(new Date());
 					console.log("video can now play"); // Video is loaded and can be played
 				}, false);
 				
@@ -596,6 +597,8 @@
 				
 				seekTimes.push(diff);
 				var avgSeek = average(seekTimes);
+				
+				console.log(new Date());
 				child[0].currentTime = videoTime + avgSeek;
 			}
 			
