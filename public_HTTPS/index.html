@@ -599,11 +599,14 @@
 				var avgSeek = average(seekTimes);
 				
 				console.log(new Date().getTime());
-				child[0].currentTime = videoTime + avgSeek;
+				//child[0].currentTime = videoTime + avgSeek;
+				child[0].currentTime = videoTime + diff;
 			}
 			
 			if(video_data.play && child[0].paused) child[0].play();
 			else if(!video_data.play && !child[0].paused) child[0].pause();
+			
+			if(!video_data.play) child[0].currentTime = video_data.time;
 		});
 		
 		wsio.on('animateCanvas', function(animate_data) {
@@ -707,6 +710,7 @@
     
     function average(arr) {
     	var l = arr.length;
+    	if(l == 0) return 0;
     	var sum = 0;
     	for(var i=0; i<l; i++){
     		sum += arr[i];
