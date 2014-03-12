@@ -591,23 +591,32 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 			var diff = videoTime - child[0].currentTime;
 			
+			// re-sync if more the 1/30 of a second off
+			// (currently not working due to seek taking large and varying amounts of time)
+			/*
 			if(video_data.play && !child[0].paused && Math.abs(diff > 0.034)){
 				console.log("video time requires adjustment:");
 				console.log("  current time: " + child[0].currentTime);
 				console.log("  video time:   " + videoTime);
 				console.log("  difference:   " + diff);
 				
-				//seekTimes.push(diff);
 				var avgSeek = average(seekTimes[child[0].id]);
 				console.log("  avg-seek:     " + avgSeek);
 				
 				preSeek[child[0].id] = new Date().getTime();
 				child[0].currentTime = videoTime + avgSeek;
+				
+				//child[0].fastSeek(videoTime);
 			}
+			*/
+			
+			// play a paused video - set time to audio time + delay
+			if(video_data.play && child[0].paused) child[0].currentTime = videoTime
 			
 			if(video_data.play && child[0].paused) child[0].play();
 			else if(!video_data.play && !child[0].paused) child[0].pause();
 			
+			// pause a video - set time to audio time
 			if(!video_data.play) child[0].currentTime = video_data.time;
 		});
 		
