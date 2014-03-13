@@ -699,7 +699,7 @@ wsioServer.onconnection(function(wsio) {
 		else if(file.dir == "apps"){
 			itemCount++;
 			var id = "item"+itemCount.toString();
-			loader.loadApp(localPath, url, id, function(newItem, instructions) {
+			loader.loadApp(localPath, url, external_url, id, function(newItem, instructions) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
@@ -773,6 +773,9 @@ wsioServer.onconnection(function(wsio) {
 				});
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
+			console.log("remote app: " + data.src);
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
@@ -895,6 +898,9 @@ function createRemoteConnection(wsURL, element, index) {
 				});
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
+			console.log("remote app: " + data.src);
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
@@ -1019,7 +1025,7 @@ function uploadFiles(files) {
 				
 				itemCount++;
 				var id = "item"+itemCount.toString();
-				loader.loadZipApp(localPath, url, id, function(newItem, instructions) {
+				loader.loadZipApp(localPath, url, external_url, id, function(newItem, instructions) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
