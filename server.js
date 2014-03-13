@@ -776,6 +776,13 @@ wsioServer.onconnection(function(wsio) {
 		}
 		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
 			console.log("remote app: " + data.src);
+			
+			itemCount++;
+			loader.loadRemoteApp(data.src, "item"+itemCount.toString(), function(newItem) {
+				//broadcast('addNewElement', newItem);
+			
+				//items.push(newItem);
+			});
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
