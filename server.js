@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -901,6 +901,13 @@ function createRemoteConnection(wsURL, element, index) {
 		}
 		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
 			console.log("remote app: " + data.src);
+			
+			itemCount++;
+			loader.loadRemoteApp(data.src, "item"+itemCount.toString(), function(newItem) {
+				//broadcast('addNewElement', newItem);
+			
+				//items.push(newItem);
+			});
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
