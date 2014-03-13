@@ -778,10 +778,29 @@ wsioServer.onconnection(function(wsio) {
 			console.log("remote app: " + data.src);
 			
 			itemCount++;
-			loader.loadRemoteApp(data.src, "item"+itemCount.toString(), function(newItem) {
-				//broadcast('addNewElement', newItem);
-			
-				//items.push(newItem);
+			var id = "item"+itemCount.toString();
+			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
+					}
+				}
+	
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					broadcast('addNewElement', newItem);
+					
+					items.push(newItem);
+
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
 			});
 		}
 		else if(data.type == "screen"){
@@ -910,10 +929,29 @@ function createRemoteConnection(wsURL, element, index) {
 			console.log("remote app: " + data.src);
 			
 			itemCount++;
-			loader.loadRemoteApp(data.src, "item"+itemCount.toString(), function(newItem) {
-				//broadcast('addNewElement', newItem);
-			
-				//items.push(newItem);
+			var id = "item"+itemCount.toString();
+			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
+					}
+				}
+	
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					broadcast('addNewElement', newItem);
+					
+					items.push(newItem);
+
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
 			});
 		}
 		else if(data.type == "screen"){
