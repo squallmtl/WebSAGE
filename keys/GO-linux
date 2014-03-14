@@ -5,7 +5,7 @@
 # and run ./GO-linux
 #
 
-servers="localhost 127.0.0.1 spidey.evl.uic.edu"
+servers="localhost 127.0.0.1"
 
 for f in `echo $servers`
 do
