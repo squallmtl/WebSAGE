@@ -43,7 +43,8 @@
       "node-ffprobe": "latest",
       "request": "latest",
       "ws": "latest",
-      "ytdl": "latest"
+      "ytdl": "latest",
+      "node-awesomium": "git://github.com/mvictoras/node-awesomium"
   },
   "bundledDependencies": [
       "decompress-zip",

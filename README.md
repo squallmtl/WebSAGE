@@ -12,6 +12,7 @@ Browser based implementation of SAGE. A cluster-based html viewer used for displ
 
 * Download and install [Node.js](http://nodejs.org/)
 * Download and install [7-Zip](http://www.7-zip.org/)
+* Download and install [Awesomium](http://www.awesomium.com)
 * Download [FFMpeg](http://ffmpeg.zeranoe.com/builds/)
 * Download [Poppler-utils](http://manifestwebdesign.com/2013/01/09/xpdf-and-poppler-utils-on-windows/)
 * Download [GraphicsMagick (Q8)](ftp://ftp.graphicsmagick.org/pub/GraphicsMagick/windows/)
@@ -47,11 +48,12 @@ cd keys\
 
 * Download and install [Node.js](http://nodejs.org/)
 * Download and install [homebrew](http://brew.sh/)
-
+* Download and install [Awesomium](http://www.awesomium.com)
 ```
 brew install ffmpeg 
 brew install poppler --without-glib
 brew install graphicsmagick
+brew install libjpeg-turbo
 ```
 
 ###### Setup Node js: ######
@@ -71,5 +73,4 @@ cd keys/
 cd <WebSAGE_directory>
 node server.js
 ```
-
 
