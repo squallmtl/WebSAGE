@@ -71,16 +71,16 @@
 			clock_type = json_cfg.clock;
 			
 			// background color
-			if(json_cfg.background.substring(0, 1) == "#" && json_cfg.background.length == 7){
-				document.body.style.background = json_cfg.background;
+			if(typeof json_cfg.background.color !== "undefined" && json_cfg.background.color != null){
+				document.body.style.backgroundColor = json_cfg.background.color;
 			}
-			else{
-				var ext = json_cfg.background.lastIndexOf(".");
-				if(ext >= 0){
-					var bg_img = json_cfg.background.substring(0, ext) + "_" + clientID + json_cfg.background.substring(ext);
-					document.body.style.background = "url(" + bg_img + ") top left no-repeat";
-					document.body.style.backgroundSize = json_cfg.resolution.width +"px " + json_cfg.resolution.height + "px";
-				}
+			if(typeof json_cfg.background.image !== "undefined" && json_cfg.background.image != null){
+				var ext = json_cfg.background.image.lastIndexOf(".");
+				var bg_img = json_cfg.background.image.substring(0, ext) + "_" + clientID + json_cfg.background.image.substring(ext);
+				document.body.style.backgroundImage = "url(" + bg_img + ")";
+				document.body.style.backgroundPosition = "top left";
+				document.body.style.backgroundRepeat = "no-repeat";
+				document.body.style.backgroundSize = json_cfg.resolution.width +"px " + json_cfg.resolution.height + "px";
 			}
 			
 			var upperBar = document.getElementById('upperBar');

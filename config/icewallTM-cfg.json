@@ -3,7 +3,10 @@
 	"port": 7070,
 	"index_port": 7272,
 	"clock": 12,
-	"background": "images/background/minneapolis_skyline_thor_tm.jpg",
+	"background": {
+		"image": "images/background/marble_tiles.jpg",
+		"style": "tile"
+	},
 	"show_url": true,
 	"resolution": {
 		"width": 1536,

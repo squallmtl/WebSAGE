@@ -18,7 +18,7 @@ var sagepointer = require('node-sagepointer');         // custom node module
 
 // CONFIG FILE
 var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
+var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -66,7 +66,67 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
-// background not a color
+// background image
+if(typeof config.background.image !== "undefined" && config.background.image != null){
+	var bg_file = path.join(public_https, config.background.image);
+	var bg_info = imageinfo(fs.readFileSync(bg_file));
+	
+	if(config.background.style == "fit"){
+		if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
+			sliceBackgroundImage(bg_file, bg_file);
+		}
+		else{
+			console.log("Warning: image resolution did not match display environment. Please select \"stretch\" or \"tile\" for the background style");
+			console.log("Image:   " + bg_info.width + "x" + bg_info.height);
+			console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
+		}
+	}
+	else if(config.background.style == "stretch"){
+		var imgExt = path.extname(bg_file);
+		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		
+		gm(bg_file).resize(config.totalWidth, config.totalHeight, "!").write(tmpImg, function(err) {
+			if(err) throw err;
+			
+			sliceBackgroundImage(tmpImg, bg_file);
+		});
+	}
+	else if(config.background.style == "tile"){
+		var imgExt = path.extname(bg_file);
+		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		
+		var cols = Math.ceil(config.totalWidth / bg_info.width);
+		var rows = Math.ceil(config.totalHeight / bg_info.height);
+		var tile = cols.toString() + "x" + rows.toString();
+		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
+		
+		var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
+		for(var i=0; i<rows*cols; i++) gmTile = gmTile.in(bg_file);
+		
+		gmTile.write(tmpImg, function(err) {
+			if(err) throw err;
+			
+			sliceBackgroundImage(tmpImg, bg_file);
+		});
+	}
+}
+
+function sliceBackgroundImage(fileName, outputBaseName) {
+	for(var i=0; i<config.displays.length; i++){
+		var x = config.displays[i].column * config.resolution.width;
+		var y = config.displays[i].row * config.resolution.height;
+		var output_dir = path.dirname(outputBaseName);
+		var output_ext = path.extname(outputBaseName);
+		var output_base = path.basename(outputBaseName, output_ext); 
+		var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
+		console.log(output);
+		gm(fileName).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
+			if(err) throw err;
+		});
+	}
+}
+
+/*
 if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 	// divide background image if necessary
 	var bg_file = path.join(public_https, config.background);
@@ -121,7 +181,7 @@ if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 		console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 	}
 }
-
+*/
 
 // build a list of certs to support multi-homed computers
 var certs = {};
