@@ -75,12 +75,25 @@
 				document.body.style.backgroundColor = json_cfg.background.color;
 			}
 			if(typeof json_cfg.background.image !== "undefined" && json_cfg.background.image != null){
-				var ext = json_cfg.background.image.lastIndexOf(".");
-				var bg_img = json_cfg.background.image.substring(0, ext) + "_" + clientID + json_cfg.background.image.substring(ext);
-				document.body.style.backgroundImage = "url(" + bg_img + ")";
-				document.body.style.backgroundPosition = "top left";
-				document.body.style.backgroundRepeat = "no-repeat";
-				document.body.style.backgroundSize = json_cfg.resolution.width +"px " + json_cfg.resolution.height + "px";
+				var bg = new Image();
+				bg.addEventListener('load', function() {
+					console.log(bg.naturalWidth + "x" + bg.naturalHeight);
+					
+					var bg_img;
+					var ext = json_cfg.background.image.lastIndexOf(".");
+					if(json_cfg.background.style == "fit" && (bg.naturalWidth != json_cfg.totalWidth || bg.naturalHeight != json_cfg.totalHeight)){
+						bg_img = json_cfg.background.image.substring(0, ext) + "_" + clientID + ".png";
+					}
+					else{
+						bg_img = json_cfg.background.image.substring(0, ext) + "_" + clientID + json_cfg.background.image.substring(ext);
+					}
+					
+					document.body.style.backgroundImage = "url(" + bg_img + ")";
+					document.body.style.backgroundPosition = "top left";
+					document.body.style.backgroundRepeat = "no-repeat";
+					document.body.style.backgroundSize = json_cfg.resolution.width +"px " + json_cfg.resolution.height + "px";
+				}, false);
+				bg.src = json_cfg.background.image;
 			}
 			
 			var upperBar = document.getElementById('upperBar');

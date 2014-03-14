@@ -76,9 +76,17 @@ if(typeof config.background.image !== "undefined" && config.background.image != 
 			sliceBackgroundImage(bg_file, bg_file);
 		}
 		else{
-			console.log("Warning: image resolution did not match display environment. Please select \"stretch\" or \"tile\" for the background style");
-			console.log("Image:   " + bg_info.width + "x" + bg_info.height);
-			console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
+			var tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
+			var out_res  = config.totalWidth.toString() + "x" + config.totalHeight.toString();
+		
+			gm(bg_file).command("convert").in("-gravity", "center").in("-background", "rgba(255,255,255,255)").in("-extent", out_res).write(tmpImg, function(err) {
+				if(err) throw err;
+			
+				sliceBackgroundImage(tmpImg, bg_file);
+			});
+			//console.log("Warning: image resolution did not match display environment. Please select \"stretch\" or \"tile\" for the background style");
+			//console.log("Image:   " + bg_info.width + "x" + bg_info.height);
+			//console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 		}
 	}
 	else if(config.background.style == "stretch"){
@@ -116,8 +124,9 @@ function sliceBackgroundImage(fileName, outputBaseName) {
 		var x = config.displays[i].column * config.resolution.width;
 		var y = config.displays[i].row * config.resolution.height;
 		var output_dir = path.dirname(outputBaseName);
-		var output_ext = path.extname(outputBaseName);
-		var output_base = path.basename(outputBaseName, output_ext); 
+		var input_ext = path.extname(outputBaseName);
+		var output_ext = path.extname(fileName);
+		var output_base = path.basename(outputBaseName, input_ext);
 		var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
 		console.log(output);
 		gm(fileName).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
