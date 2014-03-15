@@ -236,6 +236,9 @@ wsioServer.onconnection(function(wsio) {
 			for(key in mediaStreams){
 				delete mediaStreams[key].clients[address];
 			}
+            for(key in webStreams){
+                delete webStreams[key].clients[address];
+            }
 		}
 		removeElement(clients, wsio);
 	});
@@ -267,6 +270,9 @@ wsioServer.onconnection(function(wsio) {
 			for(key in mediaStreams){
 				mediaStreams[key].clients[address] = false;
 			}
+            for(key in webStreams){
+                webStreams[key].clients[address] = false;
+            }
 		}
 		else if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
@@ -817,18 +823,18 @@ wsioServer.onconnection(function(wsio) {
 		else wsio.emit('stopMediaStream', {id: remote_id});
 	});
 
-    wsio.on('updateWebpageStreamFrame', function(data) {
-
-        for(var key in webStreams[data.id]){
-			webStreams[data.id][key] = false;
-		}
-
-        broadcast('updateWebpageStreamFrame', data, "display");
-    });
-
     wsio.on('receivedWebpageStreamFrame', function(data) {
-        data.src = webBrowser.getFrame(data.id);
-        broadcast('updateWebpageStreamFrame', data, "display");
+        webStreams[data.id].clients[address] = true;
+		if(allTrueDict(webStreams[data.id].clients) && webStreams[data.id].ready){
+			webStreams[data.id].ready = false;
+            data.src = webBrowser.getFrame(data.id);
+            broadcast('updateWebpageStreamFrame', data, "display");
+
+            webStreams[data.id].ready = true;
+            for(var key in webStreams[data.id].clients){
+                webStreams[data.id].clients[key] = false;
+            }
+        }
 	});
 
     wsio.on('openNewWebpage', function(data) {
@@ -839,16 +845,17 @@ wsioServer.onconnection(function(wsio) {
         data.id = data.id + "_" + itemCount.toString();
         var web = {src: "", title: "WebBrowser: " + data.url, width: width, height: height};
 
-        webStreams[data.id] = {};
         webBrowser.createWindow(data.id, data.url);
 
+        webStreams[data.id] = {ready: true, clients: {}};
 		for(var i=0; i<clients.length; i++){
 			if(clients[i].clientType == "display"){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				webStreams[data.id][clientAddress] = false;
+				webStreams[data.id].clients[clientAddress] = false;
 			}
-		}
-
+		
+        }
+	
         loader.loadWebpage(web.src, data.id, web.title, web.width, web.height, function(newItem) {
 			broadcast('addNewElement', newItem);
 
