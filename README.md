@@ -7,6 +7,8 @@ Browser based implementation of SAGE. A cluster-based html viewer used for displ
 * ffmpeg
 * poppler
 * graphicsmagick
+* openmpi-devel (linux)
+* nodejs-devel (linux)
 
 ##### For Windows: #####
 
@@ -54,6 +56,7 @@ brew install ffmpeg
 brew install poppler --without-glib
 brew install graphicsmagick
 brew install libjpeg-turbo
+brew install openmpi
 ```
 
 ###### Setup Node js: ######
