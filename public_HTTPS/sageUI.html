@@ -43,6 +43,7 @@
 	var screenShareResolution;
 	var screenShareQuality;
 	var screenShareQualityIndicator;
+    var openWebpageBtn;
 	var winMgrCanvas;
 	var mediaVideo;
 	var mediaCanvas;
@@ -104,6 +105,9 @@
 		screenShareResolution.addEventListener('change', changeScreenShareResolution, false);
 		screenShareQuality.addEventListener('change', changeScreenShareQuality, false);
 		
+        openWebpageBtn = document.getElementById("openWebpageBtn");
+        openWebpageBtn.addEventListener('click', openWebpage, false);
+
 		winMgr = new windowManager("winMgr", wsio);
 		winMgr.draw();
 		
@@ -361,6 +365,11 @@
 		mediaQuality = screenShareQuality.value;
 		screenShareQualityIndicator.innerHTML = mediaQuality;
 	}
+
+    function openWebpage(event) {
+        var url = document.getElementById("openWebpageUrl");
+        wsio.emit('openNewWebpage', {id: address, url: openWebpageUrl.value});
+    }
 	
 	function pointerLockChange() {
 		pointerBtn = document.getElementById("sagePointerBtn");
@@ -601,6 +610,10 @@
 					<span id="screenShareQualityIndicator" style="margin-left:5px;">5</span>
 				</input>
 			</div>
+            <div id="openWebpage">
+                <label class="sageLabel">Webpage:</label><input id="openWebpageUrl" type="text" value="http://hakim.se/experiments/html5/origami"></input><br/>
+                <button id="openWebpageBtn" type="button">Browse</button><br/>
+            </div>
 		<div>
 		
 		<canvas id="mediaCanvas" style="display: none;"></canvas>

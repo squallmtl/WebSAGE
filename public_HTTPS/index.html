@@ -238,6 +238,13 @@
 			screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
 		});
 		
+    wsio.on('updateWebpageStreamFrame', function(data) {
+        wsio.emit('receivedWebpageStreamFrame', {id: data.id, client: clientID});
+        
+        var webpage = document.getElementById(data.id + "_webpage");
+		webpage.src = "data:image/jpeg;base64," + data.src;
+	});
+
 		wsio.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
 		
@@ -357,7 +364,21 @@
 				
 				windowItem.appendChild(screen);
 			}
-			else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
+			else if(elem_data.type == "webpage"){
+				wsio.emit('receivedWebPageStreamFrame', {id: elem_data.id});
+				
+				var webpage = document.createElement("img");
+				webpage.id = elem_data.id + "_webpage";
+				webpage.className = "sageItem";
+				webpage.aspectRatio = elem_data.aspect;
+				webpage.width = elem_data.width;
+				webpage.height = elem_data.height;
+				webpage.src = "data:image/jpeg;base64," + elem_data.src;
+				webpage.draggable = false;
+				
+				windowItem.appendChild(webpage);
+			}
+            else if(elem_data.type == "canvas" || elem_data.type == "webgl"){
 				var canvas = document.createElement("canvas");
 				canvas.id = elem_data.id + "_canvas"
 				canvas.className = "sageItem";
