@@ -9,7 +9,7 @@
     "collaboration"
   ],
   "author": "Thomas Marrinan <thomas.j.marrinan@gmail.com>",
-  "contributors": [ 
+  "contributors": [
     {
       "name": "Jillian Aurisano",
       "email": "jillian.aurisano@gmail.com"
@@ -23,8 +23,8 @@
       "email": "mvictoras@gmail.com"
     },
     {
-    	"name": "Krishna Bharadwaj",
-    	"email": "krishnaknbharadwaj@gmail.com"
+      "name": "Krishna Bharadwaj",
+      "email": "krishnaknbharadwaj@gmail.com"
     },
     {
       "name": "Luc Renambot",
@@ -36,28 +36,28 @@
     "url": "https://github.com/tmarrinan/WebSAGE"
   },
   "dependencies": {
-      "decompress-zip": "latest",
-      "gm": "latest",
-      "imageinfo": "latest",
-      "multiparty": "latest",
-      "node-ffprobe": "latest",
-      "request": "latest",
-      "ws": "latest",
-      "ytdl": "latest",
-      "node-awesomium": "git://github.com/mvictoras/node-awesomium"
+    "decompress-zip": "latest",
+    "gm": "latest",
+    "imageinfo": "latest",
+    "multiparty": "latest",
+    "node-ffprobe": "latest",
+    "request": "latest",
+    "ws": "latest",
+    "ytdl": "latest",
+    "node-awesomium": "git://github.com/mvictoras/node-awesomium",
+    "json5": "^0.2.0"
   },
   "bundledDependencies": [
-      "decompress-zip",
-      "gm",
-      "imageinfo",
-      "multiparty",
-      "node-ffprobe",
-      "request",
-      "ws",
-      "ytdl"
+    "decompress-zip",
+    "gm",
+    "imageinfo",
+    "multiparty",
+    "node-ffprobe",
+    "request",
+    "ws",
+    "ytdl"
   ],
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=0.6.x"
   },

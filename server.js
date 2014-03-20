@@ -11,6 +11,7 @@ var multiparty = require('multiparty');    // parses POST forms
 var os = require('os');                    // operating system access
 var path = require('path');                // file path extraction and creation
 var request = require('request');          // external http requests
+var json5 = require('json5');              // better JSON format
 
 // custom node modules
 var httpserver = require('node-httpserver');           // creates web server
@@ -47,7 +48,7 @@ if (wallfile == null) {
 
 // parse config file to create data structure
 var json_str = fs.readFileSync(wallfile, 'utf8');
-var config = JSON.parse(json_str);
+var config = json5.parse(json_str);
 config.totalWidth = config.resolution.width * config.layout.columns;
 config.totalHeight = config.resolution.height * config.layout.rows;
 config.titleBarHeight = Math.round(0.025 * config.totalHeight);
