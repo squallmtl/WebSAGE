@@ -11,6 +11,9 @@
 		"width": 700,
 		"height": 700
 	},
+	"experimental": {
+		"webbrowser": false
+	},
 	"layout": {
 		"rows": 1,
 		"columns": 2

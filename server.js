@@ -1,27 +1,28 @@
-var crypto = require('crypto');
-var fs = require('fs');
-var gm = require('gm');
-var http = require('http');
-var https = require('https');
-var imageinfo = require('imageinfo');
-var multiparty = require('multiparty');
-var os = require('os');
-var path = require('path');
-var request = require('request');
+// Importing modules (form node_modules directory)
 
-var httpserver = require('node-httpserver');           // custom node module
-var websocketIO = require('node-websocket.io');        // custom node module
-var loader = require('node-itemloader');               // custom node module
-var interaction = require('node-interaction');         // custom node module
-var sagepointer = require('node-sagepointer');         // custom node module
+// npm registry - defined in package.json
+var crypto = require('crypto');            // https encryption
+var fs = require('fs');                    // filesystem access
+var gm = require('gm');                    // graphicsmagick
+var http = require('http');                // http server
+var https = require('https');              // https server
+var imageinfo = require('imageinfo');      // gets width, height for images
+var multiparty = require('multiparty');    // parses POST forms
+var os = require('os');                    // operating system access
+var path = require('path');                // file path extraction and creation
+var request = require('request');          // external http requests
 
-//var webBrowser = require('node-awesomium');            // custom node module
+// custom node modules
+var httpserver = require('node-httpserver');           // creates web server
+var websocketIO = require('node-websocket.io');        // creates WebSocket server and clients
+var loader = require('node-itemloader');               // handles sage item creation
+var interaction = require('node-interaction');         // handles sage interaction (move, resize, etc.)
+var sagepointer = require('node-sagepointer');         // handles sage pointers (creation, location, etc.)
 
 
-// CONFIG FILE
-
+// User defined config file
 var wallfile = null;
-var wallfile = "config/tmarrinan-cfg.json";
+//var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
 //var wallfile = "config/icewall-cfg.json";
 //var wallfile = "config/icewallKB-cfg.json";
@@ -44,7 +45,7 @@ if (wallfile == null) {
 	}
 }
 
-
+// parse config file to create data structure
 var json_str = fs.readFileSync(wallfile, 'utf8');
 var config = JSON.parse(json_str);
 config.totalWidth = config.resolution.width * config.layout.columns;
@@ -55,11 +56,23 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
+// global variables
 var public_https = "public_HTTPS";
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
 var uploadsFolder = path.join(public_https, "uploads");
-//webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
+
+// Loads the web browser module if enabled in the configuration file:
+//    experimental: { "webbrowser": true }
+var webBrowser = null;
+if (typeof config.experimental != "undefined" && typeof config.experimental.webbrowser != "undefined" && config.experimental.webbrowser == true) {
+	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
+	console.log("WebBrowser loaded: awesomium")
+}
+
+if (webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+
+// arrays of files on the server (used for media browser)
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
 var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
 var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
@@ -88,9 +101,6 @@ if(typeof config.background.image !== "undefined" && config.background.image != 
 			
 				sliceBackgroundImage(tmpImg, bg_file);
 			});
-			//console.log("Warning: image resolution did not match display environment. Please select \"stretch\" or \"tile\" for the background style");
-			//console.log("Image:   " + bg_info.width + "x" + bg_info.height);
-			//console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 		}
 	}
 	else if(config.background.style == "stretch"){
@@ -139,106 +149,54 @@ function sliceBackgroundImage(fileName, outputBaseName) {
 	}
 }
 
-/*
-if(config.background.substring(0, 1) != "#" || config.background.length != 7){
-	// divide background image if necessary
-	var bg_file = path.join(public_https, config.background);
-	var bg_info = imageinfo(fs.readFileSync(bg_file));
-	if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
-		for(var i=0; i<config.displays.length; i++){
-			var x = config.displays[i].column * config.resolution.width;
-			var y = config.displays[i].row * config.resolution.height;
-			var output_dir = path.dirname(bg_file);
-			var output_ext = path.extname(bg_file);
-			var output_base = path.basename(bg_file, output_ext);
-			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
-			console.log(output);
-			gm(bg_file).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
-				if(err) throw err;
-			});
-		}
-	}
-	else{
-		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
-		var out_res = config.totalWidth.toString() + "x" + config.totalHeight.toString();
-
-		var cols = Math.ceil(config.totalWidth / bg_info.width);
-		var rows = Math.ceil(config.totalHeight / bg_info.height);
-		var tile = cols.toString() + "x" + rows.toString();
-
-		var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
-		for(var i=0; i<rows*cols; i++){
-			gmTile = gmTile.in(bg_file);
-		}
-
-		var tmpImg = path.join(public_https, "images", "background", "tmp_background.jpg");
-		gmTile.write(tmpImg, function(err) {
-			if(err) throw err;
-
-			for(var i=0; i<config.displays.length; i++){
-				var x = config.displays[i].column * config.resolution.width;
-				var y = config.displays[i].row * config.resolution.height;
-				var output_dir = path.dirname(bg_file);
-				var output_ext = path.extname(bg_file);
-				var output_base = path.basename(bg_file, output_ext);
-				var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
-				console.log(output);
-				gm(tmpImg).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
-					if(err) throw err;
-				});
-			}
-		});
-
-		console.log("Warning: image resolution did not match display environment - tiling image");
-		console.log("Image:   " + bg_info.width + "x" + bg_info.height);
-		console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
-	}
-}
-*/
-
 // build a list of certs to support multi-homed computers
 var certs = {};
 // add the default cert from the hostname specified in the config file
-certs[ config.host ] = crypto.createCredentials({
-	key: fs.readFileSync(path.join("keys",  config.host + "-server.key")),
+certs[config.host] = crypto.createCredentials({
+	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
 	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-	ca: fs.readFileSync(path.join("keys",   config.host + "-ca.crt")),
+	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
    }).context;
 
 for(var h in config.alternate_hosts){
-	var alth = config.alternate_hosts[ h ];
+	var alth = config.alternate_hosts[h];
 	certs[ alth ] = crypto.createCredentials({
-		key: fs.readFileSync(path.join("keys",  alth + "-server.key")),
+		key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
 		cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
-		ca: fs.readFileSync(path.join("keys",   alth + "-ca.crt")),
-	   }).context;
+		ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
+	}).context;
 }
 
 var options = {
 	// server default keys
-  key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
-  cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-  ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-  requestCert: true,
-  rejectUnauthorized: false,
+	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
+	requestCert: true,
+	rejectUnauthorized: false,
 	// callback to handle multi-homed machines
-  SNICallback: function(servername){
-    if(certs.hasOwnProperty(servername)){
-        return certs[servername];
-    } else {
-		console.log("Unknown host, cannot find a certificate for ", servername);
-        return null;
-    }
-  }
+	SNICallback: function(servername){
+		if(certs.hasOwnProperty(servername)){
+			return certs[servername];
+		}
+		else{
+			console.log("Unknown host, cannot find a certificate for ", servername);
+			return null;
+		}
+	}
 };
 
+// create HTTP server for index page (Table of Contents)
 var httpServerIndex = new httpserver("public_HTTP");
 httpServerIndex.httpGET('/config', function(req, res) {
 	res.writeHead(200, {"Content-Type": "text/plain"});
 	res.write(JSON.stringify(config));
 	res.end();
 });
+
+// create HTTPS server for all SAGE content
 var httpsServerApp = new httpserver("public_HTTPS");
+// receiving newly uploaded files from drag-and-drop interface in SAGE Pointer / SAGE UI
 httpsServerApp.httpPOST('/upload', function(req, res) {
 	var form = new multiparty.Form();
 	form.parse(req, function(err, fields, files) {
@@ -247,7 +205,8 @@ httpsServerApp.httpPOST('/upload', function(req, res) {
 			res.write(err + "\n\n");
 			res.end();
 		}
-
+		
+		// saves files in appropriate directory and broadcasts the items to the displays
 		uploadFiles(files);
 
 		res.writeHead(200, {"Content-Type": "text/plain"});
@@ -257,14 +216,18 @@ httpsServerApp.httpPOST('/upload', function(req, res) {
 });
 
 
+// initializes HTTP and HTTPS servers
 var index = http.createServer(httpServerIndex.onrequest);
 var server = https.createServer(options, httpsServerApp.onrequest);
+
+// creates a WebSocket server - 2 way communication between server and all browser clients
 var wsioServer = new websocketIO.Server({server: server});
 
-
+// global variables to manage items
 var itemCount = 0;
 var items = [];
 
+// global variables to manage clients
 var clients = [];
 var sagePointers = {};
 var remoteInteraction = {};
@@ -272,12 +235,13 @@ var mediaStreams = {};
 var webStreams = {};
 
 wsioServer.onconnection(function(wsio) {
+	// unique identifier for WebSocket client
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	console.log(address);
 
-	wsio.emit('setupDisplayConfiguration', config);
-	wsio.emit('initialize', {address: address, time: new Date()});
-
+	wsio.emit('setupDisplayConfiguration', config); // may not need to send to all client types
+	wsio.emit('initialize', {address: address, time: new Date()}); // address is unique id
+	
 	wsio.onclose(function() {
 		if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
@@ -410,7 +374,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+                    	webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			} else {
 				// already maximized, need to restore the item size
@@ -419,7 +384,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+	                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			}
 		}
@@ -608,7 +574,8 @@ wsioServer.onconnection(function(wsio) {
 				broadcast('eventInItem', event, "display");
 				broadcast('eventInItem', event, "audioManager");
 			    // Send it to the webBrowser
-                //webBrowser.keyPress(elem.id, data.code);
+				if (webBrowser != null)
+	                webBrowser.keyPress(elem.id, data.code);
             }
 		}
 
@@ -1636,7 +1603,8 @@ function pointerPress( address, pointerX, pointerY ) {
             			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
-                //webBrowser.click(elem.id, itemRelX, itemRelY);
+				if (webBrowser != null)
+	                webBrowser.click(elem.id, itemRelX, itemRelY);
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -1671,7 +1639,8 @@ function pointerRelease(address, pointerX, pointerY) {
 		if(remoteInteraction[address].selectedResizeItem != null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
 			remoteInteraction[address].releaseItem(true);
-            //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+			if (webBrowser != null)
+	            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 		}
 		if(remoteInteraction[address].selectedMoveItem != null){
 			var remoteIdx = -1;
@@ -1755,14 +1724,16 @@ function pointerScroll( address, data ) {
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
 			remoteInteraction[address].selectedScrollItem = null;
-		    //webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			if (webBrowser != null)
+			    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
 }, 500);
 	}
 }
 
 function deleteElement( elem ) {
     if(elem.type == "webpage") {
-        //webBrowser.removeWindow(elem.id);
+		if (webBrowser != null)
+	        webBrowser.removeWindow(elem.id);
     }
 
 	broadcast('deleteElement', {elemId: elem.id});
