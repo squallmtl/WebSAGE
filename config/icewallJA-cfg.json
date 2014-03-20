@@ -3,7 +3,9 @@
 	"port": 6060,
 	"index_port": 6262,
 	"clock": 12,
-	"background": "#333333",
+	"background": {
+		"color": "#333333"
+	},
 	"show_url": true,
 	"resolution": {
 		"width": 1536,

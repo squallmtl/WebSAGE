@@ -3,7 +3,10 @@
 	"port": 443,
 	"index_port": 80,
 	"clock": 12,
-	"background": "images/background/chicago_skyline_iridium.jpg",
+	"background": {
+		"image": "images/background/chicago_skyline_iridium.jpg",
+		"style": "fit"
+	},
 	"show_url": true,
 	"resolution": {
 		"width": 4098,

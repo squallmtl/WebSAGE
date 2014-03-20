@@ -3,7 +3,10 @@
 	"port": 9090,
 	"index_port": 9292,
 	"clock": 12,
-	"background": "images/background/minneapolis_skyline_tm.jpg",
+	"background": {
+		"image": "images/background/minneapolis_skyline_tm.jpg",
+		"style": "fit"
+	},
 	"show_url": true,
 	"resolution": {
 		"width": 700,

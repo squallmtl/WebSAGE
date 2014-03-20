@@ -113,63 +113,71 @@ function setupDisplayBackground() {
 
 }
 
-// Sets up background for display wall
-// background not a color
-if(config.background.substring(0, 1) != "#" || config.background.length != 7){
-	// divide background image if necessary
-	var bg_file = path.join(public_https, config.background);
+// background image
+if(typeof config.background.image !== "undefined" && config.background.image != null){
+	var bg_file = path.join(public_https, config.background.image);
 	var bg_info = imageinfo(fs.readFileSync(bg_file));
-	if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
-		for(var i=0; i<config.displays.length; i++){
-			var x = config.displays[i].column * config.resolution.width;
-			var y = config.displays[i].row * config.resolution.height;
-			var output_dir = path.dirname(bg_file);
-			var output_ext = path.extname(bg_file);
-			var output_base = path.basename(bg_file, output_ext);
-			var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
-			console.log(output);
-			gm(bg_file).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
+	
+	if(config.background.style == "fit"){
+		if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
+			sliceBackgroundImage(bg_file, bg_file);
+		}
+		else{
+			var tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
+			var out_res  = config.totalWidth.toString() + "x" + config.totalHeight.toString();
+		
+			gm(bg_file).command("convert").in("-gravity", "center").in("-background", "rgba(255,255,255,255)").in("-extent", out_res).write(tmpImg, function(err) {
 				if(err) throw err;
+			
+				sliceBackgroundImage(tmpImg, bg_file);
 			});
 		}
 	}
-	else{
-		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
-		var out_res = config.totalWidth.toString() + "x" + config.totalHeight.toString();
-
+	else if(config.background.style == "stretch"){
+		var imgExt = path.extname(bg_file);
+		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		
+		gm(bg_file).resize(config.totalWidth, config.totalHeight, "!").write(tmpImg, function(err) {
+			if(err) throw err;
+			
+			sliceBackgroundImage(tmpImg, bg_file);
+		});
+	}
+	else if(config.background.style == "tile"){
+		var imgExt = path.extname(bg_file);
+		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		
 		var cols = Math.ceil(config.totalWidth / bg_info.width);
 		var rows = Math.ceil(config.totalHeight / bg_info.height);
 		var tile = cols.toString() + "x" + rows.toString();
-
+		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
+		
 		var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
-		for(var i=0; i<rows*cols; i++){
-			gmTile = gmTile.in(bg_file);
-		}
-
-		var tmpImg = path.join(public_https, "images", "background", "tmp_background.jpg");
+		for(var i=0; i<rows*cols; i++) gmTile = gmTile.in(bg_file);
+		
 		gmTile.write(tmpImg, function(err) {
 			if(err) throw err;
-
-			for(var i=0; i<config.displays.length; i++){
-				var x = config.displays[i].column * config.resolution.width;
-				var y = config.displays[i].row * config.resolution.height;
-				var output_dir = path.dirname(bg_file);
-				var output_ext = path.extname(bg_file);
-				var output_base = path.basename(bg_file, output_ext);
-				var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
-				console.log(output);
-				gm(tmpImg).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
-					if(err) throw err;
-				});
-			}
+			
+			sliceBackgroundImage(tmpImg, bg_file);
 		});
-
-		console.log("Warning: image resolution did not match display environment - tiling image");
-		console.log("Image:   " + bg_info.width + "x" + bg_info.height);
-		console.log("Display: " + config.totalWidth + "x" + config.totalHeight);
 	}
 }
 
+function sliceBackgroundImage(fileName, outputBaseName) {
+	for(var i=0; i<config.displays.length; i++){
+		var x = config.displays[i].column * config.resolution.width;
+		var y = config.displays[i].row * config.resolution.height;
+		var output_dir = path.dirname(outputBaseName);
+		var input_ext = path.extname(outputBaseName);
+		var output_ext = path.extname(fileName);
+		var output_base = path.basename(outputBaseName, input_ext);
+		var output = path.join(output_dir, output_base + "_"+i.toString() + output_ext);
+		console.log(output);
+		gm(fileName).crop(config.resolution.width, config.resolution.height, x, y).write(output, function(err) {
+			if(err) throw err;
+		});
+	}
+}
 
 // build a list of certs to support multi-homed computers
 var certs = {};
@@ -774,7 +782,7 @@ wsioServer.onconnection(function(wsio) {
 		else if(file.dir == "apps"){
 			itemCount++;
 			var id = "item"+itemCount.toString();
-			loader.loadApp(localPath, url, id, function(newItem, instructions) {
+			loader.loadApp(localPath, url, external_url, id, function(newItem, instructions) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
@@ -848,6 +856,35 @@ wsioServer.onconnection(function(wsio) {
 				});
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
+		}
+		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
+			console.log("remote app: " + data.src);
+			
+			itemCount++;
+			var id = "item"+itemCount.toString();
+			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
+					}
+				}
+	
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					broadcast('addNewElement', newItem);
+					
+					items.push(newItem);
+
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
+			});
 		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
@@ -1015,6 +1052,35 @@ function createRemoteConnection(wsURL, element, index) {
 			});
 			request({url: data.src, strictSSL: false}).pipe(tmp);
 		}
+		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
+			console.log("remote app: " + data.src);
+			
+			itemCount++;
+			var id = "item"+itemCount.toString();
+			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
+				// add resource scripts to clients
+				for(var i=0; i<instructions.resources.length; i++){
+					if(instructions.resources[i].type == "script"){
+						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
+					}
+				}
+	
+				// add item to clients (after waiting 1 second to ensure resources have loaded)
+				setTimeout(function() {
+					broadcast('addNewElement', newItem);
+					
+					items.push(newItem);
+
+					// set interval timer if specified
+					if(instructions.animation == "timer"){
+						setInterval(function() {
+							var now = new Date();
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+						}, instructions.interval);
+					}
+				}, 1000);
+			});
+		}
 		else if(data.type == "screen"){
 			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
 
@@ -1138,7 +1204,7 @@ function uploadFiles(files) {
 
 				itemCount++;
 				var id = "item"+itemCount.toString();
-				loader.loadZipApp(localPath, url, id, function(newItem, instructions) {
+				loader.loadZipApp(localPath, url, external_url, id, function(newItem, instructions) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
