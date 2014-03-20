@@ -1,3 +1,5 @@
+"use strict";
+
 // Importing modules (form node_modules directory)
 
 // npm registry - defined in package.json
@@ -1214,11 +1216,11 @@ var net = require('net');
 var util = require('util');
 var dgram = require('dgram');
 
-udp = undefined;
+var udp = undefined;
 
-trackerIP = config.omicronServerIP;
-msgPort = config.omicronMsgPort;
-dataPort = config.omicronDataPort;
+var trackerIP = config.omicronServerIP;
+var msgPort = config.omicronMsgPort;
+var dataPort = config.omicronDataPort;
 
 if( config.omicronServerIP )
 {
