@@ -49,7 +49,27 @@
 		
 		wsio.open(function() {
 			console.log("open websocket");
-			wsio.emit('addClient', {clientType: "sagePointer"});
+			var clientDescription = {
+				clientType: "sagePointer",
+				sendsPointerData: true,
+				sendsMediaStreamFrames: true,
+				sendsReceivedMediaStreamFrames: false,
+				sendsRequestForServerFiles: false,
+				sendsServerFileToLoad: false,
+				sendsWebContentToLoad: true,
+				sendsVideoSynchonization: false,
+				receivesDisplayConfiguration: true,
+				receivesClockTime: false,
+				receivesNewAppsToDisplay: false,
+				receivesNewAppsPositionSizeTypeOnly: false,
+				receivesWindowModification: false,
+				receivesPointerData: false,
+				receivesMediaStreamFrames: false,
+				receivesServerFileList: false,
+				receivesRemoteServerInfo: false,
+				receivesInputEvents: false
+			};
+			wsio.emit('addClient', clientDescription);
 		});
 		
 		topBlock = document.getElementById('topBlock');
@@ -113,7 +133,7 @@
 		});
 
 		wsio.on('initialize', function(data) {
-			address = data.address;
+			address = data.UID;
 		});
 		
 		wsio.on('requestNextFrame', function(data) {
