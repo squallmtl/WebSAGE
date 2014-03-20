@@ -33,10 +33,25 @@ if(typeof config.experimental !== "undefined" && typeof config.experimental.webb
 }
 if(webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
-// global variables
+
+
+// global variables for various paths
 var public_https = "public_HTTPS"; // directory where HTTPS content is stored
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/"; // base URL for this server
 var uploadsFolder = path.join(public_https, "uploads"); // directory where files are uploaded
+
+// global variables to manage items
+var itemCount = 0;
+var items = [];
+
+// global variables to manage clients
+var clients = [];
+var sagePointers = {};
+var remoteInteraction = {};
+var mediaStreams = {};
+var webStreams = {};
+
+
 
 // arrays of files on the server (used for media browser)
 var savedFiles = initializeSavedFilesList();
@@ -84,16 +99,6 @@ var server = https.createServer(options, httpsServerApp.onrequest);
 var wsioServer = new websocketIO.Server({server: server});
 
 
-// global variables to manage items
-var itemCount = 0;
-var items = [];
-
-// global variables to manage clients
-var clients = [];
-var sagePointers = {};
-var remoteInteraction = {};
-var mediaStreams = {};
-var webStreams = {};
 
 
 
