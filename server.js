@@ -1,6 +1,6 @@
 // Importing modules (form node_modules directory)
 
-// npm registry - defined in package.json
+// npm registry - built in or defined in package.json
 var crypto = require('crypto');            // https encryption
 var fs = require('fs');                    // filesystem access
 var gm = require('gm');                    // graphicsmagick
@@ -20,68 +20,98 @@ var interaction = require('node-interaction');         // handles sage interacti
 var sagepointer = require('node-sagepointer');         // handles sage pointers (creation, location, etc.)
 
 
-// User defined config file
-var wallfile = null;
-//var wallfile = "config/tmarrinan-cfg.json";
-//var wallfile = "config/desktop-omicron-cfg.json";
-//var wallfile = "config/icewall-cfg.json";
-//var wallfile = "config/icewallKB-cfg.json";
-//var wallfile = "config/icewallJA-cfg.json";
-//var wallfile = "config/icewallTM-cfg.json";
-//var wallfile = "config/icewallAN-cfg.json";
-//var wallfile = "config/icewallRight-omicron-cfg.json";
-
-// If variable not set, use the hostname to find a matching file
-if (wallfile == null) {
-	var hn   = os.hostname();
-	var dot = hn.indexOf(".");
-	if(dot >= 0) hn = hn.substring(0, dot);
-	wallfile = path.join("config", hn + "-cfg.json");
-	if (fs.existsSync(wallfile)) {
-		console.log("Found configuration file: ", wallfile);
-	} else {
-		wallfile = path.join("config", "desktop-cfg.json");
-		console.log("Using default configuration file: ", wallfile);
-	}
-}
-
-// parse config file to create data structure
-var json_str = fs.readFileSync(wallfile, 'utf8');
-var config = JSON.parse(json_str);
-config.totalWidth = config.resolution.width * config.layout.columns;
-config.totalHeight = config.resolution.height * config.layout.rows;
-config.titleBarHeight = Math.round(0.025 * config.totalHeight);
-config.titleTextSize = Math.round(0.015 * config.totalHeight);
-config.pointerWidth = Math.round(0.20 * config.totalHeight);
-config.pointerHeight = Math.round(0.05 * config.totalHeight);
+// load config file - looks for user defined file, then file that matches hostname, then uses default
+var config = loadConfiguration();
 console.log(config);
 
-// global variables
-var public_https = "public_HTTPS";
-var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
-var uploadsFolder = path.join(public_https, "uploads");
-
-
-// Loads the web browser module if enabled in the configuration file:
+// loads the web browser module if enabled in the configuration file:
 //    experimental: { "webbrowser": true }
 var webBrowser = null;
-if (typeof config.experimental != "undefined" && typeof config.experimental.webbrowser != "undefined" && config.experimental.webbrowser == true) {
+if(typeof config.experimental != "undefined" && typeof config.experimental.webbrowser != "undefined" && config.experimental.webbrowser == true) {
 	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
 	console.log("WebBrowser loaded: awesomium")
 }
+if(webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
-if (webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+// global variables
+var public_https = "public_HTTPS"; // directory where HTTPS content is stored
+var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/"; // base URL for this server
+var uploadsFolder = path.join(public_https, "uploads"); // directory where files are uploaded
 
 // arrays of files on the server (used for media browser)
-var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
-var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
-var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
-var uploadedPdfs = fs.readdirSync(path.join(uploadsFolder, "pdfs"));
-var uploadedApps = fs.readdirSync(path.join(uploadsFolder, "apps"));
-for(var i=0; i<uploadedImages.length; i++) savedFiles["image"].push(uploadedImages[i]);
-for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVideos[i]);
-for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
-for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
+var savedFiles = initializeSavedFilesList();
+
+// sets up the background for the display clients (image or color)
+setupDisplayBackground();
+
+
+
+
+function loadConfiguration() {
+	var configFile = null;
+	
+	// Read config.txt - if exists and specifies a user defined config, then use it
+	if(fs.existsSync("config.txt")){
+		var lines = fs.readFileSync("config.txt", 'utf8').split("\n");
+		for(var i =0; i<lines.length; i++){
+			var text = "";
+			var comment = lines[i].indexOf("//");
+			if(comment >= 0) text = lines[i].substring(0,comment).trim();
+			else text = lines[i].trim();
+		
+			if(text != ""){
+				configFile = text;
+				console.log("Found configuration file: " + configFile);
+				break;
+			}
+		}
+	}
+	
+	// If config.txt does not exist or does not specify any files, look for a config with the hostname
+	if(configFile == null){
+		var hn = os.hostname();
+		var dot = hn.indexOf(".");
+		if(dot >= 0) hn = hn.substring(0, dot);
+		configFile = path.join("config", hn + "-cfg.json");
+		if(fs.existsSync(configFile)){
+			console.log("Found configuration file: " + configFile);
+		}
+		else{
+			configFile = path.join("config", "desktop-cfg.json");
+			console.log("Using default configuration file: " + configFile);
+		}
+	}
+	
+	var json_str = fs.readFileSync(configFile, 'utf8');
+	var userConfig = JSON.parse(json_str);
+	// compute extra dependent parameters
+	userConfig.totalWidth     = userConfig.resolution.width  * userConfig.layout.columns;
+	userConfig.totalHeight    = userConfig.resolution.height * userConfig.layout.rows;
+	userConfig.titleBarHeight = Math.round(0.025 * userConfig.totalHeight);
+	userConfig.titleTextSize  = Math.round(0.015 * userConfig.totalHeight);
+	userConfig.pointerWidth   = Math.round(0.200 * userConfig.totalHeight);
+	userConfig.pointerHeight  = Math.round(0.050 * userConfig.totalHeight);
+	
+	return userConfig;
+}
+
+function initializeSavedFilesList() {
+	var list = {"image": [], "video": [], "pdf": [], "app": []};
+	var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
+	var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
+	var uploadedPdfs   = fs.readdirSync(path.join(uploadsFolder, "pdfs"));
+	var uploadedApps   = fs.readdirSync(path.join(uploadsFolder, "apps"));
+	for(var i=0; i<uploadedImages.length; i++) list["image"].push(uploadedImages[i]);
+	for(var i=0; i<uploadedVideos.length; i++) list["video"].push(uploadedVideos[i]);
+	for(var i=0; i<uploadedPdfs.length; i++)   list["pdf"].push(uploadedPdfs[i]);
+	for(var i=0; i<uploadedApps.length; i++)   list["app"].push(uploadedApps[i]);
+	
+	return list;
+}
+
+function setupDisplayBackground() {
+
+}
 
 // Sets up background for display wall
 // background not a color
