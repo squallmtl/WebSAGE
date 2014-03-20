@@ -27,7 +27,7 @@ console.log(config);
 // loads the web browser module if enabled in the configuration file:
 //    experimental: { "webbrowser": true }
 var webBrowser = null;
-if(typeof config.experimental != "undefined" && typeof config.experimental.webbrowser != "undefined" && config.experimental.webbrowser == true) {
+if(typeof config.experimental !== "undefined" && typeof config.experimental.webbrowser !== "undefined" && config.experimental.webbrowser == true) {
 	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
 	console.log("WebBrowser loaded: awesomium")
 }
@@ -43,6 +43,61 @@ var savedFiles = initializeSavedFilesList();
 
 // sets up the background for the display clients (image or color)
 setupDisplayBackground();
+
+// create HTTP server for index page (Table of Contents)
+var httpServerIndex = new httpserver("public_HTTP");
+httpServerIndex.httpGET('/config', function(req, res) {
+	res.writeHead(200, {"Content-Type": "text/plain"});
+	res.write(JSON.stringify(config));
+	res.end();
+});
+
+// create HTTPS server for all SAGE content
+var httpsServerApp = new httpserver("public_HTTPS");
+// receiving newly uploaded files from drag-and-drop interface in SAGE Pointer / SAGE UI
+httpsServerApp.httpPOST('/upload', function(req, res) {
+	var form = new multiparty.Form();
+	form.parse(req, function(err, fields, files) {
+		if(err){
+			res.writeHead(500, {"Content-Type": "text/plain"});
+			res.write(err + "\n\n");
+			res.end();
+		}
+		
+		// saves files in appropriate directory and broadcasts the items to the displays
+		uploadFiles(files);
+
+		res.writeHead(200, {"Content-Type": "text/plain"});
+		res.write("received upload:\n\n");
+		res.end();
+	});
+});
+
+// create HTTPS options - sets up security keys
+var options = setupHttpsOptions();
+
+// initializes HTTP and HTTPS servers
+var index = http.createServer(httpServerIndex.onrequest);
+var server = https.createServer(options, httpsServerApp.onrequest);
+
+// creates a WebSocket server - 2 way communication between server and all browser clients
+var wsioServer = new websocketIO.Server({server: server});
+
+
+// global variables to manage items
+var itemCount = 0;
+var items = [];
+
+// global variables to manage clients
+var clients = [];
+var sagePointers = {};
+var remoteInteraction = {};
+var mediaStreams = {};
+var webStreams = {};
+
+
+
+
 
 
 
@@ -110,56 +165,54 @@ function initializeSavedFilesList() {
 }
 
 function setupDisplayBackground() {
-
-}
-
-// background image
-if(typeof config.background.image !== "undefined" && config.background.image != null){
-	var bg_file = path.join(public_https, config.background.image);
-	var bg_info = imageinfo(fs.readFileSync(bg_file));
+	// background image
+	if(typeof config.background.image !== "undefined" && config.background.image != null){
+		var bg_file = path.join(public_https, config.background.image);
+		var bg_info = imageinfo(fs.readFileSync(bg_file));
 	
-	if(config.background.style == "fit"){
-		if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
-			sliceBackgroundImage(bg_file, bg_file);
-		}
-		else{
-			var tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
-			var out_res  = config.totalWidth.toString() + "x" + config.totalHeight.toString();
+		if(config.background.style == "fit"){
+			if(bg_info.width == config.totalWidth && bg_info.height == config.totalHeight){
+				sliceBackgroundImage(bg_file, bg_file);
+			}
+			else{
+				var tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
+				var out_res  = config.totalWidth.toString() + "x" + config.totalHeight.toString();
 		
-			gm(bg_file).command("convert").in("-gravity", "center").in("-background", "rgba(255,255,255,255)").in("-extent", out_res).write(tmpImg, function(err) {
+				gm(bg_file).command("convert").in("-gravity", "center").in("-background", "rgba(255,255,255,255)").in("-extent", out_res).write(tmpImg, function(err) {
+					if(err) throw err;
+			
+					sliceBackgroundImage(tmpImg, bg_file);
+				});
+			}
+		}
+		else if(config.background.style == "stretch"){
+			var imgExt = path.extname(bg_file);
+			var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		
+			gm(bg_file).resize(config.totalWidth, config.totalHeight, "!").write(tmpImg, function(err) {
 				if(err) throw err;
 			
 				sliceBackgroundImage(tmpImg, bg_file);
 			});
 		}
-	}
-	else if(config.background.style == "stretch"){
-		var imgExt = path.extname(bg_file);
-		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+		else if(config.background.style == "tile"){
+			var imgExt = path.extname(bg_file);
+			var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
 		
-		gm(bg_file).resize(config.totalWidth, config.totalHeight, "!").write(tmpImg, function(err) {
-			if(err) throw err;
+			var cols = Math.ceil(config.totalWidth / bg_info.width);
+			var rows = Math.ceil(config.totalHeight / bg_info.height);
+			var tile = cols.toString() + "x" + rows.toString();
+			var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
+		
+			var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
+			for(var i=0; i<rows*cols; i++) gmTile = gmTile.in(bg_file);
+		
+			gmTile.write(tmpImg, function(err) {
+				if(err) throw err;
 			
-			sliceBackgroundImage(tmpImg, bg_file);
-		});
-	}
-	else if(config.background.style == "tile"){
-		var imgExt = path.extname(bg_file);
-		var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
-		
-		var cols = Math.ceil(config.totalWidth / bg_info.width);
-		var rows = Math.ceil(config.totalHeight / bg_info.height);
-		var tile = cols.toString() + "x" + rows.toString();
-		var in_res  = bg_info.width.toString() + "x" + bg_info.height.toString();
-		
-		var gmTile = gm().command("montage").in("-geometry", in_res).in("-tile", tile);
-		for(var i=0; i<rows*cols; i++) gmTile = gmTile.in(bg_file);
-		
-		gmTile.write(tmpImg, function(err) {
-			if(err) throw err;
-			
-			sliceBackgroundImage(tmpImg, bg_file);
-		});
+				sliceBackgroundImage(tmpImg, bg_file);
+			});
+		}
 	}
 }
 
@@ -179,90 +232,52 @@ function sliceBackgroundImage(fileName, outputBaseName) {
 	}
 }
 
-// build a list of certs to support multi-homed computers
-var certs = {};
-// add the default cert from the hostname specified in the config file
-certs[config.host] = crypto.createCredentials({
-	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
-	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-   }).context;
+function setupHttpsOptions() {
+	// build a list of certs to support multi-homed computers
+	var certs = {};
+	// add the default cert from the hostname specified in the config file
+	certs[config.host] = crypto.createCredentials({
+		key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+		cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+		ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
+	   }).context;
 
-for(var h in config.alternate_hosts){
-	var alth = config.alternate_hosts[h];
-	certs[ alth ] = crypto.createCredentials({
-		key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
-		cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
-		ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
-	}).context;
+	for(var h in config.alternate_hosts){
+		var alth = config.alternate_hosts[h];
+		certs[ alth ] = crypto.createCredentials({
+			key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
+			cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
+			ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
+		}).context;
+	}
+
+	var httpsOptions = {
+		// server default keys
+		key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+		cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+		ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
+		requestCert: true,
+		rejectUnauthorized: false,
+		// callback to handle multi-homed machines
+		SNICallback: function(servername){
+			if(certs.hasOwnProperty(servername)){
+				return certs[servername];
+			}
+			else{
+				console.log("Unknown host, cannot find a certificate for ", servername);
+				return null;
+			}
+		}
+	};
+	
+	return httpsOptions;
 }
 
-var options = {
-	// server default keys
-	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
-	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-	requestCert: true,
-	rejectUnauthorized: false,
-	// callback to handle multi-homed machines
-	SNICallback: function(servername){
-		if(certs.hasOwnProperty(servername)){
-			return certs[servername];
-		}
-		else{
-			console.log("Unknown host, cannot find a certificate for ", servername);
-			return null;
-		}
-	}
-};
-
-// create HTTP server for index page (Table of Contents)
-var httpServerIndex = new httpserver("public_HTTP");
-httpServerIndex.httpGET('/config', function(req, res) {
-	res.writeHead(200, {"Content-Type": "text/plain"});
-	res.write(JSON.stringify(config));
-	res.end();
-});
-
-// create HTTPS server for all SAGE content
-var httpsServerApp = new httpserver("public_HTTPS");
-// receiving newly uploaded files from drag-and-drop interface in SAGE Pointer / SAGE UI
-httpsServerApp.httpPOST('/upload', function(req, res) {
-	var form = new multiparty.Form();
-	form.parse(req, function(err, fields, files) {
-		if(err){
-			res.writeHead(500, {"Content-Type": "text/plain"});
-			res.write(err + "\n\n");
-			res.end();
-		}
-		
-		// saves files in appropriate directory and broadcasts the items to the displays
-		uploadFiles(files);
-
-		res.writeHead(200, {"Content-Type": "text/plain"});
-		res.write("received upload:\n\n");
-		res.end();
-	});
-});
 
 
-// initializes HTTP and HTTPS servers
-var index = http.createServer(httpServerIndex.onrequest);
-var server = https.createServer(options, httpsServerApp.onrequest);
 
-// creates a WebSocket server - 2 way communication between server and all browser clients
-var wsioServer = new websocketIO.Server({server: server});
 
-// global variables to manage items
-var itemCount = 0;
-var items = [];
 
-// global variables to manage clients
-var clients = [];
-var sagePointers = {};
-var remoteInteraction = {};
-var mediaStreams = {};
-var webStreams = {};
 
 wsioServer.onconnection(function(wsio) {
 	// unique identifier for WebSocket client
