@@ -19,8 +19,6 @@ var loader = require('node-itemloader');               // handles sage item crea
 var interaction = require('node-interaction');         // handles sage interaction (move, resize, etc.)
 var sagepointer = require('node-sagepointer');         // handles sage pointers (creation, location, etc.)
 
-//var webBrowser = require('node-awesomium');            // creates web browser application
-
 
 // User defined config file
 var wallfile = null;
@@ -62,7 +60,17 @@ console.log(config);
 var public_https = "public_HTTPS";
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
 var uploadsFolder = path.join(public_https, "uploads");
-//webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+
+
+// Loads the web browser module if enabled in the configuration file:
+//    experimental: { "webbrowser": true }
+var webBrowser = null;
+if (typeof config.experimental != "undefined" && typeof config.experimental.webbrowser != "undefined" && config.experimental.webbrowser == true) {
+	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
+	console.log("WebBrowser loaded: awesomium")
+}
+
+if (webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
 // arrays of files on the server (used for media browser)
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
@@ -136,37 +144,38 @@ if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 // build a list of certs to support multi-homed computers
 var certs = {};
 // add the default cert from the hostname specified in the config file
-certs[ config.host ] = crypto.createCredentials({
-	key: fs.readFileSync(path.join("keys",  config.host + "-server.key")),
+certs[config.host] = crypto.createCredentials({
+	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
 	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-	ca: fs.readFileSync(path.join("keys",   config.host + "-ca.crt")),
+	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
    }).context;
 
 for(var h in config.alternate_hosts){
-	var alth = config.alternate_hosts[ h ];
+	var alth = config.alternate_hosts[h];
 	certs[ alth ] = crypto.createCredentials({
-		key: fs.readFileSync(path.join("keys",  alth + "-server.key")),
+		key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
 		cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
-		ca: fs.readFileSync(path.join("keys",   alth + "-ca.crt")),
-	   }).context;
+		ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
+	}).context;
 }
 
 var options = {
 	// server default keys
-  key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
-  cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-  ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-  requestCert: true,
-  rejectUnauthorized: false,
+	key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+	cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+	ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
+	requestCert: true,
+	rejectUnauthorized: false,
 	// callback to handle multi-homed machines
-  SNICallback: function(servername){
-    if(certs.hasOwnProperty(servername)){
-        return certs[servername];
-    } else {
-		console.log("Unknown host, cannot find a certificate for ", servername);
-        return null;
-    }
-  }
+	SNICallback: function(servername){
+		if(certs.hasOwnProperty(servername)){
+			return certs[servername];
+		}
+		else{
+			console.log("Unknown host, cannot find a certificate for ", servername);
+			return null;
+		}
+	}
 };
 
 // create HTTP server for index page (Table of Contents)
@@ -357,7 +366,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+                    	webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			} else {
 				// already maximized, need to restore the item size
@@ -366,7 +376,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+	                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			}
 		}
@@ -555,7 +566,8 @@ wsioServer.onconnection(function(wsio) {
 				broadcast('eventInItem', event, "display");
 				broadcast('eventInItem', event, "audioManager");
 			    // Send it to the webBrowser
-                //webBrowser.keyPress(elem.id, data.code);
+				if (webBrowser != null)
+	                webBrowser.keyPress(elem.id, data.code);
             }
 		}
 
@@ -1525,7 +1537,8 @@ function pointerPress( address, pointerX, pointerY ) {
             			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
-                //webBrowser.click(elem.id, itemRelX, itemRelY);
+				if (webBrowser != null)
+	                webBrowser.click(elem.id, itemRelX, itemRelY);
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -1560,7 +1573,8 @@ function pointerRelease(address, pointerX, pointerY) {
 		if(remoteInteraction[address].selectedResizeItem != null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
 			remoteInteraction[address].releaseItem(true);
-            //webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+			if (webBrowser != null)
+	            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 		}
 		if(remoteInteraction[address].selectedMoveItem != null){
 			var remoteIdx = -1;
@@ -1644,14 +1658,16 @@ function pointerScroll( address, data ) {
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
 			remoteInteraction[address].selectedScrollItem = null;
-		    //webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			if (webBrowser != null)
+			    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
 }, 500);
 	}
 }
 
 function deleteElement( elem ) {
     if(elem.type == "webpage") {
-        //webBrowser.removeWindow(elem.id);
+		if (webBrowser != null)
+	        webBrowser.removeWindow(elem.id);
     }
 
 	broadcast('deleteElement', {elemId: elem.id});
