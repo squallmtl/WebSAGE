@@ -88,7 +88,7 @@ wsioServer.onconnection(function(wsio) {
 
 
 
-
+// THIS NEEDS TO BE REWORKED STILL
 function closeWebSocketClient(wsio) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	console.log("Closed Connection: " + uniqueID + " (" + wsio.clientType + ")");
@@ -155,59 +155,6 @@ function addWSClient(wsio, data) {
 	
 	clients.push(wsio);
 	console.log("New Connection: " + uniqueID + " (" + wsio.clientType + ")");
-	
-	/*
-	wsio.clientType = data.clientType;
-	if(wsio.clientType == "sageUI"){
-		createSagePointer(uniqueID);
-		for(var i=0; i<items.length; i++){
-			wsio.emit('addNewElement', items[i]);
-		}
-	}
-	else if(wsio.clientType == "sagePointer"){
-		createSagePointer(uniqueID);
-	}
-	else if(wsio.clientType == "display"){
-		for(var key in sagePointers){
-			wsio.emit('createSagePointer', sagePointers[key]);
-		}
-		var now = new Date();
-		wsio.emit('setSystemTime', {date: now});
-		for(var i=0; i<items.length; i++){
-			wsio.emit('addNewElement', items[i]);
-		}
-		for(var i=0; i<remoteSites.length; i++){
-			var site = {name: remoteSites[i].name, connected: remoteSites[i].connected, width: remoteSites[i].width, height: remoteSites[i].height, pos: remoteSites[i].pos};
-			wsio.emit('addRemoteSite', site);
-		}
-		for(key in mediaStreams){
-			mediaStreams[key].clients[uniqueID] = false;
-		}
-		for(key in webStreams){
-			webStreams[key].clients[uniqueID] = false;
-		}
-	}
-	else if(wsio.clientType == "remoteServer"){
-		var remoteIdx = -1;
-		wsio.remoteAddress.address = data.host;
-		wsio.remoteAddress.port = data.port;
-		uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-		for(var i=0; i<config.remote_sites.length; i++){
-			if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
-		}
-
-		// add remote server websocket to array
-		if(remoteIdx >= 0){
-			remoteSites[remoteIdx].wsio = wsio;
-			remoteSites[remoteIdx].connected = true;
-			var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-			broadcast('connectedToRemoteSite', site, "display");
-		}
-	}
-
-	clients.push(wsio);
-	console.log("New Connection: " + uniqueID + " (" + wsio.clientType + ")");
-	*/
 }
 
 function initializeWSClient(wsio) {
@@ -249,6 +196,27 @@ function initializeWSClient(wsio) {
 	if(wsio.receivesNewAppsPositionSizeTypeOnly()) initializeExistingAppsPositionSizeTypeOnly(wsio);
 	if(wsio.receivesRemoteServerInfo())            initializeRemoteServerInfo(wsio);
 	if(wsio.receivesMediaStreamFrames())           initializeMediaStreams(uniqueID);
+	
+	// still need to implement:
+	//  // webStreams - may combine with mediaStreams
+	//	
+	//  if(wsio.clientType == "remoteServer"){
+	//		var remoteIdx = -1;
+	//		wsio.remoteAddress.address = data.host;
+	//		wsio.remoteAddress.port = data.port;
+	//		uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	//		for(var i=0; i<config.remote_sites.length; i++){
+	//			if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
+	//		}
+	//		
+	//		// add remote server websocket to array
+	//		if(remoteIdx >= 0){
+	//			remoteSites[remoteIdx].wsio = wsio;
+	//			remoteSites[remoteIdx].connected = true;
+	//			var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
+	//			broadcast('connectedToRemoteSite', site, "display");
+	//		}
+	//	}
 }
 
 function initializeExistingSagePointers(wsio) {
