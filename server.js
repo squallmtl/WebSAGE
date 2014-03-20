@@ -1,25 +1,28 @@
-var crypto = require('crypto');
-var fs = require('fs');
-var gm = require('gm');
-var http = require('http');
-var https = require('https');
-var imageinfo = require('imageinfo');
-var multiparty = require('multiparty');
-var os = require('os');
-var path = require('path');
-var request = require('request');
+// Importing modules (form node_modules directory)
 
-var httpserver = require('node-httpserver');           // custom node module
-var websocketIO = require('node-websocket.io');        // custom node module
-var loader = require('node-itemloader');               // custom node module
-var interaction = require('node-interaction');         // custom node module
-var sagepointer = require('node-sagepointer');         // custom node module
+// npm registry - defined in package.json
+var crypto = require('crypto');            // https encryption
+var fs = require('fs');                    // filesystem access
+var gm = require('gm');                    // graphicsmagick
+var http = require('http');                // http server
+var https = require('https');              // https server
+var imageinfo = require('imageinfo');      // gets width, height for images
+var multiparty = require('multiparty');    // parses POST forms
+var os = require('os');                    // operating system access
+var path = require('path');                // file path extraction and creation
+var request = require('request');          // external http requests
 
-//var webBrowser = require('node-awesomium');            // custom node module
+// custom node modules
+var httpserver = require('node-httpserver');           // creates web server
+var websocketIO = require('node-websocket.io');        // creates WebSocket server and clients
+var loader = require('node-itemloader');               // handles sage item creation
+var interaction = require('node-interaction');         // handles sage interaction (move, resize, etc.)
+var sagepointer = require('node-sagepointer');         // handles sage pointers (creation, location, etc.)
+
+//var webBrowser = require('node-awesomium');            // creates web browser application
 
 
-// CONFIG FILE
-
+// User defined config file
 var wallfile = null;
 //var wallfile = "config/tmarrinan-cfg.json";
 //var wallfile = "config/desktop-omicron-cfg.json";
@@ -44,7 +47,7 @@ if (wallfile == null) {
 	}
 }
 
-
+// parse config file to create data structure
 var json_str = fs.readFileSync(wallfile, 'utf8');
 var config = JSON.parse(json_str);
 config.totalWidth = config.resolution.width * config.layout.columns;
@@ -55,11 +58,13 @@ config.pointerWidth = Math.round(0.20 * config.totalHeight);
 config.pointerHeight = Math.round(0.05 * config.totalHeight);
 console.log(config);
 
+// global variables
 var public_https = "public_HTTPS";
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
 var uploadsFolder = path.join(public_https, "uploads");
 //webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
+// arrays of files on the server (used for media browser)
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
 var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
 var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
@@ -70,6 +75,7 @@ for(var i=0; i<uploadedVideos.length; i++) savedFiles["video"].push(uploadedVide
 for(var i=0; i<uploadedPdfs.length; i++) savedFiles["pdf"].push(uploadedPdfs[i]);
 for(var i=0; i<uploadedApps.length; i++) savedFiles["app"].push(uploadedApps[i]);
 
+// Sets up background for display wall
 // background not a color
 if(config.background.substring(0, 1) != "#" || config.background.length != 7){
 	// divide background image if necessary
@@ -163,13 +169,17 @@ var options = {
   }
 };
 
+// create HTTP server for index page (Table of Contents)
 var httpServerIndex = new httpserver("public_HTTP");
 httpServerIndex.httpGET('/config', function(req, res) {
 	res.writeHead(200, {"Content-Type": "text/plain"});
 	res.write(JSON.stringify(config));
 	res.end();
 });
+
+// create HTTPS server for all SAGE content
 var httpsServerApp = new httpserver("public_HTTPS");
+// receiving newly uploaded files from drag-and-drop interface in SAGE Pointer / SAGE UI
 httpsServerApp.httpPOST('/upload', function(req, res) {
 	var form = new multiparty.Form();
 	form.parse(req, function(err, fields, files) {
@@ -178,7 +188,8 @@ httpsServerApp.httpPOST('/upload', function(req, res) {
 			res.write(err + "\n\n");
 			res.end();
 		}
-
+		
+		// saves files in appropriate directory and broadcasts the items to the displays
 		uploadFiles(files);
 
 		res.writeHead(200, {"Content-Type": "text/plain"});
@@ -188,14 +199,18 @@ httpsServerApp.httpPOST('/upload', function(req, res) {
 });
 
 
+// initializes HTTP and HTTPS servers
 var index = http.createServer(httpServerIndex.onrequest);
 var server = https.createServer(options, httpsServerApp.onrequest);
+
+// creates a WebSocket server - 2 way communication between server and all browser clients
 var wsioServer = new websocketIO.Server({server: server});
 
-
+// global variables to manage items
 var itemCount = 0;
 var items = [];
 
+// global variables to manage clients
 var clients = [];
 var sagePointers = {};
 var remoteInteraction = {};
@@ -203,12 +218,13 @@ var mediaStreams = {};
 var webStreams = {};
 
 wsioServer.onconnection(function(wsio) {
+	// unique identifier for WebSocket client
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	console.log(address);
 
-	wsio.emit('setupDisplayConfiguration', config);
-	wsio.emit('initialize', {address: address, time: new Date()});
-
+	wsio.emit('setupDisplayConfiguration', config); // may not need to send to all client types
+	wsio.emit('initialize', {address: address, time: new Date()}); // address is unique id
+	
 	wsio.onclose(function() {
 		if(wsio.clientType == "remoteServer"){
 			var remoteIdx = -1;
