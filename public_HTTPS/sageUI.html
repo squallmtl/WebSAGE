@@ -67,7 +67,27 @@
 		
 		wsio.open(function() {
 			console.log("open websocket");
-			wsio.emit('addClient', {clientType: "sageUI"});
+			var clientDescription = {
+				clientType: "sageUI",
+				sendsPointerData: true,
+				sendsMediaStreamFrames: true,
+				sendsReceivedMediaStreamFrames: false,
+				sendsRequestForServerFiles: true,
+				sendsServerFileToLoad: true,
+				sendsWebContentToLoad: true,
+				sendsVideoSynchonization: false,
+				receivesDisplayConfiguration: true,
+				receivesClockTime: false,
+				receivesNewAppsToDisplay: false,
+				receivesNewAppsPositionSizeTypeOnly: true,
+				receivesWindowModification: true,
+				receivesPointerData: false,
+				receivesMediaStreamFrames: false,
+				receivesServerFileList: true,
+				receivesRemoteServerInfo: false,
+				receivesInputEvents: false
+			};
+			wsio.emit('addClient', clientDescription);
 		});
 		
 		document.addEventListener('pointerlockchange', pointerLockChange, false);

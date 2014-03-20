@@ -241,13 +241,14 @@ function initializeWSClient(wsio) {
 	
 	
 	// data needed on startup 
-	if(wsio.sendsPointerData())              createSagePointer(uniqueID);
-	if(wsio.receivesDisplayConfiguration())  wsio.emit('setupDisplayConfiguration', config);
-	if(wsio.receivesClockTime())             wsio.emit('setSystemTime', {date: new Date()});
-	if(wsio.receivesPointerData())           initializeExistingSagePointers(wsio);
-	if(wsio.receivesNewAppsToDisplay())      initializeExistingApps(wsio);
-	if(wsio.receivesRemoteServerInfo())      initializeRemoteServerInfo(wsio);
-	if(wsio.receivesMediaStreamFrames())     initializeMediaStreams(uniqueID);
+	if(wsio.sendsPointerData())                    createSagePointer(uniqueID);
+	if(wsio.receivesDisplayConfiguration())        wsio.emit('setupDisplayConfiguration', config);
+	if(wsio.receivesClockTime())                   wsio.emit('setSystemTime', {date: new Date()});
+	if(wsio.receivesPointerData())                 initializeExistingSagePointers(wsio);
+	if(wsio.receivesNewAppsToDisplay())            initializeExistingApps(wsio);
+	if(wsio.receivesNewAppsPositionSizeTypeOnly()) initializeExistingAppsPositionSizeTypeOnly(wsio);
+	if(wsio.receivesRemoteServerInfo())            initializeRemoteServerInfo(wsio);
+	if(wsio.receivesMediaStreamFrames())           initializeMediaStreams(uniqueID);
 }
 
 function initializeExistingSagePointers(wsio) {
@@ -259,6 +260,12 @@ function initializeExistingSagePointers(wsio) {
 function initializeExistingApps(wsio) {
 	for(var i=0; i<items.length; i++){
 		wsio.emit('addNewElement', items[i]);
+	}
+}
+
+function initializeExistingAppsPositionSizeTypeOnly(wsio) {
+	for(var i=0; i<items.length; i++){
+		wsio.emit('addNewElement', {type: items[i].type, id: items[i].id, left: items[i].left, top: items[i].top, width: items[i].width, height: items[i].height, aspect: items[i].aspect});
 	}
 }
 
