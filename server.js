@@ -15,7 +15,8 @@ var loader = require('node-itemloader');               // custom node module
 var interaction = require('node-interaction');         // custom node module
 var sagepointer = require('node-sagepointer');         // custom node module
 
-var webBrowser = require('node-awesomium');            // custom node module
+// variable for the web broswer module (loaded on demand)
+var webBrowser = null;
 
 
 // CONFIG FILE
@@ -58,7 +59,16 @@ console.log(config);
 var public_https = "public_HTTPS";
 var hostOrigin = "https://"+config.host+":"+config.port.toString()+"/";
 var uploadsFolder = path.join(public_https, "uploads");
-webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+
+// Loads the web browser module if enabled in the configuration file:
+//    experimental: { "webbrowser": true }
+if (config.experimental && config.experimental.webbrowser && config.experimental.webbrowser == true) {
+	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
+	console.log("WebBrowser loaded: awesomium")
+}
+
+if (webBrowser != null)
+	webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
 
 var savedFiles = {"image": [], "video": [], "pdf": [], "app": []};
 var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
@@ -341,7 +351,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+                    	webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			} else {
 				// already maximized, need to restore the item size
@@ -350,7 +361,8 @@ wsioServer.onconnection(function(wsio) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser != null)
+	                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			}
 		}
@@ -539,7 +551,8 @@ wsioServer.onconnection(function(wsio) {
 				broadcast('eventInItem', event, "display");
 				broadcast('eventInItem', event, "audioManager");
 			    // Send it to the webBrowser
-                webBrowser.keyPress(elem.id, data.code);
+				if (webBrowser != null)
+	                webBrowser.keyPress(elem.id, data.code);
             }
 		}
 
@@ -1509,7 +1522,8 @@ function pointerPress( address, pointerX, pointerY ) {
             			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
-                webBrowser.click(elem.id, itemRelX, itemRelY);
+				if (webBrowser != null)
+	                webBrowser.click(elem.id, itemRelX, itemRelY);
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -1544,7 +1558,8 @@ function pointerRelease(address, pointerX, pointerY) {
 		if(remoteInteraction[address].selectedResizeItem != null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
 			remoteInteraction[address].releaseItem(true);
-            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+			if (webBrowser != null)
+	            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 		}
 		if(remoteInteraction[address].selectedMoveItem != null){
 			var remoteIdx = -1;
@@ -1628,14 +1643,16 @@ function pointerScroll( address, data ) {
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
 			remoteInteraction[address].selectedScrollItem = null;
-		    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			if (webBrowser != null)
+			    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
 }, 500);
 	}
 }
 
 function deleteElement( elem ) {
     if(elem.type == "webpage") {
-        webBrowser.removeWindow(elem.id);
+		if (webBrowser != null)
+	        webBrowser.removeWindow(elem.id);
     }
 
 	broadcast('deleteElement', {elemId: elem.id});
