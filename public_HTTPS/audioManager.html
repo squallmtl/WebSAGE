@@ -24,7 +24,27 @@
 		
 		wsio.open(function() {
 			console.log("open websocket");
-			wsio.emit('addClient', {clientType: "audioManager"});
+			var clientDescription = {
+				clientType: "audioManager",
+				sendsPointerData: false,
+				sendsMediaStreamFrames: false,
+				sendsReceivedMediaStreamFrames: false,
+				sendsRequestForServerFiles: false,
+				sendsServerFileToLoad: false,
+				sendsWebContentToLoad: false,
+				sendsVideoSynchonization: true,
+				receivesDisplayConfiguration: false,
+				receivesClockTime: false,
+				receivesNewAppsToDisplay: true,
+				receivesNewAppsPositionSizeTypeOnly: false,
+				receivesWindowModification: false,
+				receivesPointerData: false,
+				receivesMediaStreamFrames: false,
+				receivesServerFileList: false,
+				receivesRemoteServerInfo: false,
+				receivesInputEvents: true
+			};
+			wsio.emit('addClient', clientDescription);
 		});
 		
 		wsio.on('initialize', function(data) {
@@ -92,8 +112,12 @@
 			if(selectedElem == null) return;
 			
 			if(event_data.eventType == "keyboard"){
+				console.log("received keyboard input");
 				var character = String.fromCharCode(event_data.data.code);
+				
+				console.log("received keyboard input: [" + event_data.data.code + "] [" + character + "]"); 
 				if(character == " "){ // spacebar
+					console.log("play/pause video")
 					playPauseVideo(event_data.elemId);
 				}
 			}

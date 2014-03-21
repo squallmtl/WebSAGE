@@ -129,27 +129,28 @@ function closeWebSocketClient(wsio) {
 function wsAddClient(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	wsio.clientType = data.clientType;
+	wsio.messages = {};
 	
 	// types of data sent to server from client through WebSockets
-	wsio.sendsPointerData                = function() {return data.sendsPointerData;};
-	wsio.sendsMediaStreamFrames          = function() {return data.sendsMediaStreamFrames;};
-	wsio.sendsReceivedMediaStreamFrames  = function() {return data.sendsReceivedMediaStreamFrames;};
-	wsio.sendsRequestForServerFiles      = function() {return data.sendsRequestForServerFiles;};
-	wsio.sendsServerFileToLoad           = function() {return data.sendsServerFileToLoad;};
-	wsio.sendsWebContentToLoad           = function() {return data.sendsWebContentToLoad;};
-	wsio.sendsVideoSynchonization        = function() {return data.sendsVideoSynchonization;};
+	wsio.messages['sendsPointerData']                    = data.sendsPointerData                    || false;
+	wsio.messages['sendsMediaStreamFrames']              = data.sendsMediaStreamFrames              || false;
+	wsio.messages['sendsReceivedMediaStreamFrames']      = data.sendsReceivedMediaStreamFrames      || false;
+	wsio.messages['sendsRequestForServerFiles']          = data.sendsRequestForServerFiles          || false;
+	wsio.messages['sendsServerFileToLoad']               = data.sendsServerFileToLoad               || false;
+	wsio.messages['sendsWebContentToLoad']               = data.sendsWebContentToLoad               || false;
+	wsio.messages['sendsVideoSynchonization']            = data.sendsVideoSynchonization            || false;
 	
 	// types of data client receives from server through WebSockets
-	wsio.receivesDisplayConfiguration         = function() {return data.receivesDisplayConfiguration;};
-	wsio.receivesClockTime                    = function() {return data.receivesClockTime;};
-	wsio.receivesNewAppsToDisplay             = function() {return data.receivesNewAppsToDisplay;};
-	wsio.receivesNewAppsPositionSizeTypeOnly  = function() {return data.receivesNewAppsPositionSizeTypeOnly;};
-	wsio.receivesWindowModification           = function() {return data.receivesWindowModification;};
-	wsio.receivesPointerData                  = function() {return data.receivesPointerData;};
-	wsio.receivesMediaStreamFrames            = function() {return data.receivesMediaStreamFrames;};
-	wsio.receivesServerFileList               = function() {return data.receivesServerFileList;};
-	wsio.receivesRemoteServerInfo             = function() {return data.receivesRemoteServerInfo;};
-	wsio.receivesInputEvents                  = function() {return data.receivesInputEvents;};
+	wsio.messages['receivesDisplayConfiguration']        = data.receivesDisplayConfiguration        || false;
+	wsio.messages['receivesClockTime']                   = data.receivesClockTime                   || false;
+	wsio.messages['receivesNewAppsToDisplay']            = data.receivesNewAppsToDisplay            || false;
+	wsio.messages['receivesNewAppsPositionSizeTypeOnly'] = data.receivesNewAppsPositionSizeTypeOnly || false;
+	wsio.messages['receivesWindowModification']          = data.receivesWindowModification          || false;
+	wsio.messages['receivesPointerData']                 = data.receivesPointerData                 || false;
+	wsio.messages['receivesMediaStreamFrames']           = data.receivesMediaStreamFrames           || false;
+	wsio.messages['receivesServerFileList']              = data.receivesServerFileList              || false;
+	wsio.messages['receivesRemoteServerInfo']            = data.receivesRemoteServerInfo            || false;
+	wsio.messages['receivesInputEvents']                 = data.receivesInputEvents                 || false;
 	
 	initializeWSClient(wsio);
 	
@@ -163,7 +164,7 @@ function initializeWSClient(wsio) {
 	wsio.emit('initialize', {UID: uniqueID, time: new Date()});
 	
 	// set up listeners based on what the client sends
-	if(wsio.sendsPointerData()){
+	if(wsio.messages['sendsPointerData']){
 		wsio.on('startSagePointer',          wsStartSagePointer);
 		wsio.on('stopSagePointer',           wsStopSagePointer);
 		wsio.on('pointerPress',              wsPointerPress);
@@ -177,26 +178,38 @@ function initializeWSClient(wsio) {
 		wsio.on('keyUp',                     wsKeyUp);
 		wsio.on('keyPress',                  wsKeyPress);
 	}
-	if(wsio.sendsMediaStreamFrames()){
+	if(wsio.messages['sendsMediaStreamFrames']){
 		wsio.on('startNewMediaStream',       wsStartNewMediaStream);
 		wsio.on('updateMediaStreamFrame',    wsUpdateMediaStreamFrame);
 		wsio.on('stopMediaStream',           wsStopMediaStream);
 	}
-	if(wsio.sendsReceivedMediaStreamFrames()){
+	if(wsio.messages['sendsReceivedMediaStreamFrames']){
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
 	}
-	if(wsio.sendsRequestForServerFiles()){
+	if(wsio.messages['sendsRequestForServerFiles']){
 		wsio.on('requestStoredFiles', wsRequestStoredFiles);
 	}
-	if(wsio.sendsServerFileToLoad()){
+	if(wsio.messages['sendsServerFileToLoad']){
 		wsio.on('addNewElementFromStoredFiles', wsAddNewElementFromStoredFiles);
 	}
-	if(wsio.sendsWebContentToLoad()){
+	if(wsio.messages['sendsWebContentToLoad']){
 		wsio.on('addNewWebElement', wsAddNewWebElement);
+	}
+	if(wsio.messages['sendsVideoSynchonization']){
+		wsio.on('updateVideoTime', wsUpdateVideoTime);
 	}
 	
 	
+	if(wsio.messages['sendsPointerData'])                    createSagePointer(uniqueID);
+	if(wsio.messages['receivesDisplayConfiguration'])        wsio.emit('setupDisplayConfiguration', config);
+	if(wsio.messages['receivesClockTime'])                   wsio.emit('setSystemTime', {date: new Date()});
+	if(wsio.messages['receivesPointerData'])                 initializeExistingSagePointers(wsio);
+	if(wsio.messages['receivesNewAppsToDisplay'])            initializeExistingApps(wsio);
+	if(wsio.messages['receivesNewAppsPositionSizeTypeOnly']) initializeExistingAppsPositionSizeTypeOnly(wsio);
+	if(wsio.messages['receivesRemoteServerInfo'])            initializeRemoteServerInfo(wsio);
+	if(wsio.messages['receivesMediaStreamFrames'])           initializeMediaStreams(uniqueID);
 	
+	/*
 	// data needed on startup 
 	if(wsio.sendsPointerData())                    createSagePointer(uniqueID);
 	if(wsio.receivesDisplayConfiguration())        wsio.emit('setupDisplayConfiguration', config);
@@ -206,6 +219,7 @@ function initializeWSClient(wsio) {
 	if(wsio.receivesNewAppsPositionSizeTypeOnly()) initializeExistingAppsPositionSizeTypeOnly(wsio);
 	if(wsio.receivesRemoteServerInfo())            initializeRemoteServerInfo(wsio);
 	if(wsio.receivesMediaStreamFrames())           initializeMediaStreams(uniqueID);
+	*/
 	
 	// still need to implement:
 	//  // webStreams - may combine with mediaStreams
@@ -702,6 +716,11 @@ function wsAddNewWebElement(wsio, data) {
 		});
 		request({url: data.src, strictSSL: false}).pipe(tmp);
 	}
+}
+
+/******************** Video / Audio Synchonization *********************/
+function wsUpdateVideoTime(wsio, data) {
+	broadcast('updateVideoItemTime', data, "display");
 }
 
 
@@ -1846,14 +1865,14 @@ setTimeout(function() {
 	setInterval(function() {
 		var now = new Date();
 		for(var i=0; i<clients.length; i++){
-			if(clients[i].receivesClockTime()) clients[i].emit('setSystemTime', {date: now});
+			if(clients[i].messages['receivesClockTime']) clients[i].emit('setSystemTime', {date: now});
 		}
 		//broadcast('setSystemTime', {date: now}, "display");
 	}, 60000);
 
 	var now = new Date();
 	for(var i=0; i<clients.length; i++){
-		if(clients[i].receivesClockTime()) clients[i].emit('setSystemTime', {date: now});
+		if(clients[i].messages['receivesClockTime']) clients[i].emit('setSystemTime', {date: now});
 	}
 	//broadcast('setSystemTime', {date: now}, "display");
 }, (61-cDate.getSeconds())*1000);
