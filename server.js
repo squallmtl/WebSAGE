@@ -83,7 +83,7 @@ wsioServer.onconnection(function(wsio) {
 	
 	wsio.onclose(closeWebSocketClient);
 	
-	wsio.on('addClient', addWSClient);
+	wsio.on('addClient', wsAddClient);
 });
 
 
@@ -126,7 +126,7 @@ function closeWebSocketClient(wsio) {
 	removeElement(clients, wsio);
 }
 
-function addWSClient(wsio, data) {
+function wsAddClient(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	wsio.clientType = data.clientType;
 	
