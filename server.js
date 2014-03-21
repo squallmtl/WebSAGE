@@ -86,36 +86,23 @@ wsioServer.onconnection(function(wsio) {
 	wsio.on('addClient', wsAddClient);
 });
 
-
-
-// THIS NEEDS TO BE REWORKED STILL
 function closeWebSocketClient(wsio) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	console.log("Closed Connection: " + uniqueID + " (" + wsio.clientType + ")");
 	
-	if(wsio.clientType == "remoteServer"){
-		var remoteIdx = -1;
-		for(var i=0; i<config.remote_sites.length; i++){
-			if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
-		}
-		if(remoteIdx >= 0){
-			console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
-			remoteSites[remoteIdx].connected = false;
-			var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-			broadcast('connectedToRemoteSite', site, "display");
-		}
+	var remote = findRemoteSiteByConnection(wsio);
+	if(remote != null){
+		console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
+		remote.connected = false;
+		var site = {name: remote.name, connected: remote.connected};
+		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	}
-	else if(wsio.clientType == "sageUI"){
+	if(wsio.messages['sendsPointerData']){
 		hidePointer(uniqueID);
 		delete sagePointers[uniqueID];
 		delete remoteInteraction[uniqueID];
 	}
-	else if(wsio.clientType == "sagePointer"){
-		hidePointer(uniqueID);
-		delete sagePointers[uniqueID];
-		delete remoteInteraction[uniqueID];
-	}
-	else if(wsio.clientType == "display"){
+	if(wsio.messages['sendsReceivedMediaStreamFrames']){
 		for(key in mediaStreams){
 			delete mediaStreams[key].clients[uniqueID];
 		}
@@ -123,6 +110,7 @@ function closeWebSocketClient(wsio) {
 			delete webStreams[key].clients[uniqueID];
 		}
 	}
+	
 	removeElement(clients, wsio);
 }
 
@@ -209,18 +197,6 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['receivesRemoteServerInfo'])            initializeRemoteServerInfo(wsio);
 	if(wsio.messages['receivesMediaStreamFrames'])           initializeMediaStreams(uniqueID);
 	
-	/*
-	// data needed on startup 
-	if(wsio.sendsPointerData())                    createSagePointer(uniqueID);
-	if(wsio.receivesDisplayConfiguration())        wsio.emit('setupDisplayConfiguration', config);
-	if(wsio.receivesClockTime())                   wsio.emit('setSystemTime', {date: new Date()});
-	if(wsio.receivesPointerData())                 initializeExistingSagePointers(wsio);
-	if(wsio.receivesNewAppsToDisplay())            initializeExistingApps(wsio);
-	if(wsio.receivesNewAppsPositionSizeTypeOnly()) initializeExistingAppsPositionSizeTypeOnly(wsio);
-	if(wsio.receivesRemoteServerInfo())            initializeRemoteServerInfo(wsio);
-	if(wsio.receivesMediaStreamFrames())           initializeMediaStreams(uniqueID);
-	*/
-	
 	// still need to implement:
 	//  // webStreams - may combine with mediaStreams
 	//	
@@ -289,7 +265,7 @@ function wsStopSagePointer(wsio, data) {
 
 	if( remoteInteraction[uniqueID].appInteractionMode() ){//return to window interaction mode after stopping pointer
 		remoteInteraction[uniqueID].toggleModes();
-		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode } , 'display' );
+		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode } , 'receivesPointerData' );
 	}
 }
 
@@ -323,9 +299,9 @@ function wsPointerDblClick(wsio, data) {
 			// need to maximize the item
 			var updatedItem = remoteInteraction[uniqueID].maximizeSelectedItem(elem, config);
 			if (updatedItem != null) {
-				broadcast('setItemPositionAndSize', updatedItem);
+				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: elem.id}, "display");
+				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
 				if (webBrowser != null)
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 			}
@@ -333,9 +309,9 @@ function wsPointerDblClick(wsio, data) {
 			// already maximized, need to restore the item size
 			var updatedItem = remoteInteraction[uniqueID].restoreSelectedItem(elem);
 			if (updatedItem != null) {
-				broadcast('setItemPositionAndSize', updatedItem);
+				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: elem.id}, "display");
+				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
 				if (webBrowser != null)
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 			}
@@ -352,65 +328,7 @@ function wsPointerPosition(wsio, data) {
 function wsPointerMove(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	sagePointers[uniqueID].left += data.deltaX;
-	sagePointers[uniqueID].top += data.deltaY;
-	if(sagePointers[uniqueID].left < 0)                 sagePointers[uniqueID].left = 0;
-	if(sagePointers[uniqueID].left > config.totalWidth) sagePointers[uniqueID].left = config.totalWidth;
-	if(sagePointers[uniqueID].top < 0)                  sagePointers[uniqueID].top = 0;
-	if(sagePointers[uniqueID].top > config.totalHeight) sagePointers[uniqueID].top = config.totalHeight;
-
-	broadcast('updateSagePointerPosition', sagePointers[uniqueID], "display");
-
-	if(remoteInteraction[uniqueID].windowManagementMode()){
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
-
-		var updatedMoveItem = remoteInteraction[uniqueID].moveSelectedItem(pointerX, pointerY);
-		var updatedResizeItem = remoteInteraction[uniqueID].resizeSelectedItem(pointerX, pointerY);
-		if(updatedMoveItem != null){
-			broadcast('setItemPosition', updatedMoveItem);
-		}
-		else if(updatedResizeItem != null){
-			broadcast('setItemPositionAndSize', updatedResizeItem);
-		}
-		else{
-			var elem = findItemUnderPointer(pointerX, pointerY);
-			if(elem != null){
-				var localX = pointerX - elem.left;
-				var localY = pointerY - (elem.top+config.titleBarHeight);
-				var cornerSize = Math.min(elem.width, elem.height) / 5;
-				// bottom right corner - select for drag resize
-				if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
-					if(remoteInteraction[uniqueID].hoverCornerItem != null){
-						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, "display");
-					}
-					remoteInteraction[uniqueID].setHoverCornerItem(elem);
-					broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, "display");
-				}
-				else if(remoteInteraction[uniqueID].hoverCornerItem != null){
-					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, "display");
-					remoteInteraction[uniqueID].setHoverCornerItem(null);
-				}
-			}
-			else if(remoteInteraction[uniqueID].hoverCornerItem != null){
-				broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, "display");
-				remoteInteraction[uniqueID].setHoverCornerItem(null);
-			}
-		}
-	}
-	else if(remoteInteraction[uniqueID].appInteractionMode()){
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
-
-		var elem = findItemUnderPointer(pointerX, pointerY);
-
-		if(elem != null){
-			var itemRelX = pointerX - elem.left;
-			var itemRelY = pointerY - elem.top - config.titleBarHeight;
-			var now = new Date();
-			broadcast('eventInItem', {eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");
-		}
-	}
+	pointerMove(uniqueID, data);
 }
 
 function wsPointerScrollStart(wsio, data) {
@@ -423,7 +341,7 @@ function wsPointerScrollStart(wsio, data) {
 	if(elem != null){
 		remoteInteraction[uniqueID].selectScrollItem(elem);
 		var newOrder = moveItemToFront(elem.id);
-		broadcast('updateItemOrder', {idList: newOrder});
+		broadcast('updateItemOrder', {idList: newOrder}, 'receivesWindowModification');
 	}
 }
 
@@ -464,9 +382,7 @@ function wsKeyDown(wsio, data) {
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
 			var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now };
-			broadcast('eventInItem', event, "display");
-			broadcast('eventInItem', event, "audioManager");
-			broadcast('eventInItem', event, "app");
+			broadcast('eventInItem', event, 'receivesInputEvents');
 		}
 	}
 }
@@ -511,9 +427,7 @@ function wsKeyUp(wsio, data) {
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now };
-				broadcast('eventInItem', event, "display");
-				broadcast('eventInItem', event, "audioManager");
-				broadcast('eventInItem', event, "app");
+				broadcast('eventInItem', event, 'receivesInputEvents');
 			}
 		}
 	}
@@ -524,8 +438,7 @@ function wsKeyPress(wsio, data) {
 	
 	if(data.code == 9 && remoteInteraction[uniqueID].SHIFT && sagePointers[uniqueID].visible){ // shift + tab
 		remoteInteraction[uniqueID].toggleModes();
-		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode}, "display");
-		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode}, "app");
+		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode}, 'receivesPointerData');
 	}
 
 	if ( remoteInteraction[uniqueID].appInteractionMode() ) {
@@ -539,8 +452,7 @@ function wsKeyPress(wsio, data) {
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
 			var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };
-			broadcast('eventInItem', event, "display");
-			broadcast('eventInItem', event, "audioManager");
+			broadcast('eventInItem', event, 'receivesInputEvents');
 			// Send it to the webBrowser
 			if (webBrowser != null)
 				webBrowser.keyPress(elem.id, data.code);
@@ -2154,8 +2066,24 @@ console.log('Now serving the app at https://localhost:' + config.port);
 
 function broadcast(func, data, type) {
 	for(var i=0; i<clients.length; i++){
+		if(clients[i].messages[type]) clients[i].emit(func, data);
+	}
+}
+
+/*function broadcast(func, data, type) {
+	for(var i=0; i<clients.length; i++){
 		if(type == null || type == clients[i].clientType) clients[i].emit(func, data);
 	}
+}*/
+
+function findRemoteSiteByConnection(wsio) {
+	var remoteIdx = -1;
+	for(var i=0; i<config.remote_sites.length; i++){
+		if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port)
+			remoteIdx = i;
+	}
+	if(remoteIdx >= 0) return remoteSites[remoteIdx];
+	else               return null;
 }
 
 function findItemUnderPointer(pointerX, pointerY) {
@@ -2226,7 +2154,7 @@ function createSagePointer( address ) {
 	sagePointers[address] = new sagepointer(address+"_pointer");
 	remoteInteraction[address] = new interaction();
 
-	broadcast('createSagePointer', sagePointers[address], "display");
+	broadcast('createSagePointer', sagePointers[address], 'receivesPointerData');
 }
 
 function showPointer( address, data ) {
@@ -2236,7 +2164,7 @@ function showPointer( address, data ) {
 	console.log("starting pointer: " + address);
 
 	sagePointers[address].start(data.label, data.color);
-	broadcast('showSagePointer', sagePointers[address], "display");
+	broadcast('showSagePointer', sagePointers[address], 'receivesPointerData');
 }
 
 function hidePointer( address ) {
@@ -2245,7 +2173,69 @@ function hidePointer( address ) {
 
 	// From stopSagePointer
 	sagePointers[address].stop();
-	broadcast('hideSagePointer', sagePointers[address], "display");
+	broadcast('hideSagePointer', sagePointers[address], 'receivesPointerData');
+}
+
+function pointerMove(uniqueID, data) {
+	sagePointers[uniqueID].left += data.deltaX;
+	sagePointers[uniqueID].top += data.deltaY;
+	if(sagePointers[uniqueID].left < 0)                 sagePointers[uniqueID].left = 0;
+	if(sagePointers[uniqueID].left > config.totalWidth) sagePointers[uniqueID].left = config.totalWidth;
+	if(sagePointers[uniqueID].top < 0)                  sagePointers[uniqueID].top = 0;
+	if(sagePointers[uniqueID].top > config.totalHeight) sagePointers[uniqueID].top = config.totalHeight;
+
+	broadcast('updateSagePointerPosition', sagePointers[uniqueID], 'receivesPointerData');
+
+	if(remoteInteraction[uniqueID].windowManagementMode()){
+		var pointerX = sagePointers[uniqueID].left
+		var pointerY = sagePointers[uniqueID].top
+
+		var updatedMoveItem = remoteInteraction[uniqueID].moveSelectedItem(pointerX, pointerY);
+		var updatedResizeItem = remoteInteraction[uniqueID].resizeSelectedItem(pointerX, pointerY);
+		if(updatedMoveItem != null){
+			broadcast('setItemPosition', updatedMoveItem, 'receivesWindowModification');
+		}
+		else if(updatedResizeItem != null){
+			broadcast('setItemPositionAndSize', updatedResizeItem, 'receivesWindowModification');
+		}
+		else{
+			var elem = findItemUnderPointer(pointerX, pointerY);
+			if(elem != null){
+				var localX = pointerX - elem.left;
+				var localY = pointerY - (elem.top+config.titleBarHeight);
+				var cornerSize = Math.min(elem.width, elem.height) / 5;
+				// bottom right corner - select for drag resize
+				if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
+					if(remoteInteraction[uniqueID].hoverCornerItem != null){
+						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+					}
+					remoteInteraction[uniqueID].setHoverCornerItem(elem);
+					broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, 'receivesNewAppsToDisplay');
+				}
+				else if(remoteInteraction[uniqueID].hoverCornerItem != null){
+					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+					remoteInteraction[uniqueID].setHoverCornerItem(null);
+				}
+			}
+			else if(remoteInteraction[uniqueID].hoverCornerItem != null){
+				broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+				remoteInteraction[uniqueID].setHoverCornerItem(null);
+			}
+		}
+	}
+	else if(remoteInteraction[uniqueID].appInteractionMode()){
+		var pointerX = sagePointers[uniqueID].left
+		var pointerY = sagePointers[uniqueID].top
+
+		var elem = findItemUnderPointer(pointerX, pointerY);
+
+		if(elem != null){
+			var itemRelX = pointerX - elem.left;
+			var itemRelY = pointerY - elem.top - config.titleBarHeight;
+			var now = new Date();
+			broadcast('eventInItem', {eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, 'receivesInputEvents');
+		}
+	}
 }
 
 function pointerPress( address, pointerX, pointerY ) {
@@ -2270,8 +2260,7 @@ function pointerPress( address, pointerX, pointerY ) {
 				var itemRelX = pointerX - elem.left;
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
-				broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");
-            			broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "app");
+				broadcast('eventInItem', {eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, 'receivesInputEvents');
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
 				if (webBrowser != null)
@@ -2279,17 +2268,8 @@ function pointerPress( address, pointerX, pointerY ) {
 			}
 
 			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', {idList: newOrder});
+			broadcast('updateItemOrder', {idList: newOrder}, 'receivesWindowModification');
 		}
-
-		// removed pointer press in open space to change modes - also triggered when using sageUI
-		// use shift+tab to switch modes when in sagePointer
-		/*
-		else { //if no item, change pointer mode
-		    remoteInteraction[address].toggleModes();
-		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' );
-		}
-		*/
 }
 
 // Copied from pointerPress. Eventually a touch gesture will use this to toggle modes
@@ -2298,7 +2278,7 @@ function togglePointerMode(address) {
 		return;
 
 	remoteInteraction[address].toggleModes();
-	broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' );
+	broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'receivesPointerData' );
 }
 
 function pointerRelease(address, pointerX, pointerY) {
@@ -2308,7 +2288,7 @@ function pointerRelease(address, pointerX, pointerY) {
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
 		if(remoteInteraction[address].selectedResizeItem != null){
-			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, "display");
+			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
 			if (webBrowser != null)
 	            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
@@ -2333,7 +2313,7 @@ function pointerRelease(address, pointerX, pointerY) {
 					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, id: remoteInteraction[address].selectedMoveItem.id, src: source, title: remoteInteraction[address].selectedMoveItem.title});
 				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
-				if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+				if(updatedItem != null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
 			}
 		}
 	}
@@ -2344,7 +2324,7 @@ function pointerRelease(address, pointerX, pointerY) {
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
-			broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, "display");
+			broadcast('eventInItem', {eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, 'receivesInputEvents');
 		}
 	}
 }
@@ -2360,10 +2340,10 @@ function pointerPosition( address, data ) {
 	if(sagePointers[address].top < 0) sagePointers[address].top = 0;
 	if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
 
-	broadcast('updateSagePointerPosition', sagePointers[address], "display");
+	broadcast('updateSagePointerPosition', sagePointers[address], 'receivesPointerData');
 
 	var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-	if(updatedItem != null) broadcast('setItemPosition', updatedItem);
+	if(updatedItem != null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
 }
 
 function pointerScrollStart( address, pointerX, pointerY ) {
@@ -2375,7 +2355,7 @@ function pointerScrollStart( address, pointerX, pointerY ) {
 	if(elem != null){
 		remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
 		var newOrder = moveItemToFront(elem.id);
-		broadcast('updateItemOrder', newOrder);
+		broadcast('updateItemOrder', newOrder, 'receivesWindowModification');
 	}
 }
 
@@ -2386,18 +2366,18 @@ function pointerScroll( address, data ) {
 
 	var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
 	if(updatedItem != null){
-		broadcast('setItemPositionAndSize', updatedItem);
+		broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 
 		if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
 			clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
 		}
 
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
-			broadcast('finishedResize', {id: updatedItem.elemId}, "display");
+			broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
 			remoteInteraction[address].selectedScrollItem = null;
 			if (webBrowser != null)
 			    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
-}, 500);
+		}, 500);
 	}
 }
 
@@ -2407,7 +2387,8 @@ function deleteElement( elem ) {
 	        webBrowser.removeWindow(elem.id);
     }
 
-	broadcast('deleteElement', {elemId: elem.id});
+	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsToDisplay');
+	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsPositionSizeTypeOnly');
 	if(elem.type == "screen"){
 		var broadcastWS = null;
 		for(i=0; i<clients.length; i++){
