@@ -236,7 +236,7 @@
 
     function openWebpage(event) {
         var url = document.getElementById("openWebpageUrl");
-        wsio.emit('openNewWebpage', {id: address, url: openWebpageUrl.value});
+        wsio.emit('openNewWebpage', {id: sagePrt.uniqueID, url: openWebpageUrl.value});
     }
 	
 	
