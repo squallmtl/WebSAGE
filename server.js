@@ -78,11 +78,7 @@ var server = https.createServer(options, httpsServerApp.onrequest);
 var wsioServer = new websocketIO.Server({server: server});
 
 wsioServer.onconnection(function(wsio) {
-	// unique identifier for WebSocket client
-	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-	
 	wsio.onclose(closeWebSocketClient);
-	
 	wsio.on('addClient', wsAddClient);
 });
 
@@ -115,6 +111,10 @@ function closeWebSocketClient(wsio) {
 }
 
 function wsAddClient(wsio, data) {
+	// overwrite host and port if defined
+	if(typeof data.host !== "undefined") wsio.remoteAddress.address = data.host;
+	if(typeof data.port !== "undefined") wsio.remoteAddress.port = data.port;
+	
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	wsio.clientType = data.clientType;
 	wsio.messages = {};
@@ -197,26 +197,14 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['receivesRemoteServerInfo'])            initializeRemoteServerInfo(wsio);
 	if(wsio.messages['receivesMediaStreamFrames'])           initializeMediaStreams(uniqueID);
 	
-	// still need to implement:
-	//  // webStreams - may combine with mediaStreams
-	//	
-	//  if(wsio.clientType == "remoteServer"){
-	//		var remoteIdx = -1;
-	//		wsio.remoteAddress.address = data.host;
-	//		wsio.remoteAddress.port = data.port;
-	//		uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-	//		for(var i=0; i<config.remote_sites.length; i++){
-	//			if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
-	//		}
-	//		
-	//		// add remote server websocket to array
-	//		if(remoteIdx >= 0){
-	//			remoteSites[remoteIdx].wsio = wsio;
-	//			remoteSites[remoteIdx].connected = true;
-	//			var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-	//			broadcast('connectedToRemoteSite', site, "display");
-	//		}
-	//	}
+	
+	var remote = findRemoteSiteByConnection(wsio);
+	if(remote != null){
+		remote.wsio = wsio;
+		remote.connected = true;
+		var site = {name: remote.name, connected: remote.connected};
+		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
+	}
 }
 
 function initializeExistingSagePointers(wsio) {
@@ -233,7 +221,7 @@ function initializeExistingApps(wsio) {
 
 function initializeExistingAppsPositionSizeTypeOnly(wsio) {
 	for(var i=0; i<items.length; i++){
-		wsio.emit('addNewElement', {type: items[i].type, id: items[i].id, left: items[i].left, top: items[i].top, width: items[i].width, height: items[i].height, aspect: items[i].aspect});
+		wsio.emit('addNewElement', getItemPositionSizeType(items[i]));
 	}
 }
 
@@ -262,10 +250,11 @@ function wsStopSagePointer(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
 	hidePointer(uniqueID);
-
-	if( remoteInteraction[uniqueID].appInteractionMode() ){//return to window interaction mode after stopping pointer
+	
+	//return to window interaction mode after stopping pointer
+	if(remoteInteraction[uniqueID].appInteractionMode()){
 		remoteInteraction[uniqueID].toggleModes();
-		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode } , 'receivesPointerData' );
+		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode } , 'receivesPointerData');
 	}
 }
 
@@ -466,14 +455,15 @@ function wsStartNewMediaStream(wsio, data) {
 	console.log("received new stream: " + data.id);
 	mediaStreams[data.id] = {ready: true, clients: {}};
 	for(var i=0; i<clients.length; i++){
-		if(clients[i].clientType == "display"){
+		if(clients[i].messages['sendsReceivedMediaStreamFrames']){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			mediaStreams[data.id].clients[clientAddress] = false;
 		}
 	}
 
 	loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
-		broadcast('addNewElement', newItem);
+		broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+		broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 		items.push(newItem);
 		itemCount++;
@@ -488,7 +478,7 @@ function wsUpdateMediaStreamFrame(wsio, data) {
 	var streamItem = findItemById(data.id);
 	if(streamItem != null) streamItem.src = data.src;
 
-	broadcast('updateMediaStreamFrame', data, "display");
+	broadcast('updateMediaStreamFrame', data, 'receivesMediaStreamFrames');
 }
 
 function wsStopMediaStream(wsio, data) {
@@ -529,7 +519,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 
 			itemCount++;
 			loader.loadImage(data, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -538,7 +529,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 	else if(file.dir == "videos"){
 		itemCount++;
 		loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-			broadcast('addNewElement', newItem);
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -546,7 +538,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 	else if(file.dir == "pdfs"){
 		itemCount++;
 		loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-			broadcast('addNewElement', newItem);
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -558,13 +551,14 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 			// add resource scripts to clients
 			for(var i=0; i<instructions.resources.length; i++){
 				if(instructions.resources[i].type == "script"){
-					broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
+					broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'receivesNewAppsToDisplay');
 				}
 			}
 
 			// add item to clients (after waiting 1 second to ensure resources have loaded)
 			setTimeout(function() {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 
@@ -572,7 +566,7 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 				if(instructions.animation == "timer"){
 					setInterval(function() {
 						var now = new Date();
-						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
 					}, instructions.interval);
 				}
 			}, 1000);
@@ -588,7 +582,8 @@ function wsAddNewWebElement(wsio, data) {
 
 			itemCount++;
 			loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -597,7 +592,8 @@ function wsAddNewWebElement(wsio, data) {
 	else if(data.type == "video"){
 		itemCount++;
 		loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-			broadcast('addNewElement', newItem);
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -605,7 +601,8 @@ function wsAddNewWebElement(wsio, data) {
 	else if(data.type == "youtube"){
 		itemCount++;
 		loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-			broadcast('addNewElement', newItem);
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -621,7 +618,8 @@ function wsAddNewWebElement(wsio, data) {
 		tmp.on('close', function() {
 			itemCount++;
 			loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -632,7 +630,7 @@ function wsAddNewWebElement(wsio, data) {
 
 /******************** Video / Audio Synchonization *********************/
 function wsUpdateVideoTime(wsio, data) {
-	broadcast('updateVideoItemTime', data, "display");
+	broadcast('updateVideoItemTime', data, 'receivesNewAppsToDisplay');
 }
 
 
@@ -1523,7 +1521,8 @@ function manageUploadedFiles(files) {
 
 					itemCount++;
 					loader.loadImage(data, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
-						broadcast('addNewElement', newItem);
+						broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+						broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 						items.push(newItem);
 
@@ -1542,7 +1541,8 @@ function manageUploadedFiles(files) {
 
 				itemCount++;
 				loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
-					broadcast('addNewElement', newItem);
+					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 					items.push(newItem);
 
@@ -1560,7 +1560,8 @@ function manageUploadedFiles(files) {
 
 				itemCount++;
 				loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
+					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 					items.push(newItem);
 
@@ -1583,13 +1584,14 @@ function manageUploadedFiles(files) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
+							broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'receivesNewAppsToDisplay');
 						}
 					}
 
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
 					setTimeout(function() {
-						broadcast('addNewElement', newItem);
+						broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+						broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 						items.push(newItem);
 
@@ -1600,7 +1602,7 @@ function manageUploadedFiles(files) {
 						if(instructions.animation == "timer"){
 							setInterval(function() {
 								var now = new Date();
-								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
 							}, instructions.interval);
 						}
 					}, 1000);
@@ -1643,11 +1645,33 @@ function createRemoteConnection(wsURL, element, index) {
 	var remote = new websocketIO(wsURL, false, function() {
 		console.log("connected to " + element.name);
 		remote.remoteAddress.address = element.host;
-		remote.remoteAddress.port = element.port+1;
-		remote.emit('addClient', {clientType: "remoteServer", host: config.host, port: config.port});
+		remote.remoteAddress.port = element.port;
+		var clientDescription = {
+			clientType: "remoteServer",
+			host: config.host,
+			port: config.port,
+			sendsPointerData: false,
+			sendsMediaStreamFrames: false,
+			sendsReceivedMediaStreamFrames: false,
+			sendsRequestForServerFiles: false,
+			sendsServerFileToLoad: false,
+			sendsWebContentToLoad: false,
+			sendsVideoSynchonization: false,
+			receivesDisplayConfiguration: false,
+			receivesClockTime: false,
+			receivesNewAppsToDisplay: false,
+			receivesNewAppsPositionSizeTypeOnly: false,
+			receivesWindowModification: false,
+			receivesPointerData: false,
+			receivesMediaStreamFrames: false,
+			receivesServerFileList: false,
+			receivesRemoteServerInfo: false,
+			receivesInputEvents: false
+		};
+		remote.emit('addClient', clientDescription);
 		remoteSites[index].connected = true;
 		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
-		broadcast('connectedToRemoteSite', site, "display");
+		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	});
 
 	remote.clientType = "remoteServer";
@@ -1656,7 +1680,7 @@ function createRemoteConnection(wsURL, element, index) {
 		console.log("Remote site \"" + config.remote_sites[index].name + "\" now offline");
 		remoteSites[index].connected = false;
 		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
-		broadcast('connectedToRemoteSite', site, "display");
+		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	});
 
 	remote.on('addNewElementFromRemoteServer', function(data) {
@@ -1667,7 +1691,8 @@ function createRemoteConnection(wsURL, element, index) {
 
 				itemCount++;
 				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-					broadcast('addNewElement', newItem);
+					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 					items.push(newItem);
 				});
@@ -1676,7 +1701,8 @@ function createRemoteConnection(wsURL, element, index) {
 		else if(data.type == "video"){
 			itemCount++;
 			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -1684,7 +1710,8 @@ function createRemoteConnection(wsURL, element, index) {
 		else if(data.type == "youtube"){
 			itemCount++;
 			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -1700,7 +1727,8 @@ function createRemoteConnection(wsURL, element, index) {
 			tmp.on('close', function() {
 				itemCount++;
 				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
+					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 					items.push(newItem);
 				});
@@ -1716,13 +1744,14 @@ function createRemoteConnection(wsURL, element, index) {
 				// add resource scripts to clients
 				for(var i=0; i<instructions.resources.length; i++){
 					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
+						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src}, 'receivesNewAppsToDisplay');
 					}
 				}
 	
 				// add item to clients (after waiting 1 second to ensure resources have loaded)
 				setTimeout(function() {
-					broadcast('addNewElement', newItem);
+					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 					
 					items.push(newItem);
 
@@ -1730,7 +1759,7 @@ function createRemoteConnection(wsURL, element, index) {
 					if(instructions.animation == "timer"){
 						setInterval(function() {
 							var now = new Date();
-							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
 						}, instructions.interval);
 					}
 				}, 1000);
@@ -1741,7 +1770,7 @@ function createRemoteConnection(wsURL, element, index) {
 
 			mediaStreams[remote_id] = {ready: true, clients: {}};
 			for(var i=0; i<clients.length; i++){
-				if(clients[i].clientType == "display"){
+				if(clients[i].messages['sendsReceivedMediaStreamFrames']){
 					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 					mediaStreams[remote_id].clients[clientAddress] = false;
 				}
@@ -1749,7 +1778,8 @@ function createRemoteConnection(wsURL, element, index) {
 
 			loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
 				console.log("REMOTE SCREEN");
-				broadcast('addNewElement', newItem);
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
 				items.push(newItem);
 				itemCount++;
@@ -1775,18 +1805,10 @@ function createRemoteConnection(wsURL, element, index) {
 var cDate = new Date();
 setTimeout(function() {
 	setInterval(function() {
-		var now = new Date();
-		for(var i=0; i<clients.length; i++){
-			if(clients[i].messages['receivesClockTime']) clients[i].emit('setSystemTime', {date: now});
-		}
-		//broadcast('setSystemTime', {date: now}, "display");
+		broadcast('setSystemTime', {date: new Date()}, 'receivesClockTime');
 	}, 60000);
 
-	var now = new Date();
-	for(var i=0; i<clients.length; i++){
-		if(clients[i].messages['receivesClockTime']) clients[i].emit('setSystemTime', {date: now});
-	}
-	//broadcast('setSystemTime', {date: now}, "display");
+	broadcast('setSystemTime', {date: new Date()}, 'receivesClockTime');
 }, (61-cDate.getSeconds())*1000);
 
 
@@ -2145,6 +2167,10 @@ function moveElementToEnd(list, elem) {
 		list[i] = list[i+1];
 	}
 	list[list.length-1] = elem;
+}
+
+function getItemPositionSizeType(item){
+	return {type: item.type, id: item.id, left: item.left, top: item.top, width: item.width, height: item.height, aspect: item.aspect};
 }
 
 /**** Pointer Functions ********************************************************************/
