@@ -182,9 +182,19 @@ function initializeWSClient(wsio) {
 		wsio.on('updateMediaStreamFrame',    wsUpdateMediaStreamFrame);
 		wsio.on('stopMediaStream',           wsStopMediaStream);
 	}
-	if(wsio.sendsReceivedMediaStreamFrames()) {
+	if(wsio.sendsReceivedMediaStreamFrames()){
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
 	}
+	if(wsio.sendsRequestForServerFiles()){
+		wsio.on('requestStoredFiles', wsRequestStoredFiles);
+	}
+	if(wsio.sendsServerFileToLoad()){
+		wsio.on('addNewElementFromStoredFiles', wsAddNewElementFromStoredFiles);
+	}
+	if(wsio.sendsWebContentToLoad()){
+		wsio.on('addNewWebElement', wsAddNewWebElement);
+	}
+	
 	
 	
 	// data needed on startup 
@@ -577,6 +587,122 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 	}
 }
 
+/******************** Server File Functions ********************/
+function wsRequestStoredFiles(wsio, data) {
+	wsio.emit('storedFileList', savedFiles);
+}
+
+function wsAddNewElementFromStoredFiles(wsio, file) {
+	var url = path.join("uploads", file.dir, file.name);
+	var external_url = hostOrigin + encodeURI(url);
+	var localPath = path.join(public_https, url);
+
+	if(file.dir == "images"){
+		fs.readFile(localPath, function (err, data) {
+			if(err) throw err;
+
+			itemCount++;
+			loader.loadImage(data, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				broadcast('addNewElement', newItem);
+
+				items.push(newItem);
+			});
+		});
+	}
+	else if(file.dir == "videos"){
+		itemCount++;
+		loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			broadcast('addNewElement', newItem);
+
+			items.push(newItem);
+		});
+	}
+	else if(file.dir == "pdfs"){
+		itemCount++;
+		loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+			broadcast('addNewElement', newItem);
+
+			items.push(newItem);
+		});
+	}
+	else if(file.dir == "apps"){
+		itemCount++;
+		var id = "item"+itemCount.toString();
+		loader.loadApp(localPath, url, external_url, id, function(newItem, instructions) {
+			// add resource scripts to clients
+			for(var i=0; i<instructions.resources.length; i++){
+				if(instructions.resources[i].type == "script"){
+					broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
+				}
+			}
+
+			// add item to clients (after waiting 1 second to ensure resources have loaded)
+			setTimeout(function() {
+				broadcast('addNewElement', newItem);
+
+				items.push(newItem);
+
+				// set interval timer if specified
+				if(instructions.animation == "timer"){
+					setInterval(function() {
+						var now = new Date();
+						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
+					}, instructions.interval);
+				}
+			}, 1000);
+		});
+	}
+}
+
+/******************** Adding Web Content (URL) ********************/
+function wsAddNewWebElement(wsio, data) {
+	if(data.type == "img"){
+		request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
+			if(err) throw err;
+
+			itemCount++;
+			loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+				broadcast('addNewElement', newItem);
+
+				items.push(newItem);
+			});
+		});
+	}
+	else if(data.type == "video"){
+		itemCount++;
+		loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+			broadcast('addNewElement', newItem);
+
+			items.push(newItem);
+		});
+	}
+	else if(data.type == "youtube"){
+		itemCount++;
+		loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
+			broadcast('addNewElement', newItem);
+
+			items.push(newItem);
+		});
+	}
+	else if(data.type == "pdf"){
+		var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
+		var url = path.join("uploads", "pdfs", filename);
+		var localPath = path.join(public_https, url);
+		var tmp = fs.createWriteStream(localPath);
+		tmp.on('error', function(err) {
+			if(err) throw err;
+		});
+		tmp.on('close', function() {
+			itemCount++;
+			loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				broadcast('addNewElement', newItem);
+
+				items.push(newItem);
+			});
+		});
+		request({url: data.src, strictSSL: false}).pipe(tmp);
+	}
+}
 
 
 
