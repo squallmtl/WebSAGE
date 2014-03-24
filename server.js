@@ -736,7 +736,6 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 		}
 
 		loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
-			console.log("REMOTE SCREEN");
 			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
 			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
 
