@@ -769,7 +769,7 @@ function wsUpdateRemoteMediaStreamFrame(wsio, data) {
 	var streamItem = findItemById(data.id);
 	if(streamItem != null) streamItem.src = data.src;
 	
-	broadcast('updateRemoteMediaStreamFrame', data, "display");
+	broadcast('updateRemoteMediaStreamFrame', data, 'receivesMediaStreamFrames');
 }
 
 function wsReceivedRemoteMediaStreamFrame(wsio, data) {
@@ -777,20 +777,21 @@ function wsReceivedRemoteMediaStreamFrame(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
 	mediaStreams[data.id].clients[uniqueID] = true;
-	
-	console.log(mediaStreams[data.id].clients);
-	
 	if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
 		mediaStreams[data.id].ready = false;
 
 		var broadcastWS = null;
 		var serverAddress = data.id.substring(6).split("|")[0];
 		var broadcastAddress = data.id.substring(6).split("|")[1];
+		
+		console.log("looking for: " + serverAddress);
+		
 		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-			if(clientAddress == serverAddress) broadcastWS = clients[i];
+			if(clientAddress == serverAddress) { broadcastWS = clients[i]; break; }
 		}
-
+		
+		console.log(broadcastWS);
 		if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
 	}
 }
@@ -1842,6 +1843,7 @@ function createRemoteConnection(wsURL, element, index) {
 		remoteSites[index].connected = true;
 		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
+		clients.push(remote);
 	});
 
 	remote.clientType = "remoteServer";
@@ -1851,6 +1853,7 @@ function createRemoteConnection(wsURL, element, index) {
 		remoteSites[index].connected = false;
 		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
+		removeElement(clients, remote);
 	});
 	
 	remote.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
