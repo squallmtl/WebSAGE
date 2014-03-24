@@ -641,6 +641,8 @@ function wsUpdateVideoTime(wsio, data) {
 
 /******************** Remote Server Content ****************************/
 function wsAddNewElementFromRemoteServer(wsio, data) {
+	console.log("received content from remote server");
+	console.log(data);
 	if(data.type == "img"){
 		request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 			if(err) throw err;
