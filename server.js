@@ -101,10 +101,10 @@ function closeWebSocketClient(wsio) {
 		delete remoteInteraction[uniqueID];
 	}
 	if(wsio.messages['sendsReceivedMediaStreamFrames']){
-		for(key in mediaStreams){
+		for(var key in mediaStreams){
 			delete mediaStreams[key].clients[uniqueID];
 		}
-		for(key in webStreams){
+		for(var key in webStreams){
 			delete webStreams[key].clients[uniqueID];
 		}
 	}
@@ -239,7 +239,7 @@ function initializeRemoteServerInfo(wsio) {
 }
 
 function initializeMediaStreams(uniqueID) {
-	for(key in mediaStreams){
+	for(var key in mediaStreams){
 		mediaStreams[key].clients[uniqueID] = false;
 	}
 }
@@ -792,10 +792,10 @@ wsioServer.onconnection(function(wsio) {
 				var site = {name: remoteSites[i].name, connected: remoteSites[i].connected, width: remoteSites[i].width, height: remoteSites[i].height, pos: remoteSites[i].pos};
 				wsio.emit('addRemoteSite', site);
 			}
-			for(key in mediaStreams){
+			for(var key in mediaStreams){
 				mediaStreams[key].clients[address] = false;
 			}
-            for(key in webStreams){
+            for(var key in webStreams){
                 webStreams[key].clients[address] = false;
             }
 		}
@@ -2153,7 +2153,7 @@ function moveItemToFront(id) {
 }
 
 function allTrueDict(dict) {
-	for(key in dict){
+	for(var key in dict){
 		if(dict[key] == false) return false;
 	}
 	return true;
