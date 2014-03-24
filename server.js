@@ -176,6 +176,7 @@ function initializeWSClient(wsio) {
 	}
 	if(wsio.messages['sendsReceivedMediaStreamFrames']){
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
+		wsio.on('receivedRemoteMediaStreamFrame',  wsReceivedRemoteMediaStreamFrame);
 	}
 	if(wsio.messages['sendsRequestForServerFiles']){
 		wsio.on('requestStoredFiles', wsRequestStoredFiles);
@@ -192,6 +193,8 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['sendsContentToRemoteServer']){
 		wsio.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
 		wsio.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
+		wsio.on('updateRemoteMediaStreamFrame', wsUpdateRemoteMediaStreamFrame);
+		wsio.on('stopMediaStream', wsStopMediaStream);
 	}
 	
 	
@@ -641,8 +644,6 @@ function wsUpdateVideoTime(wsio, data) {
 
 /******************** Remote Server Content ****************************/
 function wsAddNewElementFromRemoteServer(wsio, data) {
-	console.log("received content from remote server");
-	console.log(data);
 	if(data.type == "img"){
 		request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 			if(err) throw err;
@@ -754,6 +755,42 @@ function wsRequestNextRemoteFrame(wsio, data) {
 
 	if(stream != null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 	else wsio.emit('stopMediaStream', {id: remote_id});
+}
+
+function wsUpdateRemoteMediaStreamFrame(wsio, data) {
+	mediaStreams[data.id].ready = true;
+	for(var key in mediaStreams[data.id].clients){
+		mediaStreams[data.id].clients[key] = false;
+	}
+	var streamItem = findItemById(data.id);
+	if(streamItem != null) streamItem.src = data.src;
+	
+	broadcast('updateRemoteMediaStreamFrame', data, "display");
+}
+
+function wsReceivedRemoteMediaStreamFrame(wsio, data) {
+	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	
+	mediaStreams[data.id].clients[uniqueID] = true;
+	if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
+		mediaStreams[data.id].ready = false;
+
+		var broadcastWS = null;
+		var serverAddress = data.id.substring(6).split("|")[0];
+		var broadcastAddress = data.id.substring(6).split("|")[1];
+		for(var i=0; i<clients.length; i++){
+			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+			if(clientAddress == serverAddress) broadcastWS = clients[i];
+		}
+
+		if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
+	}
+}
+
+function wsStopMediaStream(wsio, data) {
+	var elem = findItemById(data.id);
+
+	if(elem != null) deleteElement(elem);
 }
 
 
@@ -1808,6 +1845,8 @@ function createRemoteConnection(wsURL, element, index) {
 	
 	remote.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
 	remote.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
+	remote.on('updateRemoteMediaStreamFrame', wsUpdateRemoteMediaStreamFrame);
+	remote.on('stopMediaStream', wsStopMediaStream);
 
 	return remote;
 }
