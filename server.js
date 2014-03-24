@@ -1,3 +1,4 @@
+"use strict";
 // Importing modules (form node_modules directory)
 
 // npm registry - built in or defined in package.json
@@ -11,6 +12,7 @@ var multiparty = require('multiparty');    // parses POST forms
 var os = require('os');                    // operating system access
 var path = require('path');                // file path extraction and creation
 var request = require('request');          // external http requests
+var json5 = require('json5');              // better JSON format
 
 // custom node modules
 var httpserver = require('node-httpserver');           // creates web server
@@ -1343,7 +1345,7 @@ function loadConfiguration() {
 	}
 	
 	var json_str = fs.readFileSync(configFile, 'utf8');
-	var userConfig = JSON.parse(json_str);
+	var userConfig = json5.parse(json_str);
 	// compute extra dependent parameters
 	userConfig.totalWidth     = userConfig.resolution.width  * userConfig.layout.columns;
 	userConfig.totalHeight    = userConfig.resolution.height * userConfig.layout.rows;
@@ -1818,11 +1820,11 @@ var net = require('net');
 var util = require('util');
 var dgram = require('dgram');
 
-udp = undefined;
+var udp = undefined;
 
-trackerIP = config.omicronServerIP;
-msgPort = config.omicronMsgPort;
-dataPort = config.omicronDataPort;
+var trackerIP = config.omicronServerIP;
+var msgPort = config.omicronMsgPort;
+var dataPort = config.omicronDataPort;
 
 if( config.omicronServerIP )
 {
