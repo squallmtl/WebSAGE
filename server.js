@@ -129,6 +129,7 @@ function wsAddClient(wsio, data) {
 	wsio.messages['sendsServerFileToLoad']               = data.sendsServerFileToLoad               || false;
 	wsio.messages['sendsWebContentToLoad']               = data.sendsWebContentToLoad               || false;
 	wsio.messages['sendsVideoSynchonization']            = data.sendsVideoSynchonization            || false;
+	wsio.messages['sendsContentToRemoteServer']          = data.sendsContentToRemoteServer          || false;
 	
 	// types of data client receives from server through WebSockets
 	wsio.messages['receivesDisplayConfiguration']        = data.receivesDisplayConfiguration        || false;
@@ -188,6 +189,10 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['sendsVideoSynchonization']){
 		wsio.on('updateVideoTime', wsUpdateVideoTime);
 	}
+	if(wsio.messages['sendsContentToRemoteServer']){
+		wsio.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
+		wsio.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
+	}
 	
 	
 	if(wsio.messages['sendsPointerData'])                    createSagePointer(uniqueID);
@@ -198,7 +203,6 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['receivesNewAppsPositionSizeTypeOnly']) initializeExistingAppsPositionSizeTypeOnly(wsio);
 	if(wsio.messages['receivesRemoteServerInfo'])            initializeRemoteServerInfo(wsio);
 	if(wsio.messages['receivesMediaStreamFrames'])           initializeMediaStreams(uniqueID);
-	
 	
 	var remote = findRemoteSiteByConnection(wsio);
 	if(remote != null){
@@ -635,6 +639,120 @@ function wsUpdateVideoTime(wsio, data) {
 	broadcast('updateVideoItemTime', data, 'receivesNewAppsToDisplay');
 }
 
+/******************** Remote Server Content ****************************/
+function wsAddNewElementFromRemoteServer(wsio, data) {
+	if(data.type == "img"){
+		request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
+			if(err) throw err;
+
+			itemCount++;
+			loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+
+				items.push(newItem);
+			});
+		});
+	}
+	else if(data.type == "video"){
+		itemCount++;
+		loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+
+			items.push(newItem);
+		});
+	}
+	else if(data.type == "youtube"){
+		itemCount++;
+		loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+
+			items.push(newItem);
+		});
+	}
+	else if(data.type == "pdf"){
+		var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
+		var url = path.join("uploads", "pdfs", filename);
+		var localPath = path.join(public_https, url);
+		var tmp = fs.createWriteStream(localPath);
+		tmp.on('error', function(err) {
+			if(err) throw err;
+		});
+		tmp.on('close', function() {
+			itemCount++;
+			loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+
+				items.push(newItem);
+			});
+		});
+		request({url: data.src, strictSSL: false}).pipe(tmp);
+	}
+	else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
+		console.log("remote app: " + data.src);
+		
+		itemCount++;
+		var id = "item"+itemCount.toString();
+		loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
+			// add resource scripts to clients
+			for(var i=0; i<instructions.resources.length; i++){
+				if(instructions.resources[i].type == "script"){
+					broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src}, 'receivesNewAppsToDisplay');
+				}
+			}
+
+			// add item to clients (after waiting 1 second to ensure resources have loaded)
+			setTimeout(function() {
+				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				
+				items.push(newItem);
+
+				// set interval timer if specified
+				if(instructions.animation == "timer"){
+					setInterval(function() {
+						var now = new Date();
+						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
+					}, instructions.interval);
+				}
+			}, 1000);
+		});
+	}
+	else if(data.type == "screen"){
+		var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
+
+		mediaStreams[remote_id] = {ready: true, clients: {}};
+		for(var i=0; i<clients.length; i++){
+			if(clients[i].messages['sendsReceivedMediaStreamFrames']){
+				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+				mediaStreams[remote_id].clients[clientAddress] = false;
+			}
+		}
+
+		loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
+			console.log("REMOTE SCREEN");
+			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
+			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+
+			items.push(newItem);
+			itemCount++;
+		});
+	}
+	else{
+		console.log("unknown type: " + data.type);
+	}
+}
+
+function wsRequestNextRemoteFrame(wsio, data) {
+	var stream = findItemById(data.id);
+	var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
+
+	if(stream != null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+	else wsio.emit('stopMediaStream', {id: remote_id});
+}
 
 
 /*
@@ -1659,6 +1777,7 @@ function createRemoteConnection(wsURL, element, index) {
 			sendsServerFileToLoad: false,
 			sendsWebContentToLoad: false,
 			sendsVideoSynchonization: false,
+			sendsContentToRemoteServer: true,
 			receivesDisplayConfiguration: false,
 			receivesClockTime: false,
 			receivesNewAppsToDisplay: false,
@@ -1684,121 +1803,9 @@ function createRemoteConnection(wsURL, element, index) {
 		var site = {name: remoteSites[index].name, connected: remoteSites[index].connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	});
-
-	remote.on('addNewElementFromRemoteServer', function(data) {
-		//console.log("received element from server: " + data.src);
-		if(data.type == "img"){
-			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
-				if(err) throw err;
-
-				itemCount++;
-				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-
-					items.push(newItem);
-				});
-			});
-		}
-		else if(data.type == "video"){
-			itemCount++;
-			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "youtube"){
-			itemCount++;
-			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "pdf"){
-			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var url = path.join("uploads", "pdfs", filename);
-			var localPath = path.join(public_https, url);
-			var tmp = fs.createWriteStream(localPath);
-			tmp.on('error', function(err) {
-				if(err) throw err;
-			});
-			tmp.on('close', function() {
-				itemCount++;
-				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-
-					items.push(newItem);
-				});
-			});
-			request({url: data.src, strictSSL: false}).pipe(tmp);
-		}
-		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
-			console.log("remote app: " + data.src);
-			
-			itemCount++;
-			var id = "item"+itemCount.toString();
-			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
-				// add resource scripts to clients
-				for(var i=0; i<instructions.resources.length; i++){
-					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src}, 'receivesNewAppsToDisplay');
-					}
-				}
 	
-				// add item to clients (after waiting 1 second to ensure resources have loaded)
-				setTimeout(function() {
-					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-					
-					items.push(newItem);
-
-					// set interval timer if specified
-					if(instructions.animation == "timer"){
-						setInterval(function() {
-							var now = new Date();
-							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
-						}, instructions.interval);
-					}
-				}, 1000);
-			});
-		}
-		else if(data.type == "screen"){
-			var remote_id = "remote" + remote.remoteAddress.address + ":" + remote.remoteAddress.port + "|" + data.id;
-
-			mediaStreams[remote_id] = {ready: true, clients: {}};
-			for(var i=0; i<clients.length; i++){
-				if(clients[i].messages['sendsReceivedMediaStreamFrames']){
-					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[remote_id].clients[clientAddress] = false;
-				}
-			}
-
-			loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
-				console.log("REMOTE SCREEN");
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
-
-				items.push(newItem);
-				itemCount++;
-			});
-		}
-		else{
-			console.log("unknown type: " + data.type);
-		}
-	});
-
-	remote.on('requestNextRemoteFrame', function(data) {
-		var stream = findItemById(data.id);
-		var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
-
-		if(stream != null) remote.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
-		else remote.emit('stopMediaStream', {id: remote_id});
-	});
+	remote.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
+	remote.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
 
 	return remote;
 }
