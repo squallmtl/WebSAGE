@@ -750,8 +750,6 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 }
 
 function wsRequestNextRemoteFrame(wsio, data) {
-	console.log("getting next frame for remote stream");
-	
 	var stream = findItemById(data.id);
 	var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
 
@@ -760,8 +758,6 @@ function wsRequestNextRemoteFrame(wsio, data) {
 }
 
 function wsUpdateRemoteMediaStreamFrame(wsio, data) {
-	console.log("updating remote stream image");
-
 	mediaStreams[data.id].ready = true;
 	for(var key in mediaStreams[data.id].clients){
 		mediaStreams[data.id].clients[key] = false;
@@ -773,7 +769,6 @@ function wsUpdateRemoteMediaStreamFrame(wsio, data) {
 }
 
 function wsReceivedRemoteMediaStreamFrame(wsio, data) {
-	console.log("received media frame");
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
 	mediaStreams[data.id].clients[uniqueID] = true;
@@ -784,21 +779,16 @@ function wsReceivedRemoteMediaStreamFrame(wsio, data) {
 		var serverAddress = data.id.substring(6).split("|")[0];
 		var broadcastAddress = data.id.substring(6).split("|")[1];
 		
-		console.log("looking for: " + serverAddress);
-		
 		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			if(clientAddress == serverAddress) { broadcastWS = clients[i]; break; }
 		}
 		
-		console.log(broadcastWS);
 		if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
 	}
 }
 
 function wsStopMediaStream(wsio, data) {
-	console.log("stopping remote stream");
-	
 	var elem = findItemById(data.id);
 
 	if(elem != null) deleteElement(elem);
