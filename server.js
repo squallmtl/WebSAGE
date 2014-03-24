@@ -2092,12 +2092,6 @@ function broadcast(func, data, type) {
 	}
 }
 
-/*function broadcast(func, data, type) {
-	for(var i=0; i<clients.length; i++){
-		if(type == null || type == clients[i].clientType) clients[i].emit(func, data);
-	}
-}*/
-
 function findRemoteSiteByConnection(wsio) {
 	var remoteIdx = -1;
 	for(var i=0; i<config.remote_sites.length; i++){
