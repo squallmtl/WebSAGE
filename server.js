@@ -500,7 +500,7 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 	if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
 		mediaStreams[data.id].ready = false;
 		var broadcastWS = null;
-		for(i=0; i<clients.length; i++){
+		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			if(clientAddress == data.id) broadcastWS = clients[i];
 		}
@@ -1127,7 +1127,7 @@ wsioServer.onconnection(function(wsio) {
 		if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
 			mediaStreams[data.id].ready = false;
 			var broadcastWS = null;
-			for(i=0; i<clients.length; i++){
+			for(var i=0; i<clients.length; i++){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 				if(clientAddress == data.id) broadcastWS = clients[i];
 			}
@@ -1144,7 +1144,7 @@ wsioServer.onconnection(function(wsio) {
 			var broadcastWS = null;
 			var serverAddress = data.id.substring(6).split("|")[0];
 			var broadcastAddress = data.id.substring(6).split("|")[1];
-			for(i=0; i<clients.length; i++){
+			for(var i=0; i<clients.length; i++){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 				if(clientAddress == serverAddress) broadcastWS = clients[i];
 			}
@@ -2422,7 +2422,7 @@ function deleteElement( elem ) {
 	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsPositionSizeTypeOnly');
 	if(elem.type == "screen"){
 		var broadcastWS = null;
-		for(i=0; i<clients.length; i++){
+		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			if(clientAddress == elem.id) broadcastWS = clients[i];
 		}
