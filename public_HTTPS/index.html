@@ -46,7 +46,27 @@
 		
 		wsio.open(function() {
 			console.log("open websocket");
-			wsio.emit('addClient', {clientType: "display"});
+			var clientDescription = {
+				clientType: "display",
+				sendsPointerData: false,
+				sendsMediaStreamFrames: false,
+				sendsReceivedMediaStreamFrames: true,
+				sendsRequestForServerFiles: false,
+				sendsServerFileToLoad: false,
+				sendsWebContentToLoad: false,
+				sendsVideoSynchonization: false,
+				receivesDisplayConfiguration: true,
+				receivesClockTime: true,
+				receivesNewAppsToDisplay: true,
+				receivesNewAppsPositionSizeTypeOnly: false,
+				receivesWindowModification: true,
+				receivesPointerData: true,
+				receivesMediaStreamFrames: true,
+				receivesServerFileList: false,
+				receivesRemoteServerInfo: true,
+				receivesInputEvents: true
+			};
+			wsio.emit('addClient', clientDescription);
 		});
 		
 		clientID = parseInt(getParameterByName("clientID"));
