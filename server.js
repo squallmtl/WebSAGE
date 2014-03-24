@@ -769,9 +769,13 @@ function wsUpdateRemoteMediaStreamFrame(wsio, data) {
 }
 
 function wsReceivedRemoteMediaStreamFrame(wsio, data) {
+	console.log("received media frame");
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
 	mediaStreams[data.id].clients[uniqueID] = true;
+	
+	console.log(mediaStreams[data.id].clients);
+	
 	if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
 		mediaStreams[data.id].ready = false;
 
