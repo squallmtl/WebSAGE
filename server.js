@@ -90,7 +90,7 @@ function closeWebSocketClient(wsio) {
 	
 	var remote = findRemoteSiteByConnection(wsio);
 	if(remote != null){
-		console.log("Remote site \"" + config.remote_sites[remoteIdx].name + "\" now offline");
+		console.log("Remote site \"" + remote.name + "\" now offline");
 		remote.connected = false;
 		var site = {name: remote.name, connected: remote.connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
