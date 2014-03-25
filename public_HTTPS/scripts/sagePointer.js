@@ -29,6 +29,7 @@ function sagePointer(wsio) {
 	this.mediaCanvas.height = this.mediaHeight;
 	this.broadcasting = false;
 	
+	this.chunk = 32768; // 32 KB
 	this.maxUploadSize = 500 * (1024*1024); // 500 MB
 	
 	if(localStorage["SAGE2_ptrName"]  != null) this.sagePointerLabel.value = localStorage['SAGE2_ptrName'];
@@ -222,6 +223,33 @@ function sagePointer(wsio) {
 		this.mediaCtx.clearRect(0, 0, this.mediaWidth, this.mediaHeight);
 		this.mediaCtx.drawImage(mediaVideo, 0, 0, this.mediaWidth, this.mediaHeight);
 		return this.mediaCanvas.toDataURL("image/jpeg", (this.mediaQuality/10));
+	};
+	
+	this.sendMediaStreamFrame = function() {
+		if(this.broadcasting){
+			var frame = this.captureMediaFrame();
+			var raw = this.base64ToString(frame.split(",")[1]);
+			
+			if(raw.length > this.chunk){
+				var _this = this;
+				var nchunks = Math.ceil(raw.length / this.chunk);
+				var msg_chunks = new Array(nchunks);
+				for(var i=0; i<nchunks; i++){
+					var start = i*this.chunk;
+					var end = (i+1)*this.chunk < raw.length ? (i+1)*this.chunk : raw.length;
+					
+					msg_chunks[i] = raw.substring(start, end);
+				}
+				msg_chunks.forEach(function(element, index, array){
+					setTimeout(function() {
+						this.wsio.emit('updateMediaStreamChunk', {id: _this.uniqueID, src: msg_chunks[index], piece: index, total: nchunks});
+					}, 4);
+				});
+			}
+			else{
+				this.wsio.emit('updateMediaStreamFrame', {id: this.uniqueID, src: raw});
+			}
+		}
 	};
 	
 	this.changeScreenShareResolutionMethod = function(event) {

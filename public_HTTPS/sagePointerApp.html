@@ -14,7 +14,6 @@
 	var sagePtr;
 	var hostname;
 	var port;
-	var chunk;
 	
 	var topBlock;
 	var sageDeviceText;
@@ -28,8 +27,6 @@
 		port = window.location.port;
 		if(window.location.protocol == "http:" && port == "") port = "80";
 		if(window.location.protocol == "https:" && port == "") port = "443";
-		
-		chunk = 32768; // 32KB
 		
 		wsio = new websocketIO(window.location.protocol, hostname, parseInt(port));
 		
@@ -86,29 +83,7 @@
 		});
 		
 		wsio.on('requestNextFrame', function(data) {
-			if(sagePtr.broadcasting){
-				var frame = sagePtr.captureMediaFrame();
-				var raw = base64ToString(frame.split(",")[1]);
-				
-				if(raw.length > chunk){
-					var nchunks = Math.ceil(raw.length / chunk);
-					var msg_chunks = new Array(nchunks);
-					for(var i=0; i<nchunks; i++){
-						var start = i*chunk;
-						var end = (i+1)*chunk < raw.length ? (i+1)*chunk : raw.length;
-						
-						msg_chunks[i] = raw.substring(start, end);
-					}
-					msg_chunks.forEach(function(element, index, array){
-						setTimeout(function() {
-							wsio.emit('updateMediaStreamChunk', {id: sagePtr.uniqueID, src: msg_chunks[index], piece: index, total: nchunks});
-						}, 4);
-					});
-				}
-				else{
-					wsio.emit('updateMediaStreamFrame', {id: sagePtr.uniqueID, src: raw});
-				}
-			}
+			sagePtr.sendMediaStreamFrame();
 		});
 		
 		wsio.on('stopMediaCapture', function() {
