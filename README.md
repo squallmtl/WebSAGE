@@ -56,7 +56,7 @@ brew install ffmpeg
 brew install poppler --without-glib
 brew install graphicsmagick
 brew install libjpeg-turbo
-brew install openmpi
+brew install openmp
 ```
 
 ###### Setup Node js: ######
