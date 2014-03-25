@@ -1,18 +1,20 @@
+// require variables to be declared
 "use strict";
+
 // Importing modules (form node_modules directory)
 
-// npm registry - built in or defined in package.json
+// npm registry: built-in or defined in package.json
 var crypto = require('crypto');            // https encryption
 var fs = require('fs');                    // filesystem access
 var gm = require('gm');                    // graphicsmagick
 var http = require('http');                // http server
 var https = require('https');              // https server
 var imageinfo = require('imageinfo');      // gets width, height for images
+var json5 = require('json5');              // JSON format that allows comments
 var multiparty = require('multiparty');    // parses POST forms
 var os = require('os');                    // operating system access
 var path = require('path');                // file path extraction and creation
 var request = require('request');          // external http requests
-var json5 = require('json5');              // better JSON format
 
 // custom node modules
 var httpserver = require('node-httpserver');           // creates web server
@@ -58,23 +60,29 @@ var webStreams = {};
 // arrays of files on the server (used for media browser)
 var savedFiles = initializeSavedFilesList();
 
+
 // sets up the background for the display clients (image or color)
 setupDisplayBackground();
+
 
 // create HTTP server for index page (Table of Contents)
 var httpServerIndex = new httpserver("public_HTTP");
 httpServerIndex.httpGET('/config', sendConfig); // send config object to client using http request
 
+
 // create HTTPS server for all SAGE content
 var httpsServerApp = new httpserver("public_HTTPS");
 httpsServerApp.httpPOST('/upload', uploadForm); // receive newly uploaded files from SAGE Pointer / SAGE UI
 
+
 // create HTTPS options - sets up security keys
 var options = setupHttpsOptions();
+
 
 // initializes HTTP and HTTPS servers
 var index = http.createServer(httpServerIndex.onrequest);
 var server = https.createServer(options, httpsServerApp.onrequest);
+
 
 // creates a WebSocket server - 2 way communication between server and all browser clients
 var wsioServer = new websocketIO.Server({server: server});
