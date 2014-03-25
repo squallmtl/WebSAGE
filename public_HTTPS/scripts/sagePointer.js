@@ -29,7 +29,7 @@ function sagePointer(wsio) {
 	this.mediaCanvas.height = this.mediaHeight;
 	this.broadcasting = false;
 	
-	this.chunk = 32768; // 32 KB
+	this.chunk = 32 * 1024; // 32 KB
 	this.maxUploadSize = 500 * (1024*1024); // 500 MB
 	
 	if(localStorage["SAGE2_ptrName"]  != null) this.sagePointerLabel.value = localStorage['SAGE2_ptrName'];
