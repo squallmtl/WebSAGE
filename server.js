@@ -180,6 +180,7 @@ function initializeWSClient(wsio) {
 	if(wsio.messages['sendsMediaStreamFrames']){
 		wsio.on('startNewMediaStream',       wsStartNewMediaStream);
 		wsio.on('updateMediaStreamFrame',    wsUpdateMediaStreamFrame);
+		wsio.on('updateMediaStreamChunk',    wsUpdateMediaStreamChunk);
 		wsio.on('stopMediaStream',           wsStopMediaStream);
 	}
 	if(wsio.messages['sendsReceivedMediaStreamFrames']){
@@ -470,7 +471,7 @@ function wsKeyPress(wsio, data) {
 /***************** Media Stream Functions *****************/
 function wsStartNewMediaStream(wsio, data) {
 	console.log("received new stream: " + data.id);
-	mediaStreams[data.id] = {ready: true, clients: {}};
+	mediaStreams[data.id] = {ready: true, chunks: [], clients: {}};
 	for(var i=0; i<clients.length; i++){
 		if(clients[i].messages['sendsReceivedMediaStreamFrames']){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
@@ -496,6 +497,15 @@ function wsUpdateMediaStreamFrame(wsio, data) {
 	if(streamItem != null) streamItem.src = data.src;
 
 	broadcast('updateMediaStreamFrame', data, 'receivesMediaStreamFrames');
+}
+
+function wsUpdateMediaStreamChunk(wsio, data) {
+	if(mediaStreams[data.id].chunks.length == 0) mediaStreams[data.id].chunks = initializeArray(data.total, "");
+	mediaStreams[data.id].chunks[data.piece] = data.src;
+	if(allNonBlank(mediaStreams[data.id].chunks)){
+		wsUpdateMediaStreamFrame(wsio, {id: data.id, src: mediaStreams[data.id].chunks.join("")});
+		mediaStreams[data.id].chunks = [];
+	}
 }
 
 function wsStopMediaStream(wsio, data) {
@@ -2199,6 +2209,21 @@ function moveItemToFront(id) {
 	itemIds.push(id);
 
 	return itemIds;
+}
+
+function initializeArray(size, val) {
+	var arr = new Array(size);
+	for(var i=0; i<size; i++){
+		arr[i] = val;
+	}
+	return arr;
+}
+
+function allNonBlank(arr) {
+	for(var i=0; i<arr.length; i++){
+		if(arr[i] == "") return false;
+	}
+	return true;
 }
 
 function allTrueDict(dict) {
