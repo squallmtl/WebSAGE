@@ -33,6 +33,12 @@
 	var pointerItems = {};
 	var canvasItems = {};
 	
+		// Explicitely close web socket when web broswer is closed
+	window.onbeforeunload = function() {
+		if (typeof wsio !== "undefined")
+    		wsio.close();
+	};
+
 	function init() {
 		hostname = window.location.hostname;
 		port = window.location.port;
@@ -70,7 +76,26 @@
 		
 		clientID = parseInt(getParameterByName("clientID"));
 		console.log("clientID: " + clientID);
-		
+
+		// Socket close event (ie server crashed)		
+		wsio.on('close', function (evt) {
+			var refresh = setInterval(function () {
+				// make a dummy request to test the server every 2 sec
+				xhr = new XMLHttpRequest();
+				xhr.open("GET", "/", true);
+				xhr.onreadystatechange = function() {
+					if(xhr.readyState == 4 && xhr.status == 200){
+						console.log("server ready");
+						// when server ready, clear the interval callback
+						clearInterval(refresh);
+						// and reload the page
+						window.location.reload();
+					}
+				};
+				xhr.send();
+			}, 2000);
+		});
+
 		wsio.on('initialize', function(data) {
 			var serverTime = new Date(data.time);
 			var clientTime = new Date();
@@ -362,7 +387,9 @@
 				screen.aspectRatio = elem_data.aspect;
 				screen.width = elem_data.width;
 				screen.height = elem_data.height;
-				screen.src = "data:image/jpeg;base64," + stringToBase64(elem_data.src);
+				//screen.src = "data:image/jpeg;base64," + stringToBase64(elem_data.src);
+				// LUC
+				screen.src = "data:image/jpeg;base64," + elem_data.src;
 				screen.draggable = false;
 				
 				windowItem.appendChild(screen);

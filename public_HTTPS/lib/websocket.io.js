@@ -25,6 +25,12 @@ function websocketIO(protocol, host, port) {
 				console.log("Error: message is not a binary string");
 			}
 		};
+			// triggered by unexpected close event
+		this.ws.onclose = function(evt) {
+			console.log("wsio closed");
+			if('close' in _this.messages)
+				_this.messages['close'](evt);
+		};
 	};
 	
 	this.on = function(name, callback) {
@@ -35,4 +41,11 @@ function websocketIO(protocol, host, port) {
 		var message = {func: name, data: data};
 		this.ws.send(JSON.stringify(message));
 	};
+
+		// deliberate close function
+	this.close = function() {
+	    this.ws.onclose = function () {}; // disable onclose handler first
+    	this.ws.close()
+    };
+
 }
