@@ -27,8 +27,6 @@
 	var hostname;
 	var port;
 	var dt;
-	var preSeek = {};
-	var seekTimes = {};
 	
 	var itemCount = 0;
 	var pdfItems = {};
@@ -325,9 +323,7 @@
 				vid.style.backgroundColor = "#333333";
 				if(elem_data.resrc != null) vid.poster = elem_data.resrc;
 				
-				seekTimes[vid.id] = [];
 				vid.addEventListener('canplay', function() {
-					if(vid.id in preSeek && !vid.paused) seekTimes[vid.id].push((new Date().getTime() - preSeek[vid.id]) / 1000);
 					console.log("video can now play"); // Video is loaded and can be played
 				}, false);
 				
@@ -638,37 +634,25 @@
 			var clientTime = new Date();
 			var serverTime = new Date(clientTime.getTime() - dt);
 			var sentTime = new Date(video_data.sent);
-			var delay = serverTime.getTime() - sentTime.getTime();
-			var videoTime = video_data.time + (delay/1000);
+			var delay = (serverTime.getTime() - sentTime.getTime()) / 1000;
 			
 			var selectedElem = document.getElementById(video_data.elemId);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
-			var diff = videoTime - child[0].currentTime;
+			var diff = (video_data.time + delay) - child[0].currentTime;
 			
 			// re-sync if more the 1/30 of a second off
 			// (currently not working due to seek taking large and varying amounts of time)
 			/*
 			if(video_data.play && !child[0].paused && Math.abs(diff > 0.034)){
 				console.log("video time requires adjustment:");
-				console.log("  current time: " + child[0].currentTime);
-				console.log("  video time:   " + videoTime);
-				console.log("  difference:   " + diff);
-				
-				var avgSeek = average(seekTimes[child[0].id]);
-				console.log("  avg-seek:     " + avgSeek);
-				
-				preSeek[child[0].id] = new Date().getTime();
-				child[0].currentTime = videoTime + avgSeek;
-				
-				//child[0].fastSeek(videoTime);
 			}
 			*/
 			
 			// play a paused video - set time to audio time + delay
 			if(video_data.play && child[0].paused){
 				// set time to 0.5 sec ahead to allow video to load, then play 0.5 sec later
-				child[0].currentTime = videoTime + 0.5;
+				child[0].currentTime = video_data.time + delay + 0.5;
 				setTimeout(function() {
 					child[0].play();
 				}, 500);
