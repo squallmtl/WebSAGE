@@ -666,13 +666,18 @@
 			*/
 			
 			// play a paused video - set time to audio time + delay
-			if(video_data.play && child[0].paused) child[0].currentTime = videoTime
-			
-			if(video_data.play && child[0].paused) child[0].play();
-			else if(!video_data.play && !child[0].paused) child[0].pause();
-			
+			if(video_data.play && child[0].paused){
+				// set time to 0.5 sec ahead to allow video to load, then play 0.5 sec later
+				child[0].currentTime = videoTime + 0.5;
+				setTimeout(function() {
+					child[0].play();
+				}, 500);
+			}
 			// pause a video - set time to audio time
-			if(!video_data.play) child[0].currentTime = video_data.time;
+			else if(!video_data.play && !child[0].paused){
+				child[0].pause();
+				child[0].currentTime = video_data.time;
+			}
 		});
 		
 		wsio.on('animateCanvas', function(animate_data) {

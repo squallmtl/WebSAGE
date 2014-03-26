@@ -233,18 +233,17 @@ function sagePointer(wsio) {
 			if(raw.length > this.chunk){
 				var _this = this;
 				var nchunks = Math.ceil(raw.length / this.chunk);
-				var msg_chunks = new Array(nchunks);
+				
 				for(var i=0; i<nchunks; i++){
+					function updateMediaStreamChunk(index, msg_chunk){
+						setTimeout(function() {
+							_this.wsio.emit('updateMediaStreamChunk', {id: _this.uniqueID, src: msg_chunk, piece: index, total: nchunks});
+						}, 4);
+					}
 					var start = i*this.chunk;
 					var end = (i+1)*this.chunk < raw.length ? (i+1)*this.chunk : raw.length;
-					
-					msg_chunks[i] = raw.substring(start, end);
+					updateMediaStreamChunk(i, raw.substring(start, end)); 
 				}
-				msg_chunks.forEach(function(element, index, array){
-					setTimeout(function() {
-						this.wsio.emit('updateMediaStreamChunk', {id: _this.uniqueID, src: msg_chunks[index], piece: index, total: nchunks});
-					}, 4);
-				});
 			}
 			else{
 				this.wsio.emit('updateMediaStreamFrame', {id: this.uniqueID, src: raw});
