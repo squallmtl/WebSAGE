@@ -44,7 +44,7 @@
     "request": "latest",
     "ws": "latest",
     "ytdl": "latest",
-    "node-awesomium": "git://github.com/mvictoras/node-awesomium.git#4ee8935",
+    "node-awesomium": "git://github.com/mvictoras/node-awesomium.git",
     "json5": "^0.2.0"
   },
   "bundledDependencies": [
