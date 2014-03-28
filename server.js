@@ -1,27 +1,36 @@
+// node mode
+/* jslint node: true */
+
+// how to deal with spaces and tabs
+/* jshint smarttabs: false */
+
+// Don't make functions within a loop
+/* jshint -W083 */  
+
 // require variables to be declared
 "use strict";
 
-// Importing modules (form node_modules directory)
+// Importing modules (from node_modules directory)
 
 // npm registry: built-in or defined in package.json
-var crypto = require('crypto');            // https encryption
-var fs = require('fs');                    // filesystem access
-var gm = require('gm');                    // graphicsmagick
-var http = require('http');                // http server
-var https = require('https');              // https server
-var imageinfo = require('imageinfo');      // gets width, height for images
-var json5 = require('json5');              // JSON format that allows comments
-var multiparty = require('multiparty');    // parses POST forms
-var os = require('os');                    // operating system access
-var path = require('path');                // file path extraction and creation
-var request = require('request');          // external http requests
+var crypto      = require('crypto');              // https encryption
+var fs          = require('fs');                  // filesystem access
+var gm          = require('gm');                  // graphicsmagick
+var http        = require('http');                // http server
+var https       = require('https');               // https server
+var imageinfo   = require('imageinfo');           // gets width, height for images
+var json5       = require('json5');               // JSON format that allows comments
+var multiparty  = require('multiparty');          // parses POST forms
+var os          = require('os');                  // operating system access
+var path        = require('path');                // file path extraction and creation
+var request     = require('request');             // external http requests
 
 // custom node modules
-var httpserver = require('node-httpserver');           // creates web server
-var websocketIO = require('node-websocket.io');        // creates WebSocket server and clients
-var loader = require('node-itemloader');               // handles sage item creation
-var interaction = require('node-interaction');         // handles sage interaction (move, resize, etc.)
-var sagepointer = require('node-sagepointer');         // handles sage pointers (creation, location, etc.)
+var httpserver  = require('node-httpserver');     // creates web server
+var websocketIO = require('node-websocket.io');   // creates WebSocket server and clients
+var loader      = require('node-itemloader');     // handles sage item creation
+var interaction = require('node-interaction');    // handles sage interaction (move, resize, etc.)
+var sagepointer = require('node-sagepointer');    // handles sage pointers (creation, location, etc.)
 
 
 // load config file - looks for user defined file, then file that matches hostname, then uses default
@@ -31,11 +40,13 @@ console.log(config);
 // loads the web browser module if enabled in the configuration file:
 //    experimental: { "webbrowser": true }
 var webBrowser = null;
-if(typeof config.experimental !== "undefined" && typeof config.experimental.webbrowser !== "undefined" && config.experimental.webbrowser == true) {
+if(config.experimental !== undefined && config.experimental.webbrowser !== undefined && config.experimental.webbrowser === true) {
 	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
-	console.log("WebBrowser loaded: awesomium")
+	console.log("WebBrowser loaded: awesomium");
 }
-if(webBrowser != null) webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+if(webBrowser !== null) {
+	webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
+}
 
 
 
@@ -97,23 +108,28 @@ function closeWebSocketClient(wsio) {
 	console.log("Closed Connection: " + uniqueID + " (" + wsio.clientType + ")");
 	
 	var remote = findRemoteSiteByConnection(wsio);
-	if(remote != null){
+	if(remote !== null){
 		console.log("Remote site \"" + remote.name + "\" now offline");
 		remote.connected = false;
 		var site = {name: remote.name, connected: remote.connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	}
-	if(wsio.messages['sendsPointerData']){
+	if(wsio.messages.sendsPointerData){
 		hidePointer(uniqueID);
 		delete sagePointers[uniqueID];
 		delete remoteInteraction[uniqueID];
 	}
-	if(wsio.messages['sendsReceivedMediaStreamFrames']){
-		for(var key in mediaStreams){
-			delete mediaStreams[key].clients[uniqueID];
+	if(wsio.messages.sendsReceivedMediaStreamFrames){
+		var key;
+		for(key in mediaStreams) {
+			if (mediaStreams.hasOwnProperty(key)) {
+				delete mediaStreams[key].clients[uniqueID];
+			}
 		}
-		for(var key in webStreams){
-			delete webStreams[key].clients[uniqueID];
+		for(key in mediaStreams) {
+			if (mediaStreams.hasOwnProperty(key)) {
+				delete webStreams[key].clients[uniqueID];
+			}
 		}
 	}
 	
@@ -122,34 +138,38 @@ function closeWebSocketClient(wsio) {
 
 function wsAddClient(wsio, data) {
 	// overwrite host and port if defined
-	if(typeof data.host !== "undefined") wsio.remoteAddress.address = data.host;
-	if(typeof data.port !== "undefined") wsio.remoteAddress.port = data.port;
+	if(data.host !== undefined) {
+		wsio.remoteAddress.address = data.host;
+	}
+	if(data.port !== undefined) {
+		wsio.remoteAddress.port = data.port;
+	}
 	
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	wsio.clientType = data.clientType;
 	wsio.messages = {};
 	
 	// types of data sent to server from client through WebSockets
-	wsio.messages['sendsPointerData']                    = data.sendsPointerData                    || false;
-	wsio.messages['sendsMediaStreamFrames']              = data.sendsMediaStreamFrames              || false;
-	wsio.messages['sendsReceivedMediaStreamFrames']      = data.sendsReceivedMediaStreamFrames      || false;
-	wsio.messages['sendsRequestForServerFiles']          = data.sendsRequestForServerFiles          || false;
-	wsio.messages['sendsServerFileToLoad']               = data.sendsServerFileToLoad               || false;
-	wsio.messages['sendsWebContentToLoad']               = data.sendsWebContentToLoad               || false;
-	wsio.messages['sendsVideoSynchonization']            = data.sendsVideoSynchonization            || false;
-	wsio.messages['sendsContentToRemoteServer']          = data.sendsContentToRemoteServer          || false;
+	wsio.messages.sendsPointerData                    = data.sendsPointerData                    || false;
+	wsio.messages.sendsMediaStreamFrames              = data.sendsMediaStreamFrames              || false;
+	wsio.messages.sendsReceivedMediaStreamFrames      = data.sendsReceivedMediaStreamFrames      || false;
+	wsio.messages.sendsRequestForServerFiles          = data.sendsRequestForServerFiles          || false;
+	wsio.messages.sendsServerFileToLoad               = data.sendsServerFileToLoad               || false;
+	wsio.messages.sendsWebContentToLoad               = data.sendsWebContentToLoad               || false;
+	wsio.messages.sendsVideoSynchonization            = data.sendsVideoSynchonization            || false;
+	wsio.messages.sendsContentToRemoteServer          = data.sendsContentToRemoteServer          || false;
 	
 	// types of data client receives from server through WebSockets
-	wsio.messages['receivesDisplayConfiguration']        = data.receivesDisplayConfiguration        || false;
-	wsio.messages['receivesClockTime']                   = data.receivesClockTime                   || false;
-	wsio.messages['receivesNewAppsToDisplay']            = data.receivesNewAppsToDisplay            || false;
-	wsio.messages['receivesNewAppsPositionSizeTypeOnly'] = data.receivesNewAppsPositionSizeTypeOnly || false;
-	wsio.messages['receivesWindowModification']          = data.receivesWindowModification          || false;
-	wsio.messages['receivesPointerData']                 = data.receivesPointerData                 || false;
-	wsio.messages['receivesMediaStreamFrames']           = data.receivesMediaStreamFrames           || false;
-	wsio.messages['receivesServerFileList']              = data.receivesServerFileList              || false;
-	wsio.messages['receivesRemoteServerInfo']            = data.receivesRemoteServerInfo            || false;
-	wsio.messages['receivesInputEvents']                 = data.receivesInputEvents                 || false;
+	wsio.messages.receivesDisplayConfiguration        = data.receivesDisplayConfiguration        || false;
+	wsio.messages.receivesClockTime                   = data.receivesClockTime                   || false;
+	wsio.messages.receivesNewAppsToDisplay            = data.receivesNewAppsToDisplay            || false;
+	wsio.messages.receivesNewAppsPositionSizeTypeOnly = data.receivesNewAppsPositionSizeTypeOnly || false;
+	wsio.messages.receivesWindowModification          = data.receivesWindowModification          || false;
+	wsio.messages.receivesPointerData                 = data.receivesPointerData                 || false;
+	wsio.messages.receivesMediaStreamFrames           = data.receivesMediaStreamFrames           || false;
+	wsio.messages.receivesServerFileList              = data.receivesServerFileList              || false;
+	wsio.messages.receivesRemoteServerInfo            = data.receivesRemoteServerInfo            || false;
+	wsio.messages.receivesInputEvents                 = data.receivesInputEvents                 || false;
 	
 	initializeWSClient(wsio);
 	
@@ -163,7 +183,7 @@ function initializeWSClient(wsio) {
 	wsio.emit('initialize', {UID: uniqueID, time: new Date()});
 	
 	// set up listeners based on what the client sends
-	if(wsio.messages['sendsPointerData']){
+	if(wsio.messages.sendsPointerData){
 		wsio.on('startSagePointer',          wsStartSagePointer);
 		wsio.on('stopSagePointer',           wsStopSagePointer);
 		wsio.on('pointerPress',              wsPointerPress);
@@ -177,29 +197,29 @@ function initializeWSClient(wsio) {
 		wsio.on('keyUp',                     wsKeyUp);
 		wsio.on('keyPress',                  wsKeyPress);
 	}
-	if(wsio.messages['sendsMediaStreamFrames']){
+	if(wsio.messages.sendsMediaStreamFrames){
 		wsio.on('startNewMediaStream',       wsStartNewMediaStream);
 		wsio.on('updateMediaStreamFrame',    wsUpdateMediaStreamFrame);
 		wsio.on('updateMediaStreamChunk',    wsUpdateMediaStreamChunk);
 		wsio.on('stopMediaStream',           wsStopMediaStream);
 	}
-	if(wsio.messages['sendsReceivedMediaStreamFrames']){
+	if(wsio.messages.sendsReceivedMediaStreamFrames){
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
 		wsio.on('receivedRemoteMediaStreamFrame',  wsReceivedRemoteMediaStreamFrame);
 	}
-	if(wsio.messages['sendsRequestForServerFiles']){
+	if(wsio.messages.sendsRequestForServerFiles){
 		wsio.on('requestStoredFiles', wsRequestStoredFiles);
 	}
-	if(wsio.messages['sendsServerFileToLoad']){
+	if(wsio.messages.sendsServerFileToLoad){
 		wsio.on('addNewElementFromStoredFiles', wsAddNewElementFromStoredFiles);
 	}
-	if(wsio.messages['sendsWebContentToLoad']){
+	if(wsio.messages.sendsWebContentToLoad){
 		wsio.on('addNewWebElement', wsAddNewWebElement);
 	}
-	if(wsio.messages['sendsVideoSynchonization']){
+	if(wsio.messages.sendsVideoSynchonization){
 		wsio.on('updateVideoTime', wsUpdateVideoTime);
 	}
-	if(wsio.messages['sendsContentToRemoteServer']){
+	if(wsio.messages.sendsContentToRemoteServer){
 		wsio.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
 		wsio.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
 		wsio.on('updateRemoteMediaStreamFrame', wsUpdateRemoteMediaStreamFrame);
@@ -207,17 +227,17 @@ function initializeWSClient(wsio) {
 	}
 	
 	
-	if(wsio.messages['sendsPointerData'])                    createSagePointer(uniqueID);
-	if(wsio.messages['receivesDisplayConfiguration'])        wsio.emit('setupDisplayConfiguration', config);
-	if(wsio.messages['receivesClockTime'])                   wsio.emit('setSystemTime', {date: new Date()});
-	if(wsio.messages['receivesPointerData'])                 initializeExistingSagePointers(wsio);
-	if(wsio.messages['receivesNewAppsToDisplay'])            initializeExistingApps(wsio);
-	if(wsio.messages['receivesNewAppsPositionSizeTypeOnly']) initializeExistingAppsPositionSizeTypeOnly(wsio);
-	if(wsio.messages['receivesRemoteServerInfo'])            initializeRemoteServerInfo(wsio);
-	if(wsio.messages['receivesMediaStreamFrames'])           initializeMediaStreams(uniqueID);
+	if(wsio.messages.sendsPointerData)                    createSagePointer(uniqueID);
+	if(wsio.messages.receivesDisplayConfiguration)        wsio.emit('setupDisplayConfiguration', config);
+	if(wsio.messages.receivesClockTime)                   wsio.emit('setSystemTime', {date: new Date()});
+	if(wsio.messages.receivesPointerData)                 initializeExistingSagePointers(wsio);
+	if(wsio.messages.receivesNewAppsToDisplay)            initializeExistingApps(wsio);
+	if(wsio.messages.receivesNewAppsPositionSizeTypeOnly) initializeExistingAppsPositionSizeTypeOnly(wsio);
+	if(wsio.messages.receivesRemoteServerInfo)            initializeRemoteServerInfo(wsio);
+	if(wsio.messages.receivesMediaStreamFrames)           initializeMediaStreams(uniqueID);
 	
 	var remote = findRemoteSiteByConnection(wsio);
-	if(remote != null){
+	if(remote !== null){
 		remote.wsio = wsio;
 		remote.connected = true;
 		var site = {name: remote.name, connected: remote.connected};
@@ -279,8 +299,8 @@ function wsStopSagePointer(wsio, data) {
 function wsPointerPress(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	var pointerX = sagePointers[uniqueID].left
-	var pointerY = sagePointers[uniqueID].top
+	var pointerX = sagePointers[uniqueID].left;
+	var pointerY = sagePointers[uniqueID].top;
 
 	pointerPress(uniqueID, pointerX, pointerY);
 }
@@ -288,8 +308,8 @@ function wsPointerPress(wsio, data) {
 function wsPointerRelease(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	var pointerX = sagePointers[uniqueID].left
-	var pointerY = sagePointers[uniqueID].top
+	var pointerX = sagePointers[uniqueID].left;
+	var pointerY = sagePointers[uniqueID].top;
 
 	pointerRelease(uniqueID, pointerX, pointerY);
 }
@@ -297,29 +317,30 @@ function wsPointerRelease(wsio, data) {
 function wsPointerDblClick(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	var pointerX = sagePointers[uniqueID].left
-	var pointerY = sagePointers[uniqueID].top
+	var pointerX = sagePointers[uniqueID].left;
+	var pointerY = sagePointers[uniqueID].top;
 	var elem     = findItemUnderPointer(pointerX, pointerY);
+	var updatedItem;
 
-	if (elem != null) {
-		if (!elem.isMaximized || elem.isMaximized == 0) {
+	if (elem !== null) {
+		if (!elem.isMaximized || elem.isMaximized === 0) {
 			// need to maximize the item
-			var updatedItem = remoteInteraction[uniqueID].maximizeSelectedItem(elem, config);
-			if (updatedItem != null) {
+			updatedItem = remoteInteraction[uniqueID].maximizeSelectedItem(elem, config);
+			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
-				if (webBrowser != null)
+				if (webBrowser !== null)
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 			}
 		} else {
 			// already maximized, need to restore the item size
-			var updatedItem = remoteInteraction[uniqueID].restoreSelectedItem(elem);
-			if (updatedItem != null) {
+			updatedItem = remoteInteraction[uniqueID].restoreSelectedItem(elem);
+			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
-				if (webBrowser != null)
+				if (webBrowser !== null)
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 			}
 		}
@@ -341,11 +362,11 @@ function wsPointerMove(wsio, data) {
 function wsPointerScrollStart(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	var pointerX = sagePointers[uniqueID].left
-	var pointerY = sagePointers[uniqueID].top
+	var pointerX = sagePointers[uniqueID].left;
+	var pointerY = sagePointers[uniqueID].top;
 	var elem = findItemUnderPointer(pointerX, pointerY);
 
-	if(elem != null){
+	if(elem !== null){
 		remoteInteraction[uniqueID].selectScrollItem(elem);
 		var newOrder = moveItemToFront(elem.id);
 		broadcast('updateItemOrder', {idList: newOrder}, 'receivesWindowModification');
@@ -379,12 +400,12 @@ function wsKeyDown(wsio, data) {
 
 	//SEND SPECIAL KEY EVENT only will come here
 	if(remoteInteraction[uniqueID].appInteractionMode()){
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
+		var pointerX = sagePointers[uniqueID].left;
+		var pointerY = sagePointers[uniqueID].top;
 
 		var elem = findItemUnderPointer(pointerX, pointerY);
 
-		if(elem != null){
+		if(elem !== null){
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
@@ -397,8 +418,8 @@ function wsKeyDown(wsio, data) {
 function wsKeyUp(wsio, data) {
 	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
-	var pointerX = sagePointers[uniqueID].left
-	var pointerY = sagePointers[uniqueID].top
+	var pointerX = sagePointers[uniqueID].left;
+	var pointerY = sagePointers[uniqueID].top;
 	var elem = findItemUnderPointer(pointerX, pointerY);
 
 	if(data.code == 16){ // shift
@@ -417,19 +438,19 @@ function wsKeyUp(wsio, data) {
 		remoteInteraction[uniqueID].CMD = false;
 	}
 
-	if(elem != null){
+	if(elem !== null){
 		if(remoteInteraction[uniqueID].windowManagementMode()){
 			if(data.code == "8" || data.code == "46"){ // backspace or delete
 				deleteElement(elem);
 			}
 		}
 		else if(remoteInteraction[uniqueID].appInteractionMode()) {	//only send special keys
-			var pointerX = sagePointers[uniqueID].left
-			var pointerY = sagePointers[uniqueID].top
+			pointerX = sagePointers[uniqueID].left;
+			pointerY = sagePointers[uniqueID].top;
 
-			var elem = findItemUnderPointer(pointerX, pointerY);
+			elem = findItemUnderPointer(pointerX, pointerY);
 
-			if( elem != null ){
+			if( elem !== null ){
 				var itemRelX = pointerX - elem.left;
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
@@ -449,19 +470,19 @@ function wsKeyPress(wsio, data) {
 	}
 
 	if ( remoteInteraction[uniqueID].appInteractionMode() ) {
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
+		var pointerX = sagePointers[uniqueID].left;
+		var pointerY = sagePointers[uniqueID].top;
 
 		var elem = findItemUnderPointer(pointerX, pointerY);
 
-		 if( elem != null ){
+		if( elem !== null ){
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
 			var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };
 			broadcast('eventInItem', event, 'receivesInputEvents');
 			// Send it to the webBrowser
-			if (webBrowser != null)
+			if (webBrowser !== null)
 				webBrowser.keyPress(elem.id, data.code);
 		}
 	}
@@ -473,7 +494,7 @@ function wsStartNewMediaStream(wsio, data) {
 	console.log("received new stream: " + data.id);
 	mediaStreams[data.id] = {ready: true, chunks: [], clients: {}};
 	for(var i=0; i<clients.length; i++){
-		if(clients[i].messages['sendsReceivedMediaStreamFrames']){
+		if(clients[i].messages.sendsReceivedMediaStreamFrames){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			mediaStreams[data.id].clients[clientAddress] = false;
 		}
@@ -494,13 +515,13 @@ function wsUpdateMediaStreamFrame(wsio, data) {
 		mediaStreams[data.id].clients[key] = false;
 	}
 	var streamItem = findItemById(data.id);
-	if(streamItem != null) streamItem.src = data.src;
+	if(streamItem !== null) streamItem.src = data.src;
 
 	broadcast('updateMediaStreamFrame', data, 'receivesMediaStreamFrames');
 }
 
 function wsUpdateMediaStreamChunk(wsio, data) {
-	if(mediaStreams[data.id].chunks.length == 0) mediaStreams[data.id].chunks = initializeArray(data.total, "");
+	if(mediaStreams[data.id].chunks.length === 0) mediaStreams[data.id].chunks = initializeArray(data.total, "");
 	mediaStreams[data.id].chunks[data.piece] = data.src;
 	if(allNonBlank(mediaStreams[data.id].chunks)){
 		wsUpdateMediaStreamFrame(wsio, {id: data.id, src: mediaStreams[data.id].chunks.join("")});
@@ -511,7 +532,7 @@ function wsUpdateMediaStreamChunk(wsio, data) {
 function wsStopMediaStream(wsio, data) {
 	var elem = findItemById(data.id);
 
-	if(elem != null) deleteElement( elem );
+	if(elem !== null) deleteElement( elem );
 }
 
 function wsReceivedMediaStreamFrame(wsio, data) {
@@ -526,7 +547,7 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 			if(clientAddress == data.id) broadcastWS = clients[i];
 		}
 
-		if(broadcastWS != null) broadcastWS.emit('requestNextFrame', null);
+		if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', null);
 	}
 }
 
@@ -747,7 +768,7 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 
 		mediaStreams[remote_id] = {ready: true, clients: {}};
 		for(var i=0; i<clients.length; i++){
-			if(clients[i].messages['sendsReceivedMediaStreamFrames']){
+			if(clients[i].messages.sendsReceivedMediaStreamFrames){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 				mediaStreams[remote_id].clients[clientAddress] = false;
 			}
@@ -770,7 +791,7 @@ function wsRequestNextRemoteFrame(wsio, data) {
 	var stream = findItemById(data.id);
 	var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
 
-	if(stream != null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+	if(stream !== null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 	else wsio.emit('stopMediaStream', {id: remote_id});
 }
 
@@ -780,7 +801,7 @@ function wsUpdateRemoteMediaStreamFrame(wsio, data) {
 		mediaStreams[data.id].clients[key] = false;
 	}
 	var streamItem = findItemById(data.id);
-	if(streamItem != null) streamItem.src = data.src;
+	if(streamItem !== null) streamItem.src = data.src;
 	
 	broadcast('updateRemoteMediaStreamFrame', data, 'receivesMediaStreamFrames');
 }
@@ -801,14 +822,14 @@ function wsReceivedRemoteMediaStreamFrame(wsio, data) {
 			if(clientAddress == serverAddress) { broadcastWS = clients[i]; break; }
 		}
 		
-		if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
+		if(broadcastWS !== null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
 	}
 }
 
 function wsStopMediaStream(wsio, data) {
 	var elem = findItemById(data.id);
 
-	if(elem != null) deleteElement(elem);
+	if(elem !== null) deleteElement(elem);
 }
 
 
@@ -884,23 +905,23 @@ wsioServer.onconnection(function(wsio) {
 		hidePointer( address );
 
 		if( remoteInteraction[address].appInteractionMode() ){//return to window interaction mode after stopping pointer
-		    remoteInteraction[address].toggleModes();
-		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' );
+			remoteInteraction[address].toggleModes();
+			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' );
 		}
 	});
 
 	wsio.on('pointerPress', function() {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
 
 		pointerPress( address, pointerX, pointerY );
 	});
 
 	wsio.on('pointerRelease', function() {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
 
-	   pointerRelease( address, pointerX, pointerY );
+		pointerRelease( address, pointerX, pointerY );
 	});
 
 	wsio.on('pointerPosition', function(data) {
@@ -909,30 +930,30 @@ wsioServer.onconnection(function(wsio) {
 
 	// Got double-click event from the pointer
 	wsio.on('pointerDblClick', function(data) {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
 		var elem     = findItemUnderPointer(pointerX, pointerY);
 
-		if (elem != null) {
+		if (elem !== null) {
 			if (!elem.isMaximized || elem.isMaximized == 0) {
 				// need to maximize the item
 				var updatedItem = remoteInteraction[address].maximizeSelectedItem(elem, config);
-				if (updatedItem != null) {
+				if (updatedItem !== null) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-					if (webBrowser != null)
-                    	webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser !== null)
+						webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			} else {
 				// already maximized, need to restore the item size
 				var updatedItem = remoteInteraction[address].restoreSelectedItem(elem);
-				if (updatedItem != null) {
+				if (updatedItem !== null) {
 					broadcast('setItemPositionAndSize', updatedItem);
 					// the PDF files need an extra redraw
 					broadcast('finishedResize', {id: elem.id}, "display");
-					if (webBrowser != null)
-	                    webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+					if (webBrowser !== null)
+						webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
 			}
 		}
@@ -948,50 +969,50 @@ wsioServer.onconnection(function(wsio) {
 
 		broadcast('updateSagePointerPosition', sagePointers[address], "display");
 
-	    if( remoteInteraction[address].windowManagementMode() ){
-	    	var pointerX = sagePointers[address].left
-			var pointerY = sagePointers[address].top
+		if( remoteInteraction[address].windowManagementMode() ){
+			var pointerX = sagePointers[address].left;
+			var pointerY = sagePointers[address].top;
 
 			var updatedMoveItem = remoteInteraction[address].moveSelectedItem(pointerX, pointerY);
 			var updatedResizeItem = remoteInteraction[address].resizeSelectedItem(pointerX, pointerY);
-			if(updatedMoveItem != null){
+			if(updatedMoveItem !== null){
 				broadcast('setItemPosition', updatedMoveItem);
 			}
-			else if(updatedResizeItem != null){
+			else if(updatedResizeItem !== null){
 				broadcast('setItemPositionAndSize', updatedResizeItem);
 			}
 			else{
 				var elem = findItemUnderPointer(pointerX, pointerY);
-				if(elem != null){
+				if(elem !== null){
 					var localX = pointerX - elem.left;
 					var localY = pointerY - (elem.top+config.titleBarHeight);
 					var cornerSize = Math.min(elem.width, elem.height) / 5;
 					// bottom right corner - select for drag resize
 					if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
-						if(remoteInteraction[address].hoverCornerItem != null){
+						if(remoteInteraction[address].hoverCornerItem !== null){
 							broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
 						}
 						remoteInteraction[address].setHoverCornerItem(elem);
 						broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, "display");
 					}
-					else if(remoteInteraction[address].hoverCornerItem != null){
+					else if(remoteInteraction[address].hoverCornerItem !== null){
 						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
 						remoteInteraction[address].setHoverCornerItem(null);
 					}
 				}
-				else if(remoteInteraction[address].hoverCornerItem != null){
+				else if(remoteInteraction[address].hoverCornerItem !== null){
 					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
 					remoteInteraction[address].setHoverCornerItem(null);
 				}
 			}
 		}
 		else if ( remoteInteraction[address].appInteractionMode() ) {
-			var pointerX = sagePointers[address].left
+			var pointerX = sagePointers[address].left;
 			var pointerY = sagePointers[address].top
 
 			var elem = findItemUnderPointer(pointerX, pointerY);
 
-			if( elem != null ){
+			if( elem !== null ){
 
 				var itemRelX = pointerX - elem.left;
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
@@ -1002,11 +1023,11 @@ wsioServer.onconnection(function(wsio) {
 	});
 
 	wsio.on('pointerScrollStart', function() {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
 		var elem = findItemUnderPointer(pointerX, pointerY);
 
-		if(elem != null){
+		if(elem !== null){
 			remoteInteraction[address].selectScrollItem(elem);
 			var newOrder = moveItemToFront(elem.id);
 			broadcast('updateItemOrder', {idList: newOrder});
@@ -1018,7 +1039,7 @@ wsioServer.onconnection(function(wsio) {
 	});
 
 	wsio.on('keyDown', function(data) {
-	    if(data.code == 16){ // shift
+		if(data.code == 16){ // shift
 			remoteInteraction[address].SHIFT = true;
 		}
 		else if(data.code == 17){ // ctrl
@@ -1036,27 +1057,27 @@ wsioServer.onconnection(function(wsio) {
 
 		//SEND SPECIAL KEY EVENT only will come here
 		if ( remoteInteraction[address].appInteractionMode() ) {
-				var pointerX = sagePointers[address].left
-				var pointerY = sagePointers[address].top
+				var pointerX = sagePointers[address].left;
+				var pointerY = sagePointers[address].top;
 
 				var elem = findItemUnderPointer(pointerX, pointerY);
 
-				if( elem != null ){
+				if( elem !== null ){
 					var itemRelX = pointerX - elem.left;
 					var itemRelY = pointerY - elem.top - config.titleBarHeight;
 					var now = new Date();
 					var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now };
 					broadcast('eventInItem', event, "display");
 					broadcast('eventInItem', event, "audioManager");
-				    broadcast('eventInItem', event, "app");
+					broadcast('eventInItem', event, "app");
 }
 		}
 
 	});
 
 	wsio.on('keyUp', function(data) {
-		var pointerX = sagePointers[address].left
-		var pointerY = sagePointers[address].top
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
 		var elem = findItemUnderPointer(pointerX, pointerY);
 
 		if(data.code == 16){ // shift
@@ -1075,26 +1096,26 @@ wsioServer.onconnection(function(wsio) {
 			remoteInteraction[address].CMD = false;
 		}
 
-		if(elem != null){
+		if(elem !== null){
 			if( remoteInteraction[address].windowManagementMode() ){
 				if(data.code == "8" || data.code == "46"){ // backspace or delete
 					deleteElement( elem );
 				}
 			}
 			else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
-					var pointerX = sagePointers[address].left
-					var pointerY = sagePointers[address].top
+					var pointerX = sagePointers[address].left;
+					var pointerY = sagePointers[address].top;
 
 					var elem = findItemUnderPointer(pointerX, pointerY);
 
-					if( elem != null ){
+					if( elem !== null ){
 						var itemRelX = pointerX - elem.left;
 						var itemRelY = pointerY - elem.top - config.titleBarHeight;
 						var now = new Date();
 						var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now };
 						broadcast('eventInItem', event, "display");
 						broadcast('eventInItem', event, "audioManager");
-					    broadcast('eventInItem', event, "app");
+						broadcast('eventInItem', event, "app");
 }
 			}
 		}
@@ -1104,25 +1125,25 @@ wsioServer.onconnection(function(wsio) {
 		if(data.code == 9 && remoteInteraction[address].SHIFT && sagePointers[address].visible){ // shift + tab
 			remoteInteraction[address].toggleModes();
 			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
-		    broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "app");
+			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "app");
 }
 
 		if ( remoteInteraction[address].appInteractionMode() ) {
-			var pointerX = sagePointers[address].left
-			var pointerY = sagePointers[address].top
+			var pointerX = sagePointers[address].left;
+			var pointerY = sagePointers[address].top;
 
 			var elem = findItemUnderPointer(pointerX, pointerY);
 
-			 if( elem != null ){
+			if( elem !== null ){
 				var itemRelX = pointerX - elem.left;
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };
 				broadcast('eventInItem', event, "display");
 				broadcast('eventInItem', event, "audioManager");
-			    // Send it to the webBrowser
-				if (webBrowser != null)
-	                webBrowser.keyPress(elem.id, data.code);
+				// Send it to the webBrowser
+				if (webBrowser !== null)
+					webBrowser.keyPress(elem.id, data.code);
             }
 		}
 
@@ -1161,7 +1182,7 @@ wsioServer.onconnection(function(wsio) {
 			mediaStreams[data.id].clients[key] = false;
 		}
 		var streamItem = findItemById(data.id);
-		if(streamItem != null) streamItem.src = data.src;
+		if(streamItem !== null) streamItem.src = data.src;
 
 		broadcast('updateMediaStreamFrame', data, "display");
 	});
@@ -1172,7 +1193,7 @@ wsioServer.onconnection(function(wsio) {
 			mediaStreams[data.id].clients[key] = false;
 		}
 		var streamItem = findItemById(data.id);
-		if(streamItem != null) streamItem.src = data.src;
+		if(streamItem !== null) streamItem.src = data.src;
 
 		broadcast('updateRemoteMediaStreamFrame', data, "display");
 	});
@@ -1187,7 +1208,7 @@ wsioServer.onconnection(function(wsio) {
 				if(clientAddress == data.id) broadcastWS = clients[i];
 			}
 
-			if(broadcastWS != null) broadcastWS.emit('requestNextFrame', null);
+			if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', null);
 		}
 	});
 
@@ -1204,14 +1225,14 @@ wsioServer.onconnection(function(wsio) {
 				if(clientAddress == serverAddress) broadcastWS = clients[i];
 			}
 
-			if(broadcastWS != null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
+			if(broadcastWS !== null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
 		}
 	});
 
 	wsio.on('stopMediaStream', function(data) {
 		var elem = findItemById(data.id);
 
-		if(elem != null) deleteElement( elem );
+		if(elem !== null) deleteElement( elem );
 	});
 
 	wsio.on('addNewWebElement', function(data) {
@@ -1431,7 +1452,7 @@ wsioServer.onconnection(function(wsio) {
 		var stream = findItemById(data.id);
 		var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
 
-		if(stream != null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
+		if(stream !== null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
 		else wsio.emit('stopMediaStream', {id: remote_id});
 	});
 
@@ -1496,7 +1517,7 @@ function loadConfiguration() {
 			if(comment >= 0) text = lines[i].substring(0,comment).trim();
 			else text = lines[i].trim();
 		
-			if(text != ""){
+			if(text !== ""){
 				configFile = text;
 				console.log("Found configuration file: " + configFile);
 				break;
@@ -1505,7 +1526,7 @@ function loadConfiguration() {
 	}
 	
 	// If config.txt does not exist or does not specify any files, look for a config with the hostname
-	if(configFile == null){
+	if(configFile === null){
 		var hn = os.hostname();
 		var dot = hn.indexOf(".");
 		if(dot >= 0) hn = hn.substring(0, dot);
@@ -1533,22 +1554,25 @@ function loadConfiguration() {
 }
 
 function initializeSavedFilesList() {
-	var list = {"image": [], "video": [], "pdf": [], "app": []};
+	var list = {image: [], video: [], pdf: [], app: []};
 	var uploadedImages = fs.readdirSync(path.join(uploadsFolder, "images"));
 	var uploadedVideos = fs.readdirSync(path.join(uploadsFolder, "videos"));
 	var uploadedPdfs   = fs.readdirSync(path.join(uploadsFolder, "pdfs"));
 	var uploadedApps   = fs.readdirSync(path.join(uploadsFolder, "apps"));
-	for(var i=0; i<uploadedImages.length; i++) list["image"].push(uploadedImages[i]);
-	for(var i=0; i<uploadedVideos.length; i++) list["video"].push(uploadedVideos[i]);
-	for(var i=0; i<uploadedPdfs.length; i++)   list["pdf"].push(uploadedPdfs[i]);
-	for(var i=0; i<uploadedApps.length; i++)   list["app"].push(uploadedApps[i]);
+	var i;
+	for(i=0; i<uploadedImages.length; i++) list.image.push(uploadedImages[i]);
+	for(i=0; i<uploadedVideos.length; i++) list.video.push(uploadedVideos[i]);
+	for(i=0; i<uploadedPdfs.length; i++)   list.pdf.push(uploadedPdfs[i]);
+	for(i=0; i<uploadedApps.length; i++)   list.app.push(uploadedApps[i]);
 	
 	return list;
 }
 
 function setupDisplayBackground() {
+	var tmpImg, imgExt;
+
 	// background image
-	if(typeof config.background.image !== "undefined" && config.background.image != null){
+	if(config.background.image !== undefined && config.background.image !== null){
 		var bg_file = path.join(public_https, config.background.image);
 		var bg_info = imageinfo(fs.readFileSync(bg_file));
 	
@@ -1557,7 +1581,7 @@ function setupDisplayBackground() {
 				sliceBackgroundImage(bg_file, bg_file);
 			}
 			else{
-				var tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
+				tmpImg = path.join(public_https, "images", "background", "tmp_background.png");
 				var out_res  = config.totalWidth.toString() + "x" + config.totalHeight.toString();
 		
 				gm(bg_file).command("convert").in("-gravity", "center").in("-background", "rgba(255,255,255,255)").in("-extent", out_res).write(tmpImg, function(err) {
@@ -1568,8 +1592,8 @@ function setupDisplayBackground() {
 			}
 		}
 		else if(config.background.style == "stretch"){
-			var imgExt = path.extname(bg_file);
-			var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+			imgExt = path.extname(bg_file);
+			tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
 		
 			gm(bg_file).resize(config.totalWidth, config.totalHeight, "!").write(tmpImg, function(err) {
 				if(err) throw err;
@@ -1578,8 +1602,8 @@ function setupDisplayBackground() {
 			});
 		}
 		else if(config.background.style == "tile"){
-			var imgExt = path.extname(bg_file);
-			var tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
+			imgExt = path.extname(bg_file);
+			tmpImg = path.join(public_https, "images", "background", "tmp_background" + imgExt);
 		
 			var cols = Math.ceil(config.totalWidth / bg_info.width);
 			var rows = Math.ceil(config.totalHeight / bg_info.height);
@@ -1622,7 +1646,7 @@ function setupHttpsOptions() {
 		key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
 		cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
 		ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-	   }).context;
+	}).context;
 
 	for(var h in config.alternate_hosts){
 		var alth = config.alternate_hosts[h];
@@ -1680,6 +1704,8 @@ function uploadForm(req, res) {
 }
 
 function manageUploadedFiles(files) {
+	var url, external_url, localPath, ext;
+
     var fileKeys = Object.keys(files);
 	fileKeys.forEach(function(key) {
 		var file = files[key][0];
@@ -1687,9 +1713,9 @@ function manageUploadedFiles(files) {
 
 		if(type == "image/jpeg" || type == "image/png"){
 			console.log("uploaded image: " + file.originalFilename);
-			var url = path.join("uploads", "images", file.originalFilename);
-			var external_url = hostOrigin + encodeURI(url);
-			var localPath = path.join(public_https, url);
+			url = path.join("uploads", "images", file.originalFilename);
+			external_url = hostOrigin + encodeURI(url);
+			localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 
@@ -1703,16 +1729,16 @@ function manageUploadedFiles(files) {
 
 						items.push(newItem);
 
-						if(savedFiles["image"].indexOf(file.originalFilename) < 0) savedFiles["image"].push(file.originalFilename);
+						if(savedFiles.image.indexOf(file.originalFilename) < 0) savedFiles.image.push(file.originalFilename);
 					});
 				});
 			});
 		}
 		else if(type == "video/mp4"){
 			console.log("uploaded video: " + file.originalFilename);
-			var url = path.join("uploads", "videos", file.originalFilename);
-			var external_url = hostOrigin + encodeURI(url);
-			var localPath = path.join(public_https, url);
+			url = path.join("uploads", "videos", file.originalFilename);
+			external_url = hostOrigin + encodeURI(url);
+			localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 
@@ -1723,15 +1749,15 @@ function manageUploadedFiles(files) {
 
 					items.push(newItem);
 
-					if(savedFiles["video"].indexOf(file.originalFilename) < 0) savedFiles["video"].push(file.originalFilename);
+					if(savedFiles.video.indexOf(file.originalFilename) < 0) savedFiles.video.push(file.originalFilename);
 				});
 			});
 		}
 		else if(type == "application/pdf"){
 			console.log("uploaded pdf: " + file.originalFilename);
-			var url = path.join("uploads", "pdfs", file.originalFilename);
-			var external_url = hostOrigin + encodeURI(url);
-			var localPath = path.join(public_https, url);
+			url = path.join("uploads", "pdfs", file.originalFilename);
+			external_url = hostOrigin + encodeURI(url);
+			localPath = path.join(public_https, url);
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 
@@ -1742,16 +1768,16 @@ function manageUploadedFiles(files) {
 
 					items.push(newItem);
 
-					if(savedFiles["pdf"].indexOf(file.originalFilename) < 0) savedFiles["pdf"].push(file.originalFilename);
+					if(savedFiles.pdf.indexOf(file.originalFilename) < 0) savedFiles.pdf.push(file.originalFilename);
 				});
 			});
 		}
 		else if(type == "application/zip" || type == "application/x-zip-compressed" ){
 			console.log("uploaded app: " + file.originalFilename);
-			var ext = path.extname(file.originalFilename);
-			var url = path.join("uploads", "apps", path.basename(file.originalFilename, ext));
-			var external_url = hostOrigin + encodeURI(url);
-			var localPath = path.join(public_https, url) + ext;
+			ext = path.extname(file.originalFilename);
+			url = path.join("uploads", "apps", path.basename(file.originalFilename, ext));
+			external_url = hostOrigin + encodeURI(url);
+			localPath = path.join(public_https, url) + ext;
 			fs.rename(file.path, localPath, function(err) {
 				if(err) throw err;
 
@@ -1773,7 +1799,7 @@ function manageUploadedFiles(files) {
 						items.push(newItem);
 
 						var appName = path.basename(file.originalFilename, ext);
-						if(savedFiles["app"].indexOf(appName) < 0) savedFiles["app"].push(appName);
+						if(savedFiles.app.indexOf(appName) < 0) savedFiles.app.push(appName);
 
 						// set interval timer if specified
 						if(instructions.animation == "timer"){
@@ -1787,7 +1813,7 @@ function manageUploadedFiles(files) {
 			});
 		}
 		else{
-			console.log("uploaded unknown type: " + type)
+			console.log("uploaded unknown type: " + type);
 		}
 	});
 }
@@ -1888,7 +1914,7 @@ var net = require('net');
 var util = require('util');
 var dgram = require('dgram');
 
-var udp = undefined;
+var udp;
 
 var trackerIP = config.omicronServerIP;
 var msgPort = config.omicronMsgPort;
@@ -1896,12 +1922,12 @@ var dataPort = config.omicronDataPort;
 
 if( config.omicronServerIP )
 {
-	if( msgPort == undefined )
+	if( msgPort === undefined )
 	{
 		msgPort = 28000;
 		console.log('Omicron: msgPort undefined. Using default: ', msgPort);
 	}
-	if( dataPort == undefined )
+	if( dataPort === undefined )
 	{
 		dataPort = 9123;
 		console.log('Omicron: dataPort undefined. Using default: ', dataPort);
@@ -1977,7 +2003,7 @@ if( config.omicronServerIP )
 
 				var touchWidth = 0;
 				var touchHeight = 0;
-				if( serviceID == 0 &&  e.extraDataItems >= 2)
+				if( serviceID === 0 &&  e.extraDataItems >= 2)
 				{
 					touchWidth = msg.readFloatLE(offset); offset += 4;
 					touchHeight = msg.readFloatLE(offset); offset += 4;
@@ -1988,7 +2014,7 @@ if( config.omicronServerIP )
 				var address = trackerIP+":"+sourceID;
 
 				// ServiceTypePointer //////////////////////////////////////////////////
-				if (e.serviceType == 0)
+				if (e.serviceType === 0)
 				{
 					//console.log("pointer ID "+ sourceID +" event! type: " + e.type  );
 					//console.log("pointer event! type: " + e.type  );
@@ -2017,7 +2043,7 @@ if( config.omicronServerIP )
 					if (e.type == 3)
 					{ // update (Used only by classic SAGE pointer)
 						/* if( e.sourceId in ptrs )
-							 return;
+							return;
 						colorpt = [Math.floor(e.posx*255.0), Math.floor(e.posy*255.0), Math.floor(e.posz*255.0)];
 						if (offset < msg.length)
 						{
@@ -2075,7 +2101,7 @@ if( config.omicronServerIP )
 
 						if( e.flags == FLAG_SINGLE_TOUCH )
 						{
-							console.log("starting pointer: " + address)
+							console.log("starting pointer: " + address);
 							// Create pointer
 							if(address in sagePointers){
 								showPointer( address, { label:  "Touch: " + sourceID, color: "rgba(255, 255, 255, 1.0)" } );
@@ -2094,7 +2120,7 @@ if( config.omicronServerIP )
 							var elem = findItemUnderPointer(posX, posY);
 
 							// Remove element
-							if( elem != null )
+							if( elem !== null )
 							{
 								deleteElement( elem );
 							}
@@ -2140,7 +2166,7 @@ if( config.omicronServerIP )
 			console.log("UDP> listening " + address.address + ":" + address.port);
 		});
 
-		udp.bind(dataPort)
+		udp.bind(dataPort);
 
 	});
 }
@@ -2192,8 +2218,9 @@ function moveItemToFront(id) {
 	var selectedIndex;
 	var selectedItem;
 	var itemIds = [];
+	var i;
 
-	for(var i=0; i<items.length; i++){
+	for(i=0; i<items.length; i++){
 		if(items[i].id == id){
 			selectedIndex = i;
 			selectedItem = items[selectedIndex];
@@ -2201,7 +2228,7 @@ function moveItemToFront(id) {
 		}
 		itemIds.push(items[i].id);
 	}
-	for(var i=selectedIndex; i<items.length-1; i++){
+	for(i=selectedIndex; i<items.length-1; i++){
 		items[i] = items[i+1];
 		itemIds.push(items[i].id);
 	}
@@ -2221,14 +2248,14 @@ function initializeArray(size, val) {
 
 function allNonBlank(arr) {
 	for(var i=0; i<arr.length; i++){
-		if(arr[i] == "") return false;
+		if(arr[i] === "") return false;
 	}
 	return true;
 }
 
 function allTrueDict(dict) {
 	for(var key in dict){
-		if(dict[key] == false) return false;
+		if(dict[key] === false) return false;
 	}
 	return true;
 }
@@ -2263,7 +2290,7 @@ function createSagePointer( address ) {
 }
 
 function showPointer( address, data ) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 	// From startSagePointer
 	console.log("starting pointer: " + address);
@@ -2273,7 +2300,7 @@ function showPointer( address, data ) {
 }
 
 function hidePointer( address ) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	// From stopSagePointer
@@ -2282,6 +2309,8 @@ function hidePointer( address ) {
 }
 
 function pointerMove(uniqueID, data) {
+	var pointerX, pointerY, elem;
+
 	sagePointers[uniqueID].left += data.deltaX;
 	sagePointers[uniqueID].top += data.deltaY;
 	if(sagePointers[uniqueID].left < 0)                 sagePointers[uniqueID].left = 0;
@@ -2292,49 +2321,49 @@ function pointerMove(uniqueID, data) {
 	broadcast('updateSagePointerPosition', sagePointers[uniqueID], 'receivesPointerData');
 
 	if(remoteInteraction[uniqueID].windowManagementMode()){
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
+		pointerX = sagePointers[uniqueID].left;
+		pointerY = sagePointers[uniqueID].top;
 
 		var updatedMoveItem = remoteInteraction[uniqueID].moveSelectedItem(pointerX, pointerY);
 		var updatedResizeItem = remoteInteraction[uniqueID].resizeSelectedItem(pointerX, pointerY);
-		if(updatedMoveItem != null){
+		if(updatedMoveItem !== null){
 			broadcast('setItemPosition', updatedMoveItem, 'receivesWindowModification');
 		}
-		else if(updatedResizeItem != null){
+		else if(updatedResizeItem !== null){
 			broadcast('setItemPositionAndSize', updatedResizeItem, 'receivesWindowModification');
 		}
 		else{
-			var elem = findItemUnderPointer(pointerX, pointerY);
-			if(elem != null){
+			elem = findItemUnderPointer(pointerX, pointerY);
+			if(elem !== null){
 				var localX = pointerX - elem.left;
 				var localY = pointerY - (elem.top+config.titleBarHeight);
 				var cornerSize = Math.min(elem.width, elem.height) / 5;
 				// bottom right corner - select for drag resize
 				if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
-					if(remoteInteraction[uniqueID].hoverCornerItem != null){
+					if(remoteInteraction[uniqueID].hoverCornerItem !== null){
 						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
 					}
 					remoteInteraction[uniqueID].setHoverCornerItem(elem);
 					broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, 'receivesNewAppsToDisplay');
 				}
-				else if(remoteInteraction[uniqueID].hoverCornerItem != null){
+				else if(remoteInteraction[uniqueID].hoverCornerItem !== null){
 					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
 					remoteInteraction[uniqueID].setHoverCornerItem(null);
 				}
 			}
-			else if(remoteInteraction[uniqueID].hoverCornerItem != null){
+			else if(remoteInteraction[uniqueID].hoverCornerItem !== null){
 				broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
 				remoteInteraction[uniqueID].setHoverCornerItem(null);
 			}
 		}
 	}
 	else if(remoteInteraction[uniqueID].appInteractionMode()){
-		var pointerX = sagePointers[uniqueID].left
-		var pointerY = sagePointers[uniqueID].top
+		pointerX = sagePointers[uniqueID].left;
+		pointerY = sagePointers[uniqueID].top;
 
-		var elem = findItemUnderPointer(pointerX, pointerY);
+		elem = findItemUnderPointer(pointerX, pointerY);
 
-		if(elem != null){
+		if(elem !== null){
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
@@ -2344,10 +2373,10 @@ function pointerMove(uniqueID, data) {
 }
 
 function pointerPress( address, pointerX, pointerY ) {
-	if( sagePointers[address] == undefined ) return;
+	if( sagePointers[address] === undefined ) return;
 
 	var elem = findItemUnderPointer(pointerX, pointerY);
-		if(elem != null){
+		if(elem !== null){
 			if( remoteInteraction[address].windowManagementMode() ){
 				var localX = pointerX - elem.left;
 				var localY = pointerY - (elem.top+config.titleBarHeight);
@@ -2368,8 +2397,8 @@ function pointerPress( address, pointerX, pointerY ) {
 				broadcast('eventInItem', {eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, 'receivesInputEvents');
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
-				if (webBrowser != null)
-	                webBrowser.click(elem.id, itemRelX, itemRelY);
+				if (webBrowser !== null)
+					webBrowser.click(elem.id, itemRelX, itemRelY);
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -2379,7 +2408,7 @@ function pointerPress( address, pointerX, pointerY ) {
 
 // Copied from pointerPress. Eventually a touch gesture will use this to toggle modes
 function togglePointerMode(address) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	remoteInteraction[address].toggleModes();
@@ -2387,22 +2416,22 @@ function togglePointerMode(address) {
 }
 
 function pointerRelease(address, pointerX, pointerY) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
-		if(remoteInteraction[address].selectedResizeItem != null){
+		if(remoteInteraction[address].selectedResizeItem !== null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
-			if (webBrowser != null)
-	            webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+			if (webBrowser !== null)
+				webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 		}
-		if(remoteInteraction[address].selectedMoveItem != null){
+		if(remoteInteraction[address].selectedMoveItem !== null){
 			var remoteIdx = -1;
 			for(var i=0; i<remoteSites.length; i++){
 				if(sagePointers[address].left >= remoteSites[i].pos && sagePointers[address].left <= remoteSites[i].pos+remoteSites[i].width &&
-				   sagePointers[address].top >= 2 && sagePointers[address].top <= remoteSites[i].height){
+					sagePointers[address].top >= 2 && sagePointers[address].top <= remoteSites[i].height) {
 					remoteIdx = i;
 					break;
 				}
@@ -2412,20 +2441,20 @@ function pointerRelease(address, pointerX, pointerY) {
 			}
 			else{
 				var source = remoteInteraction[address].selectedMoveItem.url;
-				if(source == null) source = remoteInteraction[address].selectedMoveItem.src;
-				if(source != null){
+				if(source === null) source = remoteInteraction[address].selectedMoveItem.src;
+				if(source !== null){
 					console.log("Transfering to " + remoteSites[remoteIdx].name + ": " + remoteInteraction[address].selectedMoveItem.title);
 					remoteSites[remoteIdx].wsio.emit('addNewElementFromRemoteServer', {type: remoteInteraction[address].selectedMoveItem.type, id: remoteInteraction[address].selectedMoveItem.id, src: source, title: remoteInteraction[address].selectedMoveItem.title});
 				}
 				var updatedItem = remoteInteraction[address].releaseItem(false);
-				if(updatedItem != null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
+				if(updatedItem !== null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
 			}
 		}
 	}
 	else if ( remoteInteraction[address].appInteractionMode() ) {
 		var elem = findItemUnderPointer(pointerX, pointerY);
 
-		if( elem != null ){
+		if( elem !== null ){
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
@@ -2435,7 +2464,7 @@ function pointerRelease(address, pointerX, pointerY) {
 }
 
 function pointerPosition( address, data ) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	sagePointers[address].left = data.pointerX;
@@ -2448,16 +2477,16 @@ function pointerPosition( address, data ) {
 	broadcast('updateSagePointerPosition', sagePointers[address], 'receivesPointerData');
 
 	var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
-	if(updatedItem != null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
+	if(updatedItem !== null) broadcast('setItemPosition', updatedItem, 'receivesWindowModification');
 }
 
 function pointerScrollStart( address, pointerX, pointerY ) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	var elem = findItemUnderPointer(pointerX, pointerY);
 
-	if(elem != null){
+	if(elem !== null){
 		remoteInteraction[address].selectScrollItem(elem, pointerX, pointerY);
 		var newOrder = moveItemToFront(elem.id);
 		broadcast('updateItemOrder', newOrder, 'receivesWindowModification');
@@ -2466,11 +2495,11 @@ function pointerScrollStart( address, pointerX, pointerY ) {
 
 
 function pointerScroll( address, data ) {
-	if( sagePointers[address] == undefined )
+	if( sagePointers[address] === undefined )
 		return;
 
 	var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
-	if(updatedItem != null){
+	if(updatedItem !== null){
 		broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 
 		if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
@@ -2480,16 +2509,16 @@ function pointerScroll( address, data ) {
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
 			remoteInteraction[address].selectedScrollItem = null;
-			if (webBrowser != null)
-			    webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			if (webBrowser !== null)
+				webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
 		}, 500);
 	}
 }
 
 function deleteElement( elem ) {
     if(elem.type == "webpage") {
-		if (webBrowser != null)
-	        webBrowser.removeWindow(elem.id);
+		if (webBrowser !== null)
+			webBrowser.removeWindow(elem.id);
     }
 
 	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsToDisplay');
@@ -2501,7 +2530,7 @@ function deleteElement( elem ) {
 			if(clientAddress == elem.id) broadcastWS = clients[i];
 		}
 
-		if(broadcastWS != null) broadcastWS.emit('stopMediaCapture');
+		if(broadcastWS !== null) broadcastWS.emit('stopMediaCapture');
 	}
 	removeElement(items, elem);
 }
