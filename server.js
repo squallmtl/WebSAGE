@@ -5,7 +5,11 @@
 /* jshint smarttabs: false */
 
 // Don't make functions within a loop
-/* jshint -W083 */  
+/* jshint -W083 */
+
+// JSLint options
+/*globals loadConfiguration, showPointer, pointerPress,pointerMove, deleteElement, pointerScroll, moveItemToFront, pointerPosition, findItemUnderPointer, pointerRelease, getItemPositionSizeType, initializeExistingSagePointers, initializeMediaStreams, initializeRemoteServerInfo, initializeExistingAppsPositionSizeTypeOnly, initializeExistingApps, initializeSavedFilesList, createSagePointer, setupDisplayBackground, findRemosetupDisplayBackground, sendConfig, uploadForm, setupHttpsOptions, closeWebSocketClient, wsAddClient, findRemoteSiteByConnection, broadcast, hidePointer, removeElement, initializeWSClient, wsStartSagePointer, wsStopSagePointer, wsPointerPress, wsPointerRelease, wsPointerDblClick, wsPointerPosition, wsPointerMove, wsPointerScrollStart, wsPointerScroll, wsKeyDown, wsKeyUp, wsKeyPress, wsStartNewMediaStream, wsUpdateMediaStreamFrame, wsUpdateMediaStreamChunk, wsStopMediaStream, wsReceivedMediaStreamFrame, wsReceivedRemoteMediaStreamFrame, wsRequestStoredFiles, wsAddNewElementFromStoredFiles, wsAddNewWebElement, wsUpdateVideoTime, wsAddNewElementFromRemoteServer, wsRequestNextRemoteFrame, wsUpdateRemoteMediaStreamFrame, wsStopMediaStream */
+/*jslint node: true, ass: false, plusplus: true, vars: true, white: true, newcap: true, unparam: true, eqeq: true */
 
 // require variables to be declared
 "use strict";
@@ -247,7 +251,9 @@ function initializeWSClient(wsio) {
 
 function initializeExistingSagePointers(wsio) {
 	for(var key in sagePointers){
-		wsio.emit('createSagePointer', sagePointers[key]);
+		if (sagePointers.hasOwnProperty(key)) {
+			wsio.emit('createSagePointer', sagePointers[key]);
+		}
 	}
 }
 
@@ -272,10 +278,11 @@ function initializeRemoteServerInfo(wsio) {
 
 function initializeMediaStreams(uniqueID) {
 	for(var key in mediaStreams){
-		mediaStreams[key].clients[uniqueID] = false;
+		if (mediaStreams.hasOwnProperty(key)) {
+			mediaStreams[key].clients[uniqueID] = false;
+		}
 	}
 }
-
 
 /***************** Sage Pointer Functions *****************/
 function wsStartSagePointer(wsio, data) {
@@ -330,8 +337,9 @@ function wsPointerDblClick(wsio, data) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
-				if (webBrowser !== null)
+				if (webBrowser !== null) {
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+				}
 			}
 		} else {
 			// already maximized, need to restore the item size
@@ -340,8 +348,9 @@ function wsPointerDblClick(wsio, data) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
-				if (webBrowser !== null)
+				if (webBrowser !== null) {
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+				}
 			}
 		}
 	}
@@ -479,11 +488,12 @@ function wsKeyPress(wsio, data) {
 			var itemRelX = pointerX - elem.left;
 			var itemRelY = pointerY - elem.top - config.titleBarHeight;
 			var now = new Date();
-			var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };
+			var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code,10), state: "down" }, date: now };
 			broadcast('eventInItem', event, 'receivesInputEvents');
 			// Send it to the webBrowser
-			if (webBrowser !== null)
+			if (webBrowser !== null) {
 				webBrowser.keyPress(elem.id, data.code);
+			}
 		}
 	}
 
@@ -2397,8 +2407,9 @@ function pointerPress( address, pointerX, pointerY ) {
 				broadcast('eventInItem', {eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, 'receivesInputEvents');
                 // Send the pointer press to node-modules
                 // Send it to the webBrowser
-				if (webBrowser !== null)
+				if (webBrowser !== null) {
 					webBrowser.click(elem.id, itemRelX, itemRelY);
+				}
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -2424,8 +2435,9 @@ function pointerRelease(address, pointerX, pointerY) {
 		if(remoteInteraction[address].selectedResizeItem !== null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
-			if (webBrowser !== null)
+			if (webBrowser !== null) {
 				webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
+			}
 		}
 		if(remoteInteraction[address].selectedMoveItem !== null){
 			var remoteIdx = -1;
@@ -2509,16 +2521,18 @@ function pointerScroll( address, data ) {
 		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 			broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
 			remoteInteraction[address].selectedScrollItem = null;
-			if (webBrowser !== null)
+			if (webBrowser !== null) {
 				webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			}
 		}, 500);
 	}
 }
 
 function deleteElement( elem ) {
     if(elem.type == "webpage") {
-		if (webBrowser !== null)
+		if (webBrowser !== null) {
 			webBrowser.removeWindow(elem.id);
+		}
     }
 
 	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsToDisplay');
