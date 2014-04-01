@@ -38,22 +38,19 @@
 				clientType: "sagePointer",
 				sendsPointerData: true,
 				sendsMediaStreamFrames: true,
-				sendsReceivedMediaStreamFrames: false,
-				sendsRequestForServerFiles: false,
-				sendsServerFileToLoad: false,
+				requestsServerFiles: false,
 				sendsWebContentToLoad: true,
 				sendsVideoSynchonization: false,
-				sendsContentToRemoteServer: false,
+				sharesContentWithRemoteServer: false,
 				receivesDisplayConfiguration: true,
 				receivesClockTime: false,
-				receivesNewAppsToDisplay: false,
-				receivesNewAppsPositionSizeTypeOnly: false,
+				requiresFullApps: false,
+				requiresAppPositionSizeTypeOnly: false,
+				receivesMediaStreamFrames: false,
 				receivesWindowModification: false,
 				receivesPointerData: false,
-				receivesMediaStreamFrames: false,
-				receivesServerFileList: false,
-				receivesRemoteServerInfo: false,
-				receivesInputEvents: false
+				receivesInputEvents: false,
+				receivesRemoteServerInfo: false
 			};
 			wsio.emit('addClient', clientDescription);
 		});

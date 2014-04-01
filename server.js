@@ -8,7 +8,7 @@
 /* jshint -W083 */
 
 // JSLint options
-/*globals loadConfiguration, showPointer, pointerPress,pointerMove, deleteElement, pointerScroll, moveItemToFront, pointerPosition, findItemUnderPointer, pointerRelease, getItemPositionSizeType, initializeExistingSagePointers, initializeMediaStreams, initializeRemoteServerInfo, initializeExistingAppsPositionSizeTypeOnly, initializeExistingApps, initializeSavedFilesList, createSagePointer, setupDisplayBackground, findRemosetupDisplayBackground, sendConfig, uploadForm, setupHttpsOptions, closeWebSocketClient, wsAddClient, findRemoteSiteByConnection, broadcast, hidePointer, removeElement, initializeWSClient, wsStartSagePointer, wsStopSagePointer, wsPointerPress, wsPointerRelease, wsPointerDblClick, wsPointerPosition, wsPointerMove, wsPointerScrollStart, wsPointerScroll, wsKeyDown, wsKeyUp, wsKeyPress, wsStartNewMediaStream, wsUpdateMediaStreamFrame, wsUpdateMediaStreamChunk, wsStopMediaStream, wsReceivedMediaStreamFrame, wsReceivedRemoteMediaStreamFrame, wsRequestStoredFiles, wsAddNewElementFromStoredFiles, wsAddNewWebElement, wsUpdateVideoTime, wsAddNewElementFromRemoteServer, wsRequestNextRemoteFrame, wsUpdateRemoteMediaStreamFrame */
+/*globals loadConfiguration, showPointer, pointerPress, pointerMove, deleteElement, pointerScroll, moveItemToFront, pointerPosition, findItemUnderPointer, pointerRelease, getItemPositionSizeType, initializeExistingSagePointers, initializeMediaStreams, initializeRemoteServerInfo, initializeExistingAppsPositionSizeTypeOnly, initializeExistingApps, initializeSavedFilesList, createSagePointer, setupDisplayBackground, findRemosetupDisplayBackground, sendConfig, uploadForm, setupHttpsOptions, closeWebSocketClient, wsAddClient, findRemoteSiteByConnection, broadcast, hidePointer, removeElement, initializeWSClient, wsStartSagePointer, wsStopSagePointer, wsPointerPress, wsPointerRelease, wsPointerDblClick, wsPointerPosition, wsPointerMove, wsPointerScrollStart, wsPointerScroll, wsKeyDown, wsKeyUp, wsKeyPress, wsStartNewMediaStream, wsUpdateMediaStreamFrame, wsUpdateMediaStreamChunk, wsStopMediaStream, wsReceivedMediaStreamFrame, wsReceivedRemoteMediaStreamFrame, wsRequestStoredFiles, wsAddNewElementFromStoredFiles, wsAddNewWebElement, wsUpdateVideoTime, wsAddNewElementFromRemoteServer, wsRequestNextRemoteFrame, wsUpdateRemoteMediaStreamFrame */
 /*jslint node: true, ass: false, plusplus: true, vars: true, white: true, newcap: true, unparam: true, eqeq: true */
 
 // require variables to be declared
@@ -123,15 +123,15 @@ function closeWebSocketClient(wsio) {
 		delete sagePointers[uniqueID];
 		delete remoteInteraction[uniqueID];
 	}
-	if(wsio.messages.sendsReceivedMediaStreamFrames){
+	if(wsio.messages.requiresFullApps){
 		var key;
 		for(key in mediaStreams) {
 			if (mediaStreams.hasOwnProperty(key)) {
 				delete mediaStreams[key].clients[uniqueID];
 			}
 		}
-		for(key in mediaStreams) {
-			if (mediaStreams.hasOwnProperty(key)) {
+		for(key in webStreams) {
+			if (webStreams.hasOwnProperty(key)) {
 				delete webStreams[key].clients[uniqueID];
 			}
 		}
@@ -153,27 +153,22 @@ function wsAddClient(wsio, data) {
 	wsio.clientType = data.clientType;
 	wsio.messages = {};
 	
-	// types of data sent to server from client through WebSockets
-	wsio.messages.sendsPointerData                    = data.sendsPointerData                    || false;
-	wsio.messages.sendsMediaStreamFrames              = data.sendsMediaStreamFrames              || false;
-	wsio.messages.sendsReceivedMediaStreamFrames      = data.sendsReceivedMediaStreamFrames      || false;
-	wsio.messages.sendsRequestForServerFiles          = data.sendsRequestForServerFiles          || false;
-	wsio.messages.sendsServerFileToLoad               = data.sendsServerFileToLoad               || false;
-	wsio.messages.sendsWebContentToLoad               = data.sendsWebContentToLoad               || false;
-	wsio.messages.sendsVideoSynchonization            = data.sendsVideoSynchonization            || false;
-	wsio.messages.sendsContentToRemoteServer          = data.sendsContentToRemoteServer          || false;
-	
-	// types of data client receives from server through WebSockets
-	wsio.messages.receivesDisplayConfiguration        = data.receivesDisplayConfiguration        || false;
-	wsio.messages.receivesClockTime                   = data.receivesClockTime                   || false;
-	wsio.messages.receivesNewAppsToDisplay            = data.receivesNewAppsToDisplay            || false;
-	wsio.messages.receivesNewAppsPositionSizeTypeOnly = data.receivesNewAppsPositionSizeTypeOnly || false;
-	wsio.messages.receivesWindowModification          = data.receivesWindowModification          || false;
-	wsio.messages.receivesPointerData                 = data.receivesPointerData                 || false;
-	wsio.messages.receivesMediaStreamFrames           = data.receivesMediaStreamFrames           || false;
-	wsio.messages.receivesServerFileList              = data.receivesServerFileList              || false;
-	wsio.messages.receivesRemoteServerInfo            = data.receivesRemoteServerInfo            || false;
-	wsio.messages.receivesInputEvents                 = data.receivesInputEvents                 || false;
+	// types of data sent/received to server from client through WebSockets
+	wsio.messages.sendsPointerData                  = data.sendsPointerData                 || false;
+	wsio.messages.sendsMediaStreamFrames            = data.sendsMediaStreamFrames           || false;
+	wsio.messages.requestsServerFiles               = data.requestsServerFiles              || false;
+	wsio.messages.sendsWebContentToLoad             = data.sendsWebContentToLoad            || false;
+	wsio.messages.sendsVideoSynchonization          = data.sendsVideoSynchonization         || false;
+	wsio.messages.sharesContentWithRemoteServer     = data.sharesContentWithRemoteServer    || false;
+	wsio.messages.receivesDisplayConfiguration      = data.receivesDisplayConfiguration     || false;
+	wsio.messages.receivesClockTime                 = data.receivesClockTime                || false;
+	wsio.messages.requiresFullApps                  = data.requiresFullApps                 || false;
+	wsio.messages.requiresAppPositionSizeTypeOnly   = data.requiresAppPositionSizeTypeOnly  || false;
+	wsio.messages.receivesMediaStreamFrames         = data.receivesMediaStreamFrames        || false;
+	wsio.messages.receivesWindowModification        = data.receivesWindowModification       || false;
+	wsio.messages.receivesPointerData               = data.receivesPointerData              || false;
+	wsio.messages.receivesInputEvents               = data.receivesInputEvents              || false;
+	wsio.messages.receivesRemoteServerInfo          = data.receivesRemoteServerInfo         || false;
 	
 	initializeWSClient(wsio);
 	
@@ -207,14 +202,12 @@ function initializeWSClient(wsio) {
 		wsio.on('updateMediaStreamChunk',    wsUpdateMediaStreamChunk);
 		wsio.on('stopMediaStream',           wsStopMediaStream);
 	}
-	if(wsio.messages.sendsReceivedMediaStreamFrames){
+	if(wsio.messages.receivesMediaStreamFrames){
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
 		wsio.on('receivedRemoteMediaStreamFrame',  wsReceivedRemoteMediaStreamFrame);
 	}
-	if(wsio.messages.sendsRequestForServerFiles){
+	if(wsio.messages.requestsServerFiles){
 		wsio.on('requestStoredFiles', wsRequestStoredFiles);
-	}
-	if(wsio.messages.sendsServerFileToLoad){
 		wsio.on('addNewElementFromStoredFiles', wsAddNewElementFromStoredFiles);
 	}
 	if(wsio.messages.sendsWebContentToLoad){
@@ -223,7 +216,7 @@ function initializeWSClient(wsio) {
 	if(wsio.messages.sendsVideoSynchonization){
 		wsio.on('updateVideoTime', wsUpdateVideoTime);
 	}
-	if(wsio.messages.sendsContentToRemoteServer){
+	if(wsio.messages.sharesContentWithRemoteServer){
 		wsio.on('addNewElementFromRemoteServer', wsAddNewElementFromRemoteServer);
 		wsio.on('requestNextRemoteFrame', wsRequestNextRemoteFrame);
 		wsio.on('updateRemoteMediaStreamFrame', wsUpdateRemoteMediaStreamFrame);
@@ -231,14 +224,14 @@ function initializeWSClient(wsio) {
 	}
 	
 	
-	if(wsio.messages.sendsPointerData)                    createSagePointer(uniqueID);
-	if(wsio.messages.receivesDisplayConfiguration)        wsio.emit('setupDisplayConfiguration', config);
-	if(wsio.messages.receivesClockTime)                   wsio.emit('setSystemTime', {date: new Date()});
-	if(wsio.messages.receivesPointerData)                 initializeExistingSagePointers(wsio);
-	if(wsio.messages.receivesNewAppsToDisplay)            initializeExistingApps(wsio);
-	if(wsio.messages.receivesNewAppsPositionSizeTypeOnly) initializeExistingAppsPositionSizeTypeOnly(wsio);
-	if(wsio.messages.receivesRemoteServerInfo)            initializeRemoteServerInfo(wsio);
-	if(wsio.messages.receivesMediaStreamFrames)           initializeMediaStreams(uniqueID);
+	if(wsio.messages.sendsPointerData)                 createSagePointer(uniqueID);
+	if(wsio.messages.receivesDisplayConfiguration)     wsio.emit('setupDisplayConfiguration', config);
+	if(wsio.messages.receivesClockTime)                wsio.emit('setSystemTime', {date: new Date()});
+	if(wsio.messages.receivesPointerData)              initializeExistingSagePointers(wsio);
+	if(wsio.messages.requiresFullApps)                 initializeExistingApps(wsio);
+	if(wsio.messages.requiresAppPositionSizeTypeOnly)  initializeExistingAppsPositionSizeTypeOnly(wsio);
+	if(wsio.messages.receivesRemoteServerInfo)         initializeRemoteServerInfo(wsio);
+	if(wsio.messages.receivesMediaStreamFrames)        initializeMediaStreams(uniqueID);
 	
 	var remote = findRemoteSiteByConnection(wsio);
 	if(remote !== null){
@@ -265,7 +258,7 @@ function initializeExistingApps(wsio) {
 
 function initializeExistingAppsPositionSizeTypeOnly(wsio) {
 	for(var i=0; i<items.length; i++){
-		wsio.emit('addNewElement', getItemPositionSizeType(items[i]));
+		wsio.emit('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(items[i]));
 	}
 }
 
@@ -504,15 +497,15 @@ function wsStartNewMediaStream(wsio, data) {
 	console.log("received new stream: " + data.id);
 	mediaStreams[data.id] = {ready: true, chunks: [], clients: {}};
 	for(var i=0; i<clients.length; i++){
-		if(clients[i].messages.sendsReceivedMediaStreamFrames){
+		if(clients[i].messages.requiresFullApps){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			mediaStreams[data.id].clients[clientAddress] = false;
 		}
 	}
 
 	loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
-		broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-		broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+		broadcast('addNewElement', newItem, 'requiresFullApps');
+		broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 		items.push(newItem);
 		itemCount++;
@@ -578,8 +571,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 
 			itemCount++;
 			loader.loadImage(data, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -588,8 +581,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 	else if(file.dir == "videos"){
 		itemCount++;
 		loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -597,8 +590,8 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 	else if(file.dir == "pdfs"){
 		itemCount++;
 		loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -610,14 +603,14 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 			// add resource scripts to clients
 			for(var i=0; i<instructions.resources.length; i++){
 				if(instructions.resources[i].type == "script"){
-					broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'receivesNewAppsToDisplay');
+					broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'requiresFullApps');
 				}
 			}
 
 			// add item to clients (after waiting 1 second to ensure resources have loaded)
 			setTimeout(function() {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 
@@ -625,7 +618,7 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 				if(instructions.animation == "timer"){
 					setInterval(function() {
 						var now = new Date();
-						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
+						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'requiresFullApps');
 					}, instructions.interval);
 				}
 			}, 1000);
@@ -641,8 +634,8 @@ function wsAddNewWebElement(wsio, data) {
 
 			itemCount++;
 			loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -651,8 +644,8 @@ function wsAddNewWebElement(wsio, data) {
 	else if(data.type == "video"){
 		itemCount++;
 		loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -660,8 +653,8 @@ function wsAddNewWebElement(wsio, data) {
 	else if(data.type == "youtube"){
 		itemCount++;
 		loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -677,8 +670,8 @@ function wsAddNewWebElement(wsio, data) {
 		tmp.on('close', function() {
 			itemCount++;
 			loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -689,7 +682,7 @@ function wsAddNewWebElement(wsio, data) {
 
 /******************** Video / Audio Synchonization *********************/
 function wsUpdateVideoTime(wsio, data) {
-	broadcast('updateVideoItemTime', data, 'receivesNewAppsToDisplay');
+	broadcast('updateVideoItemTime', data, 'requiresFullApps');
 }
 
 /******************** Remote Server Content ****************************/
@@ -700,8 +693,8 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 
 			itemCount++;
 			loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -710,8 +703,8 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 	else if(data.type == "video"){
 		itemCount++;
 		loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -719,8 +712,8 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 	else if(data.type == "youtube"){
 		itemCount++;
 		loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 		});
@@ -736,8 +729,8 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 		tmp.on('close', function() {
 			itemCount++;
 			loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 				items.push(newItem);
 			});
@@ -753,14 +746,14 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 			// add resource scripts to clients
 			for(var i=0; i<instructions.resources.length; i++){
 				if(instructions.resources[i].type == "script"){
-					broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src}, 'receivesNewAppsToDisplay');
+					broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src}, 'requiresFullApps');
 				}
 			}
 
 			// add item to clients (after waiting 1 second to ensure resources have loaded)
 			setTimeout(function() {
-				broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-				broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+				broadcast('addNewElement', newItem, 'requiresFullApps');
+				broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 				
 				items.push(newItem);
 
@@ -768,7 +761,7 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 				if(instructions.animation == "timer"){
 					setInterval(function() {
 						var now = new Date();
-						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
+						broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'requiresFullApps');
 					}, instructions.interval);
 				}
 			}, 1000);
@@ -779,15 +772,15 @@ function wsAddNewElementFromRemoteServer(wsio, data) {
 
 		mediaStreams[remote_id] = {ready: true, clients: {}};
 		for(var i=0; i<clients.length; i++){
-			if(clients[i].messages.sendsReceivedMediaStreamFrames){
+			if(clients[i].messages.requiresFullApps){
 				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 				mediaStreams[remote_id].clients[clientAddress] = false;
 			}
 		}
 
 		loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
-			broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-			broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+			broadcast('addNewElement', newItem, 'requiresFullApps');
+			broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 			items.push(newItem);
 			itemCount++;
@@ -1729,8 +1722,8 @@ function manageUploadedFiles(files) {
 
 					itemCount++;
 					loader.loadImage(data, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
-						broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-						broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+						broadcast('addNewElement', newItem, 'requiresFullApps');
+						broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 						items.push(newItem);
 
@@ -1749,8 +1742,8 @@ function manageUploadedFiles(files) {
 
 				itemCount++;
 				loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), file.originalFilename, function(newItem) {
-					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+					broadcast('addNewElement', newItem, 'requiresFullApps');
+					broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 					items.push(newItem);
 
@@ -1768,8 +1761,8 @@ function manageUploadedFiles(files) {
 
 				itemCount++;
 				loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-					broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+					broadcast('addNewElement', newItem, 'requiresFullApps');
+					broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 					items.push(newItem);
 
@@ -1792,14 +1785,14 @@ function manageUploadedFiles(files) {
 					// add resource scripts to clients
 					for(var i=0; i<instructions.resources.length; i++){
 						if(instructions.resources[i].type == "script"){
-							broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'receivesNewAppsToDisplay');
+							broadcast('addScript', {source: path.join(url, instructions.resources[i].src)}, 'requiresFullApps');
 						}
 					}
 
 					// add item to clients (after waiting 1 second to ensure resources have loaded)
 					setTimeout(function() {
-						broadcast('addNewElement', newItem, 'receivesNewAppsToDisplay');
-						broadcast('addNewElement', getItemPositionSizeType(newItem), 'receivesNewAppsPositionSizeTypeOnly');
+						broadcast('addNewElement', newItem, 'requiresFullApps');
+						broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
 
 						items.push(newItem);
 
@@ -1810,7 +1803,7 @@ function manageUploadedFiles(files) {
 						if(instructions.animation == "timer"){
 							setInterval(function() {
 								var now = new Date();
-								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'receivesNewAppsToDisplay');
+								broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now}, 'requiresFullApps');
 							}, instructions.interval);
 						}
 					}, 1000);
@@ -1860,22 +1853,19 @@ function createRemoteConnection(wsURL, element, index) {
 			port: config.port,
 			sendsPointerData: false,
 			sendsMediaStreamFrames: false,
-			sendsReceivedMediaStreamFrames: false,
-			sendsRequestForServerFiles: false,
-			sendsServerFileToLoad: false,
+			requestsServerFiles: false,
 			sendsWebContentToLoad: false,
 			sendsVideoSynchonization: false,
-			sendsContentToRemoteServer: true,
+			sharesContentWithRemoteServer: true,
 			receivesDisplayConfiguration: false,
 			receivesClockTime: false,
-			receivesNewAppsToDisplay: false,
-			receivesNewAppsPositionSizeTypeOnly: false,
+			requiresFullApps: false,
+			requiresAppPositionSizeTypeOnly: false,
+			receivesMediaStreamFrames: false,
 			receivesWindowModification: false,
 			receivesPointerData: false,
-			receivesMediaStreamFrames: false,
-			receivesServerFileList: false,
-			receivesRemoteServerInfo: false,
-			receivesInputEvents: false
+			receivesInputEvents: false,
+			receivesRemoteServerInfo: false
 		};
 		remote.emit('addClient', clientDescription);
 		remoteSites[index].connected = true;
@@ -2346,18 +2336,18 @@ function pointerMove(uniqueID, data) {
 				// bottom right corner - select for drag resize
 				if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
 					if(remoteInteraction[uniqueID].hoverCornerItem !== null){
-						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'requiresFullApps');
 					}
 					remoteInteraction[uniqueID].setHoverCornerItem(elem);
-					broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, 'receivesNewAppsToDisplay');
+					broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, 'requiresFullApps');
 				}
 				else if(remoteInteraction[uniqueID].hoverCornerItem !== null){
-					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'requiresFullApps');
 					remoteInteraction[uniqueID].setHoverCornerItem(null);
 				}
 			}
 			else if(remoteInteraction[uniqueID].hoverCornerItem !== null){
-				broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'receivesNewAppsToDisplay');
+				broadcast('hoverOverItemCorner', {elemId: remoteInteraction[uniqueID].hoverCornerItem.id, flag: false}, 'requiresFullApps');
 				remoteInteraction[uniqueID].setHoverCornerItem(null);
 			}
 		}
@@ -2530,8 +2520,8 @@ function deleteElement( elem ) {
 		}
     }
 
-	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsToDisplay');
-	broadcast('deleteElement', {elemId: elem.id}, 'receivesNewAppsPositionSizeTypeOnly');
+	broadcast('deleteElement', {elemId: elem.id}, 'requiresFullApps');
+	broadcast('deleteElement', {elemId: elem.id}, 'requiresAppPositionSizeTypeOnly');
 	if(elem.type == "screen"){
 		var broadcastWS = null;
 		for(var i=0; i<clients.length; i++){

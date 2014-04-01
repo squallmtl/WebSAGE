@@ -242,7 +242,7 @@ function sagePointer(wsio) {
 					}
 					var start = i*this.chunk;
 					var end = (i+1)*this.chunk < raw.length ? (i+1)*this.chunk : raw.length;
-					updateMediaStreamChunk(i, raw.substring(start, end)); 
+					updateMediaStreamChunk(i, raw.substring(start, end));
 				}
 			}
 			else{

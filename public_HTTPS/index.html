@@ -33,7 +33,7 @@
 	var pointerItems = {};
 	var canvasItems = {};
 	
-		// Explicitely close web socket when web broswer is closed
+	// Explicitely close web socket when web broswer is closed
 	window.onbeforeunload = function() {
 		if (typeof wsio !== "undefined")
     		wsio.close();
@@ -54,22 +54,19 @@
 				clientType: "display",
 				sendsPointerData: false,
 				sendsMediaStreamFrames: false,
-				sendsReceivedMediaStreamFrames: true,
-				sendsRequestForServerFiles: false,
-				sendsServerFileToLoad: false,
+				requestsServerFiles: false,
 				sendsWebContentToLoad: false,
 				sendsVideoSynchonization: false,
-				sendsContentToRemoteServer: false,
+				sharesContentWithRemoteServer: false,
 				receivesDisplayConfiguration: true,
 				receivesClockTime: true,
-				receivesNewAppsToDisplay: true,
-				receivesNewAppsPositionSizeTypeOnly: false,
+				requiresFullApps: true,
+				requiresAppPositionSizeTypeOnly: false,
+				receivesMediaStreamFrames: true,
 				receivesWindowModification: true,
 				receivesPointerData: true,
-				receivesMediaStreamFrames: true,
-				receivesServerFileList: false,
-				receivesRemoteServerInfo: true,
-				receivesInputEvents: true
+				receivesInputEvents: true,
+				receivesRemoteServerInfo: true
 			};
 			wsio.emit('addClient', clientDescription);
 		});
@@ -676,16 +673,21 @@
 			
 			// play a paused video - set time to audio time + delay
 			if(video_data.play && child[0].paused){
-				// set time to 0.5 sec ahead to allow video to load, then play 0.5 sec later
-				child[0].currentTime = video_data.time + delay + 0.5;
-				setTimeout(function() {
-					child[0].play();
-				}, 500);
+				// set time to 0.75 sec ahead to allow video to load, then play 0.75 sec later
+				var vidTime = video_data.time + delay + 0.75;
+				if(vidTime < child[0].duration){
+					child[0].currentTime = vidTime;
+					var vidPlay = setTimeout(function() {
+						child[0].play();
+					}, 750);
+					child[0].playTimeout = vidPlay;
+				}
 			}
 			// pause a video - set time to audio time
-			else if(!video_data.play && !child[0].paused){
+			else if(!video_data.play){
 				child[0].pause();
 				child[0].currentTime = video_data.time;
+				if(child[0].playTimeout !== undefined) clearTimeout(child[0].playTimeout);	
 			}
 		});
 		

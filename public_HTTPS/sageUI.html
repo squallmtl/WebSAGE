@@ -54,22 +54,19 @@
 				clientType: "sageUI",
 				sendsPointerData: true,
 				sendsMediaStreamFrames: true,
-				sendsReceivedMediaStreamFrames: false,
-				sendsRequestForServerFiles: true,
-				sendsServerFileToLoad: true,
+				requestsServerFiles: true,
 				sendsWebContentToLoad: true,
 				sendsVideoSynchonization: false,
-				sendsContentToRemoteServer: false,
+				sharesContentWithRemoteServer: false,
 				receivesDisplayConfiguration: true,
 				receivesClockTime: false,
-				receivesNewAppsToDisplay: false,
-				receivesNewAppsPositionSizeTypeOnly: true,
+				requiresFullApps: false,
+				requiresAppPositionSizeTypeOnly: true,
+				receivesMediaStreamFrames: false,
 				receivesWindowModification: true,
 				receivesPointerData: false,
-				receivesMediaStreamFrames: false,
-				receivesServerFileList: true,
-				receivesRemoteServerInfo: false,
-				receivesInputEvents: false
+				receivesInputEvents: false,
+				receivesRemoteServerInfo: false
 			};
 			wsio.emit('addClient', clientDescription);
 		});
@@ -122,7 +119,7 @@
 			sagePtr.setPointerId(data.UID)
 		});
 		
-		wsio.on('addNewElement', function(elem_data) {
+		wsio.on('addNewElementPositionSizeTypeOnly', function(elem_data) {
 			winMgr.addNewElement(elem_data);
 		});
 		

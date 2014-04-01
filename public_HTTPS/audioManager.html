@@ -28,22 +28,19 @@
 				clientType: "audioManager",
 				sendsPointerData: false,
 				sendsMediaStreamFrames: false,
-				sendsReceivedMediaStreamFrames: false,
-				sendsRequestForServerFiles: false,
-				sendsServerFileToLoad: false,
+				requestsServerFiles: false,
 				sendsWebContentToLoad: false,
 				sendsVideoSynchonization: true,
-				sendsContentToRemoteServer: false,
+				sharesContentWithRemoteServer: false,
 				receivesDisplayConfiguration: false,
 				receivesClockTime: false,
-				receivesNewAppsToDisplay: true,
-				receivesNewAppsPositionSizeTypeOnly: false,
+				requiresFullApps: true,
+				requiresAppPositionSizeTypeOnly: false,
+				receivesMediaStreamFrames: false,
 				receivesWindowModification: false,
 				receivesPointerData: false,
-				receivesMediaStreamFrames: false,
-				receivesServerFileList: false,
-				receivesRemoteServerInfo: false,
-				receivesInputEvents: true
+				receivesInputEvents: true,
+				receivesRemoteServerInfo: false
 			};
 			wsio.emit('addClient', clientDescription);
 		});
