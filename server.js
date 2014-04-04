@@ -550,7 +550,6 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
 			if(clientAddress == data.id) broadcastWS = clients[i];
 		}
-
 		if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', null);
 	}
 }
@@ -2494,22 +2493,41 @@ function pointerScrollStart( address, pointerX, pointerY ) {
 function pointerScroll( address, data ) {
 	if( sagePointers[address] === undefined )
 		return;
+	
+	if( remoteInteraction[address].windowManagementMode() ){
+		var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
+		if(updatedItem !== null){
+			broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 
-	var updatedItem = remoteInteraction[address].scrollSelectedItem(data.scale);
-	if(updatedItem !== null){
-		broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
-
-		if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
-			clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
-		}
-
-		remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
-			broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
-			remoteInteraction[address].selectedScrollItem = null;
-			if (webBrowser !== null) {
-				webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+			if(updatedItem.elemId in remoteInteraction[address].selectTimeId){
+				clearTimeout(remoteInteraction[address].selectTimeId[updatedItem.elemId]);
 			}
-		}, 500);
+
+			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
+				broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
+				remoteInteraction[address].selectedScrollItem = null;
+				if (webBrowser !== null) {
+					webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
+				}
+			}, 500);
+		}
+	}
+	else if ( remoteInteraction[address].appInteractionMode() ) {
+		var pointerX = sagePointers[address].left;
+		var pointerY = sagePointers[address].top;
+		var elem = findItemUnderPointer(pointerX, pointerY);
+
+		if( elem !== null ){
+			var itemRelX = pointerX - elem.left;
+			var itemRelY = pointerY - elem.top - config.titleBarHeight;
+			var now = new Date();
+			
+			var delta = data.scale >= 1.0 ? data.scale : 1.0/data.scale;
+			delta = (delta-1.0) * 512;
+			if(data.scale >= 1.0) delta = -1 * delta;
+			
+			broadcast('eventInItem', {eventType: "pointerScroll", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {wheelDelta: delta}, date: now }, 'receivesInputEvents');
+		}
 	}
 }
 

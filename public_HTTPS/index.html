@@ -269,7 +269,10 @@
 			wsio.emit('receivedMediaStreamFrame', {id: data.id});
 			
 			var screen = document.getElementById(data.id + "_screen");
-			screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
+			if(data.encoding === undefined || data.encoding === "binary")
+				screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
+			else if(data.encoding === "base64")
+				screen.src = "data:image/jpeg;base64," + data.src;
 		});
 		
 		wsio.on('updateRemoteMediaStreamFrame', function(data) {
