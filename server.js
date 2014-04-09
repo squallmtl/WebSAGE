@@ -65,6 +65,7 @@ var items = [];
 
 // global variables to manage clients
 var clients = [];
+var webBrowserClient;
 var sagePointers = {};
 var remoteInteraction = {};
 var mediaStreams = {};
@@ -158,6 +159,7 @@ function wsAddClient(wsio, data) {
 	wsio.messages.sendsMediaStreamFrames            = data.sendsMediaStreamFrames           || false;
 	wsio.messages.requestsServerFiles               = data.requestsServerFiles              || false;
 	wsio.messages.sendsWebContentToLoad             = data.sendsWebContentToLoad            || false;
+	wsio.messages.launchesWebBrowser                = data.launchesWebBrowser               || false;
 	wsio.messages.sendsVideoSynchonization          = data.sendsVideoSynchonization         || false;
 	wsio.messages.sharesContentWithRemoteServer     = data.sharesContentWithRemoteServer    || false;
 	wsio.messages.receivesDisplayConfiguration      = data.receivesDisplayConfiguration     || false;
@@ -213,6 +215,9 @@ function initializeWSClient(wsio) {
 	if(wsio.messages.sendsWebContentToLoad){
 		wsio.on('addNewWebElement', wsAddNewWebElement);
 	}
+	if(wsio.messages.launchesWebBrowser){
+		wsio.on('openNewWebpage', wsOpenNewWebpage);
+	}
 	if(wsio.messages.sendsVideoSynchonization){
 		wsio.on('updateVideoTime', wsUpdateVideoTime);
 	}
@@ -240,6 +245,8 @@ function initializeWSClient(wsio) {
 		var site = {name: remote.name, connected: remote.connected};
 		broadcast('connectedToRemoteSite', site, 'receivesRemoteServerInfo');
 	}
+	
+	if(wsio.clientType == "webBrowser") webBrowserClient = wsio;
 }
 
 function initializeExistingSagePointers(wsio) {
@@ -329,7 +336,7 @@ function wsPointerDblClick(wsio, data) {
 			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
 				if (webBrowser !== null) {
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
@@ -340,7 +347,7 @@ function wsPointerDblClick(wsio, data) {
 			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: elem.id}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
 				if (webBrowser !== null) {
 					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
 				}
@@ -546,11 +553,14 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 	if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
 		mediaStreams[data.id].ready = false;
 		var broadcastWS = null;
+		var mediaStreamData = data.id.split("|");
+		var broadcastAddress = mediaStreamData[0];
+		var broadcastID = parseInt(mediaStreamData[1]);
 		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-			if(clientAddress == data.id) broadcastWS = clients[i];
+			if(clientAddress == broadcastAddress) broadcastWS = clients[i];
 		}
-		if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', null);
+		if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', {streamId: broadcastID});
 	}
 }
 
@@ -677,6 +687,11 @@ function wsAddNewWebElement(wsio, data) {
 		});
 		request({url: data.src, strictSSL: false}).pipe(tmp);
 	}
+}
+
+/*********************** Launching Web Browser ************************/
+function wsOpenNewWebpage(wsio, data) {
+	webBrowserClient.emit('openWebBrowser', {url: data.url});
 }
 
 /******************** Video / Audio Synchonization *********************/
@@ -2417,7 +2432,7 @@ function pointerRelease(address, pointerX, pointerY) {
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
 		if(remoteInteraction[address].selectedResizeItem !== null){
-			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id}, 'receivesWindowModification');
+			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id, elemWidth: remoteInteraction[address].selectedResizeItem.width, elemHeight: remoteInteraction[address].selectedResizeItem.height}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
 			if (webBrowser !== null) {
 				webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
@@ -2504,7 +2519,7 @@ function pointerScroll( address, data ) {
 			}
 
 			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
-				broadcast('finishedResize', {id: updatedItem.elemId}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
 				remoteInteraction[address].selectedScrollItem = null;
 				if (webBrowser !== null) {
 					webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
@@ -2542,12 +2557,15 @@ function deleteElement( elem ) {
 	broadcast('deleteElement', {elemId: elem.id}, 'requiresAppPositionSizeTypeOnly');
 	if(elem.type == "screen"){
 		var broadcastWS = null;
+		var mediaStreamData = elem.id.split("|");
+		var broadcastAddress = mediaStreamData[0];
+		var broadcastID = parseInt(mediaStreamData[1]);
 		for(var i=0; i<clients.length; i++){
 			var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-			if(clientAddress == elem.id) broadcastWS = clients[i];
+			if(clientAddress == broadcastAddress) broadcastWS = clients[i];
 		}
 
-		if(broadcastWS !== null) broadcastWS.emit('stopMediaCapture');
+		if(broadcastWS !== null) broadcastWS.emit('stopMediaCapture', {streamId: broadcastID});
 	}
 	removeElement(items, elem);
 }

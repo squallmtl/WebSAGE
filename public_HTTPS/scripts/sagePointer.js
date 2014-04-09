@@ -203,7 +203,7 @@ function sagePointer(wsio) {
 
 		var frame = this.captureMediaFrame();
 		var raw = this.base64ToString(frame.split(",")[1]);
-		this.wsio.emit('startNewMediaStream', {id: this.uniqueID, title: this.name+": Shared Screen", src: raw, width: screen.width, height: screen.height});
+		this.wsio.emit('startNewMediaStream', {id: this.uniqueID+"|0", title: this.name+": Shared Screen", src: raw, width: screen.width, height: screen.height});
 
 		this.broadcasting = true;
 	};
@@ -216,7 +216,7 @@ function sagePointer(wsio) {
 		console.log("media stream ended");
 		this.broadcasting = false;
 		this.screenShareBtn.disabled = false;
-		this.wsio.emit('stopMediaStream', {id: this.uniqueID});
+		this.wsio.emit('stopMediaStream', {id: this.uniqueID+"|0"});
 	};
 	
 	this.captureMediaFrame = function() {
@@ -237,7 +237,7 @@ function sagePointer(wsio) {
 				for(var i=0; i<nchunks; i++){
 					function updateMediaStreamChunk(index, msg_chunk){
 						setTimeout(function() {
-							_this.wsio.emit('updateMediaStreamChunk', {id: _this.uniqueID, src: msg_chunk, piece: index, total: nchunks});
+							_this.wsio.emit('updateMediaStreamChunk', {id: _this.uniqueID+"|0", src: msg_chunk, piece: index, total: nchunks});
 						}, 4);
 					}
 					var start = i*this.chunk;
@@ -246,7 +246,7 @@ function sagePointer(wsio) {
 				}
 			}
 			else{
-				this.wsio.emit('updateMediaStreamFrame', {id: this.uniqueID, src: raw});
+				this.wsio.emit('updateMediaStreamFrame', {id: this.uniqueID+"|0", src: raw});
 			}
 		}
 	};
