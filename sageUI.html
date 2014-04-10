@@ -392,12 +392,22 @@
 	}
 	
 	function pointerPress(event) {
-		wsio.emit('pointerPress');
+		if (event.button==2){
+			wsio.emit('pointerPressRight');	
+		}
+		else{
+			wsio.emit('pointerPress');
+		}
 		preventDefault(event);
 	}
 	
 	function pointerRelease(event) {
-		wsio.emit('pointerRelease');
+		if (event.button==2){
+			wsio.emit('pointerReleaseRight');	
+		}
+		else{
+			wsio.emit('pointerRelease');
+		}
 		preventDefault(event);
 	}
 	

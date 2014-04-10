@@ -10,6 +10,9 @@
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
+<script type="text/javascript" src="scripts/snap.svg-min.js"></script>
+<script type="text/javascript" src="scripts/sageApp.js"></script>
+<script type="text/javascript" src="scripts/widgets.js"></script>
 
 <script type="text/javascript">
 	var clientID;
@@ -29,6 +32,8 @@
 	var pdfItems = {};
 	var pointerItems = {};
 	var canvasItems = {};
+	var controlItems = {};
+	var lockedControlElements = {} ;
 	
 	function init() {
 		wsio = new websocketIO(window.location.hostname, parseInt(window.location.port)+1);
@@ -184,9 +189,9 @@
 			windowItem.style.overflow = "hidden";
 			windowItem.style.zIndex = (itemCount+1).toString();
 			main.appendChild(windowItem);
-			
-            console.log("add item ", elem_data.id, " " , elem_data.type);
+		
 
+			console.log("add item ", elem_data.id, " " , elem_data.type);
 			
 			if(elem_data.type == "img"){
 				var img = document.createElement("img");
@@ -276,6 +281,9 @@
 					canvasObj.init(elem_data.id + "_canvas", date, elem_data.resrc);
 					canvasObj.draw(date);
 					canvasItems[elem_data.id + "_canvas"] = canvasObj;
+					if(canvasObj.enableControls==true){// Flag to request controls for App
+						controlItems[elem_data.id + "_controls"] = { show:false, spec:canvasObj.controls};
+					} 
 				}, false);
 				console.log("added canvas item ", canvas.id);
 			}
@@ -382,6 +390,14 @@
 			
 			var deleteElem = document.getElementById(elem_data.elemId);
 			deleteElem.parentNode.removeChild(deleteElem);
+
+			if (controlItems[elem_data.elemId + "_controls"]!=null && controlItems[elem_data.elemId + "_controls"].show==true){
+				var deleteElemCtrl = document.getElementById(elem_data.elemId + "_controls");
+				deleteElemCtrl.parentNode.removeChild(deleteElemCtrl);
+				controlItems[elem_data.elemId + "_controls"] = null;
+			}
+
+			
 		});
 		
 		wsio.on('updateItemOrder', function(order) {
@@ -390,11 +406,13 @@
 			for(i=0; i<order.idList.length; i++){
 				var selectedElemTitle = document.getElementById(order.idList[i] + "_title");
 				var selectedElem = document.getElementById(order.idList[i]);
-				
+				//var selectedElemCtrl = document.getElementById(order.idList[i] + "_controls");
+
 				selectedElemTitle.style.zIndex = zval.toString();
 				selectedElem.style.zIndex = (zval+1).toString();
+				//selectedElemCtrl.style.zIndex = (zval+2).toString();
 				
-				zval += 2;
+				zval += 2; // 
 			}
 		});
 		
@@ -425,8 +443,20 @@
 			var selectedElem = document.getElementById(position_data.elemId);
 			selectedElem.style.left = eLeft.toString() + "px";
 			selectedElem.style.top = (eTop+titleBarHeight).toString() + "px";
+
 		});
 		
+		wsio.on('setControlPosition', function(position_data) {
+			var date = new Date(position_data.date);
+			
+			var eLeft = position_data.elemLeft - offsetX;
+			var eTop = position_data.elemTop - offsetY;
+			var selectedControl = document.getElementById(position_data.elemId);
+
+			selectedControl.style.left = eLeft.toString() + "px";
+			selectedControl.style.top = eTop.toString() + "px";
+		});
+
 		wsio.on('setItemPositionAndSize', function(position_data) {
 			var date = new Date(position_data.date);
 			
@@ -536,6 +566,128 @@
 				}
 			}
 		});
+
+		wsio.on('pointerPressRight', function(event_data){
+			console.log(event_data.elemId);
+			var dt = new Date(event_data.date);
+			var selectedElem = event_data.elemId ? document.getElementById(event_data.elemId) : null;
+			if (event_data.elemId != null){
+				if(event_data.elemId+"_controls" in  controlItems){
+					var size = computeSize(controlItems[event_data.elemId+ "_controls"].spec) ;
+					console.log(size);
+					wsio.emit('addNewControl', {
+						id:event_data.elemId+"_controls", 
+						left:event_data.x,
+						top:event_data.y,
+						width:size.width,
+						height:size.height,
+						date: dt 
+					});
+				}
+			}
+		});
+		wsio.on('createControl', function(data){
+			if (controlItems[data.id].show === false){
+				var ctrDiv =  document.createElement("div");
+				ctrDiv.id = data.id;
+				ctrDiv.className = "windowControls";
+				ctrDiv.style.width = data.width.toString() + "px";
+				ctrDiv.style.height = data.height.toString() + "px";
+				ctrDiv.style.left = (data.left-offsetX).toString() + "px";
+				ctrDiv.style.top = (data.top-offsetY).toString() + "px";
+				ctrDiv.style.zIndex = "9999".toString();
+				var handle = createControls(data.id,controlItems[data.id].spec);
+				ctrDiv.appendChild (handle);	
+				main.appendChild(ctrDiv);
+				controlItems[data.id].show = true;
+			}	
+		});
+		wsio.on('requestControlId', function(data){
+			var ptr = document.getElementById(data.ptrId);
+			ptr.style.left = (parseInt(ptr.style.left) - 500) + "px"; 
+			var ctrl = Snap.getElementByPoint(data.x-offsetX,data.y-offsetY);
+			var ctrId = ctrl? ctrl.attr("id"): "";
+			ptr.style.left = (parseInt(ptr.style.left) + 500) + "px"; 
+			
+			var regC = /_controls/;
+			var regB = /button/;
+			var regS = /slider/;
+			
+
+			if ( regC.test(ctrId)|| regB.test(ctrId) || regS.test(ctrId)){
+				var temp = regC.test(ctrId)? null:ctrId;
+				wsio.emit('selectedControlId', { 
+					addr:data.addr,
+					pointerX: data.x,
+					pointerY: data.y,
+					ctrlId: temp
+				});
+				lockedControlElements[data.ptrId] = temp; 
+			}
+		});
+
+		wsio.on('releaseControlId', function(data){
+			var ptr = document.getElementById(data.ptrId);
+			ptr.style.left = (parseInt(ptr.style.left) - 500) + "px"; 
+			var ctrl = Snap.getElementByPoint(data.x-offsetX,data.y-offsetY);
+			var ctrId = ctrl? ctrl.attr("id"):"";
+			ptr.style.left = (parseInt(ptr.style.left) + 500) + "px";
+			var regC = /_controls/;
+			var regB = /button/;
+			var regS = /slider/;
+			
+
+			if ( regC.test(ctrId)|| regB.test(ctrId) || regS.test(ctrId)){
+				var temp = regC.test(ctrId)? null:ctrId;
+				var flag = false;
+				var aId = ctrl.data("appId");
+				if(lockedControlElements[data.ptrId] === temp && temp !== null){
+					lockedControlElements[data.ptrId] = null;
+					flag = true;
+				}
+				wsio.emit('releasedControlId', { 
+					addr:data.addr,
+					pointerX: data.x,
+					pointerY: data.y,
+					ctrlId: temp,
+					appId: aId,
+					activateControl: flag
+				});
+			}
+		});
+		wsio.on('executeControlFunction', function(data){
+			var lst = Snap.selectAll('*');
+			var ctrl = null;
+			for(var l in lst){
+				if (lst[l].attr("id") === data.ctrlId && lst[l].data("appId") === data.appId){
+					ctrl = lst[l];
+					break;
+				}
+			}
+			if(ctrl){
+				ctrl = ctrl.parent().select("path");
+				var swtch = ctrl.data("switch") ;
+				var speed = ctrl.data("speed") ;
+				if (swtch===null){
+					var f = ctrl.data("from");
+					var t = ctrl.data("to");
+					ctrl.animate({"path":t},speed,mina.bounce,function(){
+						ctrl.animate({"path":f},speed,mina.bounce);	
+					});
+					
+				}
+				else{
+					var pth = ctrl.data(swtch?"from":"to");
+					ctrl.data("switch", 1 - swtch);
+					ctrl.animate({"path":pth},speed,mina.linear);
+					
+				}
+				var func = ctrl.data("call");
+				func(canvasItems[ctrl.data("appId")]);	
+				
+			}
+			
+		});
 	}
 	
 	function playPauseVideo(elemId) {
@@ -604,6 +756,8 @@
 		results = regex.exec(location.search);
 		return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 	}
+
+	
 </script>
 
 <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
@@ -619,4 +773,3 @@
 	</div>
 </body>
 </html>
-

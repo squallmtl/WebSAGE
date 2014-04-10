@@ -130,6 +130,8 @@ var sagePointers = {};
 var remoteInteraction = {};
 var mediaStreams = {};
 
+var controls = []; // Each element represents a control widget bar
+
 wsioServer.onconnection(function(wsio) {
 	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
 	
@@ -190,6 +192,19 @@ wsioServer.onconnection(function(wsio) {
 
 	   pointerRelease( address, pointerX, pointerY );
 	});
+	wsio.on('pointerPressRight', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+
+		pointerPressRight( address, pointerX, pointerY );
+	});
+	
+	wsio.on('pointerReleaseRight', function() {
+		var pointerX = sagePointers[address].left
+		var pointerY = sagePointers[address].top
+
+	   pointerReleaseRight( address, pointerX, pointerY );
+	});
 	
 	wsio.on('pointerPosition', function(data) {
 		pointerPosition( address, data );
@@ -231,6 +246,11 @@ wsioServer.onconnection(function(wsio) {
 		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
 		
 		broadcast('updateSagePointerPosition', sagePointers[address], "display");
+		var updatedControl = remoteInteraction[address].moveSelectedControl(sagePointers[address].left, sagePointers[address].top);
+		if (updatedControl!=null){
+			broadcast('setControlPosition', updatedControl, "display");
+			return;
+		}
 		
 	    if( remoteInteraction[address].windowManagementMode() ){
 	    	var pointerX = sagePointers[address].left
@@ -553,13 +573,31 @@ wsioServer.onconnection(function(wsio) {
 
 					// set interval timer if specified
 					if(instructions.animation == "timer"){
-						setInterval(function() {
+						setInterval(function() {						
 							var now = new Date();
 							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
 						}, instructions.interval);
 					}
 				}, 1000);
 			});
+		}
+	});
+	wsio.on('addNewControl', function(data){
+		broadcast('createControl',data,"display");
+		controls.push (data);
+	});
+
+	wsio.on('selectedControlId',function(data){ // Get the id of a ctrl widgetbar or ctrl element(button and so on)
+		var reg = /_controls/;
+		console.log(data);
+		if (data.ctrlId!=null){ // If a button or a slider is pressed, release the widget itself so that it is not picked up for moving
+			remoteInteraction[data.addr].releaseControl();
+		}
+		
+	});
+	wsio.on('releasedControlId', function(data){
+		if (data.activateControl){
+			broadcast('executeControlFunction', {ctrlId: data.ctrlId, appId: data.appId});
 		}
 	});
 });
@@ -961,7 +999,14 @@ function findItemUnderPointer(pointerX, pointerY) {
 	}
 	return null;
 }
-
+function findControlsUnderPointer(pointerX, pointerY) {
+	for(var i=controls.length-1; i>=0; i--){
+		if(pointerX >= controls[i].left && pointerX <= (controls[i].left+controls[i].width) && pointerY >= controls[i].top && pointerY <= (controls[i].top+controls[i].height)){
+			return controls[i];
+		}
+	}
+	return null;
+}
 function moveItemToFront(id) {
 	var selectedIndex;
 	var selectedItem;
@@ -1038,6 +1083,12 @@ function hidePointer( address ) {
 
 function pointerPress( address, pointerX, pointerY ) {
 	if( sagePointers[address] == undefined ) return;
+	var ct = findControlsUnderPointer(pointerX, pointerY);
+	if (ct != null){
+		remoteInteraction[address].selectMoveControl(ct, pointerX, pointerY);
+		broadcast('requestControlId', {addr:address, ptrId:sagePointers[address].id, x:pointerX, y:pointerY}, 'display');
+		return ;
+	}
 	
 	var elem = findItemUnderPointer(pointerX, pointerY);
 		if(elem != null){
@@ -1075,6 +1126,63 @@ function pointerPress( address, pointerX, pointerY ) {
 		*/
 }
 
+function pointerPressRight( address, pointerX, pointerY ) {
+	if( sagePointers[address] == undefined ) return;
+	
+	var elem = findItemUnderPointer(pointerX, pointerY);
+	var now = new Date();
+		if(elem != null){
+			if( remoteInteraction[address].windowManagementMode() ){
+				broadcast('pointerPressRight',{elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+			}
+			else if ( remoteInteraction[address].appInteractionMode() ) {
+				if (pointerY >=elem.top && pointerY <= elem.top+config.titleBarHeight){
+					broadcast('pointerPressRight',{elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+				}
+				else{
+					var itemRelX = pointerX - elem.left;
+					var itemRelY = pointerY - elem.top - config.titleBarHeight;
+					broadcast( 'eventInItem', { eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "right"}, date: now }, "display");  	
+				}
+				
+			}        
+			
+			var newOrder = moveItemToFront(elem.id);
+			broadcast('updateItemOrder', {idList: newOrder});
+		}
+		else{
+			broadcast('pointerPressRight',{elemId: null, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+		}
+		
+}
+
+function pointerReleaseRight( address, pointerX, pointerY ) {
+	if( sagePointers[address] == undefined ) return;
+	
+	var elem = findItemUnderPointer(pointerX, pointerY);
+		if(elem != null){
+			if( remoteInteraction[address].windowManagementMode() ){
+				broadcast('pointerReleaseRight',{elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+			}
+			else if ( remoteInteraction[address].appInteractionMode() ) {
+				if (pointerY >=elem.top && pointerY <= elem.top+config.titleBarHeight){
+					broadcast('pointerReleaseRight',{elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+				}
+				else{
+					var itemRelX = pointerX - elem.left;
+					var itemRelY = pointerY - elem.top - config.titleBarHeight;
+					var now = new Date();
+					broadcast( 'eventInItem', { eventType: "pointerRelease", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "right"}, date: now }, "display");  	
+				}
+				
+			}
+		}
+		else{
+			broadcast('pointerReleaseRight',{elemId: null, user_id: sagePointers[address].id, user_label: sagePointers[address].label, x: pointerX, y: pointerY, date: now }, "display");  	
+		}
+		
+}
+
 // Copied from pointerPress. Eventually a touch gesture will use this to toggle modes
 function togglePointerMode(address) {
 	if( sagePointers[address] == undefined )
@@ -1087,7 +1195,9 @@ function togglePointerMode(address) {
 function pointerRelease(address, pointerX, pointerY) {
 	if( sagePointers[address] == undefined )
 		return;
-	
+	// Attempting to complete a click action on a button or a drag on a slider
+	broadcast('releaseControlId', {addr:address, ptrId:sagePointers[address].id, x:pointerX, y:pointerY}, 'display');
+	remoteInteraction[address].releaseControl();
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
 			if(remoteInteraction[address].selectedResizeItem != null){
@@ -1118,7 +1228,6 @@ function pointerPosition( address, data ) {
 	if(sagePointers[address].top < 0) sagePointers[address].top = 0;
 	if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
 	
-	broadcast('updateSagePointerPosition', sagePointers[address], "display");
 	
 	var updatedItem = remoteInteraction[address].moveSelectedItem(sagePointers[address].left, sagePointers[address].top);
 	if(updatedItem != null) broadcast('setItemPosition', updatedItem);
