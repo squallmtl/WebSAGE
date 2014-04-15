@@ -52,6 +52,51 @@
 			dt = clientTime - serverTime;
 		});
 		
+		
+		wsio.on('createAppWindow', function(data) {
+			if(data.application === "movie_player"){
+				var main = document.getElementById("main");
+				
+				var vid = document.createElement("video");
+				vid.id = data.id;
+				vid.width = 800;
+				vid.height = vid.width / data.aspect;
+				vid.controls = false;
+				vid.ready = false;
+				
+				vid.addEventListener('canplay', function() {
+					console.log("video can now play"); // Video is loaded and can be played
+					vid.ready = true;
+				}, false);
+				
+				vid.addEventListener('ended', function() {
+					console.log("video ended");
+					vid.currentTime = 0;
+					vid.pause();
+					vid.style.display = "none";
+					clearInterval(videos[vid.id].interval);
+					var clientTime = new Date();
+					var serverTime = new Date(clientTime.getTime() - dt);
+					wsio.emit('updateVideoTime', {elemId: vid.id, time: vid.currentTime, play: false, sent: serverTime});
+				}, false);
+				
+				console.log(data.data.src);
+				
+				var source = document.createElement("source");
+				var param = data.data.src.indexOf('?');
+				if(param >= 0) source.src = data.data.src + "&clientID=audio";
+				else source.src = data.data.src + "?clientID=audio";
+				source.type = data.data.type;
+				vid.appendChild(source);
+				
+				vid.style.display = "none";
+				
+				videos[vid.id] = {interval: null};
+				
+				main.appendChild(vid);
+			}
+		});
+		
 		wsio.on('addNewElement', function(elem_data) {
 			var main = document.getElementById("main");
 			

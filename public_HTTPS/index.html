@@ -4,6 +4,11 @@
 <meta charset="utf-,8">
 <title>Node Test</title>
 <script type="text/javascript" src="lib/websocket.io.js"></script>
+<script type="text/javascript" src="lib/Class.js"></script>
+<script type="text/javascript" src="lib/SAGE2_App.js"></script>
+<script type="text/javascript" src="lib/image_viewer.js"></script>
+<script type="text/javascript" src="lib/movie_player.js"></script>
+
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
 <script type="text/javascript" src="scripts/pdf_canvas.js"></script>
@@ -32,6 +37,8 @@
 	var pdfItems = {};
 	var pointerItems = {};
 	var canvasItems = {};
+	
+	var applications = {};
 	
 	// Explicitely close web socket when web broswer is closed
 	window.onbeforeunload = function() {
@@ -282,13 +289,73 @@
 			screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
 		});
 		
-    wsio.on('updateWebpageStreamFrame', function(data) {
-        wsio.emit('receivedWebpageStreamFrame', {id: data.id, client: clientID});
-        
-        var webpage = document.getElementById(data.id + "_webpage");
-		webpage.src = "data:image/jpeg;base64," + data.src;
-	});
+		wsio.on('updateWebpageStreamFrame', function(data) {
+			wsio.emit('receivedWebpageStreamFrame', {id: data.id, client: clientID});
+		
+			var webpage = document.getElementById(data.id + "_webpage");
+			webpage.src = "data:image/jpeg;base64," + data.src;
+		});
 
+
+		/******************************/
+		wsio.on('createAppWindow', function(data) {
+			var date = new Date(data.date);
+			
+			var main = document.getElementById("main");
+			
+			var windowTitle = document.createElement("div");
+			windowTitle.id = data.id + "_title";
+			windowTitle.className = "windowTitle";
+			windowTitle.style.width = data.width.toString() + "px";
+			windowTitle.style.height = titleBarHeight.toString() + "px";
+			windowTitle.style.left = (data.left-offsetX).toString() + "px";
+			windowTitle.style.top = (data.top-offsetY).toString() + "px";
+			windowTitle.style.zIndex = itemCount.toString();
+			main.appendChild(windowTitle);
+			
+			var titleText = document.createElement("p");
+			titleText.style.lineHeight = Math.round(titleBarHeight) + "px";
+			titleText.style.fontSize = Math.round(titleTextSize) + "px";
+			titleText.style.color = "#FFFFFF";
+			titleText.style.marginLeft = Math.round(titleBarHeight/4) + "px";
+			titleText.textContent = data.title;
+			windowTitle.appendChild(titleText);
+			
+			var windowItem = document.createElement("div");
+			windowItem.id = data.id;
+			windowItem.className = "windowItem";
+			windowItem.style.left = (data.left-offsetX).toString() + "px";
+			windowItem.style.top = (data.top+titleBarHeight-offsetY).toString() + "px";
+			windowItem.style.overflow = "hidden";
+			windowItem.style.zIndex = (itemCount+1).toString();
+			main.appendChild(windowItem);
+			
+			// App launched in window 
+			var app = new window[data.application];
+			app.init(data.id, data.resrc, date);
+			app.load(data.data);
+			app.draw(date);
+			//
+			
+			var cornerSize = Math.min(data.width, data.height) / 5;
+            var dragCorner = document.createElement("div");
+            dragCorner.className = "dragCorner";
+            dragCorner.style.position = "absolute";
+            dragCorner.style.width = cornerSize.toString() + "px";
+            dragCorner.style.height = cornerSize.toString() + "px";
+            dragCorner.style.top = (data.height-cornerSize).toString() + "px";
+            dragCorner.style.left = (data.width-cornerSize).toString() + "px";
+    		dragCorner.style.backgroundColor = "rgba(255,255,255,0.0)";
+            dragCorner.style.border = "none";
+            windowItem.appendChild(dragCorner);
+			
+			applications[data.id] = app;
+			itemCount += 2;
+			
+		});
+		/******************************/
+		
+		
 		wsio.on('addNewElement', function(elem_data) {		
 			var date = new Date(elem_data.date);
 		
@@ -666,32 +733,8 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 			var diff = (video_data.time + delay) - child[0].currentTime;
 			
-			// re-sync if more the 1/30 of a second off
-			// (currently not working due to seek taking large and varying amounts of time)
-			/*
-			if(video_data.play && !child[0].paused && Math.abs(diff > 0.034)){
-				console.log("video time requires adjustment:");
-			}
-			*/
-			
-			// play a paused video - set time to audio time + delay
-			if(video_data.play && child[0].paused){
-				// set time to 0.75 sec ahead to allow video to load, then play 0.75 sec later
-				var vidTime = video_data.time + delay + 0.75;
-				if(vidTime < child[0].duration){
-					child[0].currentTime = vidTime;
-					var vidPlay = setTimeout(function() {
-						child[0].play();
-					}, 750);
-					child[0].playTimeout = vidPlay;
-				}
-			}
-			// pause a video - set time to audio time
-			else if(!video_data.play){
-				child[0].pause();
-				child[0].currentTime = video_data.time;
-				if(child[0].playTimeout !== undefined) clearTimeout(child[0].playTimeout);	
-			}
+			var app = applications[video_data.elemId]
+			app.event("videoTimeSync", null, null, null, {videoTime: video_data.time, delay: delay, play: video_data.play}, sentTime);
 		});
 		
 		wsio.on('animateCanvas', function(animate_data) {

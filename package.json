@@ -44,21 +44,11 @@
     "request": "latest",
     "ws": "latest",
     "ytdl": "latest",
-    "node-awesomium": "git://github.com/mvictoras/node-awesomium",
     "json5": "^0.2.0",
     "jshint": "^2.4.4",
     "jslint": "^0.3.1"
   },
-  "bundledDependencies": [
-    "decompress-zip",
-    "gm",
-    "imageinfo",
-    "multiparty",
-    "node-ffprobe",
-    "request",
-    "ws",
-    "ytdl"
-  ],
+  "bundledDependencies": [],
   "devDependencies": {},
   "engines": {
     "node": ">=0.6.x"

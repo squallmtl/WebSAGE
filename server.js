@@ -41,18 +41,6 @@ var sagepointer = require('node-sagepointer');    // handles sage pointers (crea
 var config = loadConfiguration();
 console.log(config);
 
-// loads the web browser module if enabled in the configuration file:
-//    experimental: { "webbrowser": true }
-var webBrowser = null;
-if(config.experimental !== undefined && config.experimental.webbrowser !== undefined && config.experimental.webbrowser === true) {
-	webBrowser = require('node-awesomium');  // load the custom node module for awesomium
-	console.log("WebBrowser loaded: awesomium");
-}
-if(webBrowser !== null) {
-	webBrowser.init(config.totalWidth, config.totalHeight, 1366, 390);
-}
-
-
 
 // global variables for various paths
 var public_https = "public_HTTPS"; // directory where HTTPS content is stored
@@ -69,9 +57,10 @@ var webBrowserClient;
 var sagePointers = {};
 var remoteInteraction = {};
 var mediaStreams = {};
-var webStreams = {};
 
 
+var appLoader = new loader(public_https, hostOrigin);
+var applications = [];
 
 // arrays of files on the server (used for media browser)
 var savedFiles = initializeSavedFilesList();
@@ -129,11 +118,6 @@ function closeWebSocketClient(wsio) {
 		for(key in mediaStreams) {
 			if (mediaStreams.hasOwnProperty(key)) {
 				delete mediaStreams[key].clients[uniqueID];
-			}
-		}
-		for(key in webStreams) {
-			if (webStreams.hasOwnProperty(key)) {
-				delete webStreams[key].clients[uniqueID];
 			}
 		}
 	}
@@ -258,15 +242,29 @@ function initializeExistingSagePointers(wsio) {
 }
 
 function initializeExistingApps(wsio) {
+	var i;
+	for(i=0; i<applications.length; i++){
+		wsio.emit('createAppWindow', app[i]);
+	}
+	
+	/*
 	for(var i=0; i<items.length; i++){
 		wsio.emit('addNewElement', items[i]);
 	}
+	*/
 }
 
 function initializeExistingAppsPositionSizeTypeOnly(wsio) {
+	var i;
+	for(i=0; i<applications.length; i++){
+		wsio.emit('createAppWindowPositionSizeOnly', app[i]);
+	}
+	
+	/*
 	for(var i=0; i<items.length; i++){
 		wsio.emit('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(items[i]));
 	}
+	*/
 }
 
 function initializeRemoteServerInfo(wsio) {
@@ -337,9 +335,6 @@ function wsPointerDblClick(wsio, data) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
-				if (webBrowser !== null) {
-					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
-				}
 			}
 		} else {
 			// already maximized, need to restore the item size
@@ -348,9 +343,6 @@ function wsPointerDblClick(wsio, data) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
 				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
-				if (webBrowser !== null) {
-					webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
-				}
 			}
 		}
 	}
@@ -478,7 +470,7 @@ function wsKeyPress(wsio, data) {
 		broadcast('changeSagePointerMode', {id: sagePointers[uniqueID].id, mode: remoteInteraction[uniqueID].interactionMode}, 'receivesPointerData');
 	}
 
-	if ( remoteInteraction[uniqueID].appInteractionMode() ) {
+	else if ( remoteInteraction[uniqueID].appInteractionMode() ) {
 		var pointerX = sagePointers[uniqueID].left;
 		var pointerY = sagePointers[uniqueID].top;
 
@@ -490,10 +482,6 @@ function wsKeyPress(wsio, data) {
 			var now = new Date();
 			var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[uniqueID].id, user_label: sagePointers[uniqueID].label, user_color: sagePointers[uniqueID].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code,10), state: "down" }, date: now };
 			broadcast('eventInItem', event, 'receivesInputEvents');
-			// Send it to the webBrowser
-			if (webBrowser !== null) {
-				webBrowser.keyPress(elem.id, data.code);
-			}
 		}
 	}
 
@@ -845,678 +833,6 @@ function wsReceivedRemoteMediaStreamFrame(wsio, data) {
 }
 
 
-/*
-wsioServer.onconnection(function(wsio) {
-	// unique identifier for WebSocket client
-	var address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-	console.log(address);
-
-	wsio.emit('setupDisplayConfiguration', config); // may not need to send to all client types
-	wsio.emit('initialize', {address: address, time: new Date()}); // address is unique id
-	
-	wsio.onclose(closeWebSocketClient);
-	
-	wsio.on('addClient', function(data) {
-		wsio.clientType = data.clientType;
-		if(wsio.clientType == "sageUI"){
-			createSagePointer( address );
-			for(var i=0; i<items.length; i++){
-				wsio.emit('addNewElement', items[i]);
-			}
-		}
-		else if(wsio.clientType == "sagePointer"){
-			createSagePointer( address );
-		}
-		else if(wsio.clientType == "display"){
-			for(var key in sagePointers){
-				wsio.emit('createSagePointer', sagePointers[key]);
-			}
-			var now = new Date();
-			wsio.emit('setSystemTime', {date: now});
-			for(var i=0; i<items.length; i++){
-				wsio.emit('addNewElement', items[i]);
-			}
-			for(var i=0; i<remoteSites.length; i++){
-				var site = {name: remoteSites[i].name, connected: remoteSites[i].connected, width: remoteSites[i].width, height: remoteSites[i].height, pos: remoteSites[i].pos};
-				wsio.emit('addRemoteSite', site);
-			}
-			for(var key in mediaStreams){
-				mediaStreams[key].clients[address] = false;
-			}
-            for(var key in webStreams){
-                webStreams[key].clients[address] = false;
-            }
-		}
-		else if(wsio.clientType == "remoteServer"){
-			var remoteIdx = -1;
-			wsio.remoteAddress.address = data.host;
-			wsio.remoteAddress.port = data.port;
-			address = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
-			for(var i=0; i<config.remote_sites.length; i++){
-				if(wsio.remoteAddress.address == config.remote_sites[i].host && wsio.remoteAddress.port == config.remote_sites[i].port) remoteIdx = i;
-			}
-
-			// add remote server websocket to array
-			if(remoteIdx >= 0){
-				remoteSites[remoteIdx].wsio = wsio;
-				remoteSites[remoteIdx].connected = true;
-				var site = {name: remoteSites[remoteIdx].name, connected: remoteSites[remoteIdx].connected};
-				broadcast('connectedToRemoteSite', site, "display");
-			}
-		}
-
-		clients.push(wsio);
-		console.log("New Connection: " + address + " (" + wsio.clientType + ")");
-	});
-
-	wsio.on('startSagePointer', function(data) {
-		showPointer( address, data );
-	});
-
-	wsio.on('stopSagePointer', function() {
-		hidePointer( address );
-
-		if( remoteInteraction[address].appInteractionMode() ){//return to window interaction mode after stopping pointer
-			remoteInteraction[address].toggleModes();
-			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode } , 'display' );
-		}
-	});
-
-	wsio.on('pointerPress', function() {
-		var pointerX = sagePointers[address].left;
-		var pointerY = sagePointers[address].top;
-
-		pointerPress( address, pointerX, pointerY );
-	});
-
-	wsio.on('pointerRelease', function() {
-		var pointerX = sagePointers[address].left;
-		var pointerY = sagePointers[address].top;
-
-		pointerRelease( address, pointerX, pointerY );
-	});
-
-	wsio.on('pointerPosition', function(data) {
-		pointerPosition( address, data );
-	});
-
-	// Got double-click event from the pointer
-	wsio.on('pointerDblClick', function(data) {
-		var pointerX = sagePointers[address].left;
-		var pointerY = sagePointers[address].top;
-		var elem     = findItemUnderPointer(pointerX, pointerY);
-
-		if (elem !== null) {
-			if (!elem.isMaximized || elem.isMaximized == 0) {
-				// need to maximize the item
-				var updatedItem = remoteInteraction[address].maximizeSelectedItem(elem, config);
-				if (updatedItem !== null) {
-					broadcast('setItemPositionAndSize', updatedItem);
-					// the PDF files need an extra redraw
-					broadcast('finishedResize', {id: elem.id}, "display");
-					if (webBrowser !== null)
-						webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
-				}
-			} else {
-				// already maximized, need to restore the item size
-				var updatedItem = remoteInteraction[address].restoreSelectedItem(elem);
-				if (updatedItem !== null) {
-					broadcast('setItemPositionAndSize', updatedItem);
-					// the PDF files need an extra redraw
-					broadcast('finishedResize', {id: elem.id}, "display");
-					if (webBrowser !== null)
-						webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
-				}
-			}
-		}
-	});
-
-	wsio.on('pointerMove', function(data) {
-		sagePointers[address].left += data.deltaX;
-		sagePointers[address].top += data.deltaY;
-		if(sagePointers[address].left < 0) sagePointers[address].left = 0;
-		if(sagePointers[address].left > config.totalWidth) sagePointers[address].left = config.totalWidth;
-		if(sagePointers[address].top < 0) sagePointers[address].top = 0;
-		if(sagePointers[address].top > config.totalHeight) sagePointers[address].top = config.totalHeight;
-
-		broadcast('updateSagePointerPosition', sagePointers[address], "display");
-
-		if( remoteInteraction[address].windowManagementMode() ){
-			var pointerX = sagePointers[address].left;
-			var pointerY = sagePointers[address].top;
-
-			var updatedMoveItem = remoteInteraction[address].moveSelectedItem(pointerX, pointerY);
-			var updatedResizeItem = remoteInteraction[address].resizeSelectedItem(pointerX, pointerY);
-			if(updatedMoveItem !== null){
-				broadcast('setItemPosition', updatedMoveItem);
-			}
-			else if(updatedResizeItem !== null){
-				broadcast('setItemPositionAndSize', updatedResizeItem);
-			}
-			else{
-				var elem = findItemUnderPointer(pointerX, pointerY);
-				if(elem !== null){
-					var localX = pointerX - elem.left;
-					var localY = pointerY - (elem.top+config.titleBarHeight);
-					var cornerSize = Math.min(elem.width, elem.height) / 5;
-					// bottom right corner - select for drag resize
-					if(localX >= elem.width-cornerSize && localY >= elem.height-cornerSize){
-						if(remoteInteraction[address].hoverCornerItem !== null){
-							broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
-						}
-						remoteInteraction[address].setHoverCornerItem(elem);
-						broadcast('hoverOverItemCorner', {elemId: elem.id, flag: true}, "display");
-					}
-					else if(remoteInteraction[address].hoverCornerItem !== null){
-						broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
-						remoteInteraction[address].setHoverCornerItem(null);
-					}
-				}
-				else if(remoteInteraction[address].hoverCornerItem !== null){
-					broadcast('hoverOverItemCorner', {elemId: remoteInteraction[address].hoverCornerItem.id, flag: false}, "display");
-					remoteInteraction[address].setHoverCornerItem(null);
-				}
-			}
-		}
-		else if ( remoteInteraction[address].appInteractionMode() ) {
-			var pointerX = sagePointers[address].left;
-			var pointerY = sagePointers[address].top
-
-			var elem = findItemUnderPointer(pointerX, pointerY);
-
-			if( elem !== null ){
-
-				var itemRelX = pointerX - elem.left;
-				var itemRelY = pointerY - elem.top - config.titleBarHeight;
-				var now = new Date();
-				broadcast( 'eventInItem', { eventType: "pointerMove", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {}, date: now }, "display");
-			}
-		}
-	});
-
-	wsio.on('pointerScrollStart', function() {
-		var pointerX = sagePointers[address].left;
-		var pointerY = sagePointers[address].top;
-		var elem = findItemUnderPointer(pointerX, pointerY);
-
-		if(elem !== null){
-			remoteInteraction[address].selectScrollItem(elem);
-			var newOrder = moveItemToFront(elem.id);
-			broadcast('updateItemOrder', {idList: newOrder});
-		}
-	});
-
-	wsio.on('pointerScroll', function(data) {
-		pointerScroll( address, data );
-	});
-
-	wsio.on('keyDown', function(data) {
-		if(data.code == 16){ // shift
-			remoteInteraction[address].SHIFT = true;
-		}
-		else if(data.code == 17){ // ctrl
-			remoteInteraction[address].CTRL = true;
-		}
-		else if(data.code == 18) { // alt
-			remoteInteraction[address].ALT = true;
-		}
-		else if(data.code == 20) { // caps lock
-			remoteInteraction[address].CAPS = true;
-		}
-		else if(data.code == 91 || data.code == 92 || data.code == 93){ // command
-			remoteInteraction[address].CMD = true;
-		}
-
-		//SEND SPECIAL KEY EVENT only will come here
-		if ( remoteInteraction[address].appInteractionMode() ) {
-				var pointerX = sagePointers[address].left;
-				var pointerY = sagePointers[address].top;
-
-				var elem = findItemUnderPointer(pointerX, pointerY);
-
-				if( elem !== null ){
-					var itemRelX = pointerX - elem.left;
-					var itemRelY = pointerY - elem.top - config.titleBarHeight;
-					var now = new Date();
-					var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "down" }, date: now };
-					broadcast('eventInItem', event, "display");
-					broadcast('eventInItem', event, "audioManager");
-					broadcast('eventInItem', event, "app");
-}
-		}
-
-	});
-
-	wsio.on('keyUp', function(data) {
-		var pointerX = sagePointers[address].left;
-		var pointerY = sagePointers[address].top;
-		var elem = findItemUnderPointer(pointerX, pointerY);
-
-		if(data.code == 16){ // shift
-			remoteInteraction[address].SHIFT = false;
-		}
-		else if(data.code == 17){ // ctrl
-			remoteInteraction[address].CTRL = false;
-		}
-		else if(data.code == 18) { // alt
-			remoteInteraction[address].ALT = false;
-		}
-		else if(data.code == 20) { // caps lock
-			remoteInteraction[address].CAPS = false;
-		}
-		else if(data.code == 91 || data.code == 92 || data.code == 93){ // command
-			remoteInteraction[address].CMD = false;
-		}
-
-		if(elem !== null){
-			if( remoteInteraction[address].windowManagementMode() ){
-				if(data.code == "8" || data.code == "46"){ // backspace or delete
-					deleteElement( elem );
-				}
-			}
-			else if ( remoteInteraction[address].appInteractionMode() ) {	//only send special keys
-					var pointerX = sagePointers[address].left;
-					var pointerY = sagePointers[address].top;
-
-					var elem = findItemUnderPointer(pointerX, pointerY);
-
-					if( elem !== null ){
-						var itemRelX = pointerX - elem.left;
-						var itemRelY = pointerY - elem.top - config.titleBarHeight;
-						var now = new Date();
-						var event = { eventType: "specialKey", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: data.code, state: "up" }, date: now };
-						broadcast('eventInItem', event, "display");
-						broadcast('eventInItem', event, "audioManager");
-						broadcast('eventInItem', event, "app");
-}
-			}
-		}
-	});
-
-	wsio.on('keyPress', function(data) {
-		if(data.code == 9 && remoteInteraction[address].SHIFT && sagePointers[address].visible){ // shift + tab
-			remoteInteraction[address].toggleModes();
-			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "display");
-			broadcast('changeSagePointerMode', {id: sagePointers[address].id, mode: remoteInteraction[address].interactionMode}, "app");
-}
-
-		if ( remoteInteraction[address].appInteractionMode() ) {
-			var pointerX = sagePointers[address].left;
-			var pointerY = sagePointers[address].top;
-
-			var elem = findItemUnderPointer(pointerX, pointerY);
-
-			if( elem !== null ){
-				var itemRelX = pointerX - elem.left;
-				var itemRelY = pointerY - elem.top - config.titleBarHeight;
-				var now = new Date();
-				var event = { eventType: "keyboard", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {code: parseInt(data.code), state: "down" }, date: now };
-				broadcast('eventInItem', event, "display");
-				broadcast('eventInItem', event, "audioManager");
-				// Send it to the webBrowser
-				if (webBrowser !== null)
-					webBrowser.keyPress(elem.id, data.code);
-            }
-		}
-
-	});
-
-
-	wsio.on('requestStoredFiles', function() {
-		wsio.emit('storedFileList', savedFiles);
-	});
-
-	wsio.on('updateVideoTime', function(video_data) {
-		broadcast('updateVideoItemTime', video_data, "display");
-	});
-
-	wsio.on('startNewMediaStream', function(data) {
-		console.log("received new stream: " + data.id);
-		mediaStreams[data.id] = {ready: true, clients: {}};
-		for(var i=0; i<clients.length; i++){
-			if(clients[i].clientType == "display"){
-				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				mediaStreams[data.id].clients[clientAddress] = false;
-			}
-		}
-
-		loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
-			broadcast('addNewElement', newItem);
-
-			items.push(newItem);
-			itemCount++;
-		});
-	});
-
-	wsio.on('updateMediaStreamFrame', function(data) {
-		mediaStreams[data.id].ready = true;
-		for(var key in mediaStreams[data.id].clients){
-			mediaStreams[data.id].clients[key] = false;
-		}
-		var streamItem = findItemById(data.id);
-		if(streamItem !== null) streamItem.src = data.src;
-
-		broadcast('updateMediaStreamFrame', data, "display");
-	});
-
-	wsio.on('updateRemoteMediaStreamFrame', function(data) {
-		mediaStreams[data.id].ready = true;
-		for(var key in mediaStreams[data.id].clients){
-			mediaStreams[data.id].clients[key] = false;
-		}
-		var streamItem = findItemById(data.id);
-		if(streamItem !== null) streamItem.src = data.src;
-
-		broadcast('updateRemoteMediaStreamFrame', data, "display");
-	});
-
-	wsio.on('receivedMediaStreamFrame', function(data) {
-		mediaStreams[data.id].clients[address] = true;
-		if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
-			mediaStreams[data.id].ready = false;
-			var broadcastWS = null;
-			for(var i=0; i<clients.length; i++){
-				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				if(clientAddress == data.id) broadcastWS = clients[i];
-			}
-
-			if(broadcastWS !== null) broadcastWS.emit('requestNextFrame', null);
-		}
-	});
-
-	wsio.on('receivedRemoteMediaStreamFrame', function(data) {
-		mediaStreams[data.id].clients[address] = true;
-		if(allTrueDict(mediaStreams[data.id].clients) && mediaStreams[data.id].ready){
-			mediaStreams[data.id].ready = false;
-
-			var broadcastWS = null;
-			var serverAddress = data.id.substring(6).split("|")[0];
-			var broadcastAddress = data.id.substring(6).split("|")[1];
-			for(var i=0; i<clients.length; i++){
-				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				if(clientAddress == serverAddress) broadcastWS = clients[i];
-			}
-
-			if(broadcastWS !== null) broadcastWS.emit('requestNextRemoteFrame', {id: broadcastAddress});
-		}
-	});
-
-	wsio.on('stopMediaStream', function(data) {
-		var elem = findItemById(data.id);
-
-		if(elem !== null) deleteElement( elem );
-	});
-
-	wsio.on('addNewWebElement', function(data) {
-		if(data.type == "img"){
-			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
-				if(err) throw err;
-
-				itemCount++;
-				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-				});
-			});
-		}
-		else if(data.type == "video"){
-			itemCount++;
-			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "youtube"){
-			itemCount++;
-			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "pdf"){
-			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var url = path.join("uploads", "pdfs", filename);
-			var localPath = path.join(public_https, url);
-			var tmp = fs.createWriteStream(localPath);
-			tmp.on('error', function(err) {
-				if(err) throw err;
-			});
-			tmp.on('close', function() {
-				itemCount++;
-				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-				});
-			});
-			request({url: data.src, strictSSL: false}).pipe(tmp);
-		}
-	});
-
-	wsio.on('addNewElementFromStoredFiles', function(file) {
-		var url = path.join("uploads", file.dir, file.name);
-		var external_url = hostOrigin + encodeURI(url);
-		var localPath = path.join(public_https, url);
-
-		if(file.dir == "images"){
-			fs.readFile(localPath, function (err, data) {
-				if(err) throw err;
-
-				itemCount++;
-				loader.loadImage(data, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-				});
-			});
-		}
-		else if(file.dir == "videos"){
-			itemCount++;
-			loader.loadVideo(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(file.dir == "pdfs"){
-			itemCount++;
-			loader.loadPdf(localPath, url, external_url, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(file.dir == "apps"){
-			itemCount++;
-			var id = "item"+itemCount.toString();
-			loader.loadApp(localPath, url, external_url, id, function(newItem, instructions) {
-				// add resource scripts to clients
-				for(var i=0; i<instructions.resources.length; i++){
-					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: path.join(url, instructions.resources[i].src)});
-					}
-				}
-
-				// add item to clients (after waiting 1 second to ensure resources have loaded)
-				setTimeout(function() {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-
-					// set interval timer if specified
-					if(instructions.animation == "timer"){
-						setInterval(function() {
-							var now = new Date();
-							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
-						}, instructions.interval);
-					}
-				}, 1000);
-			});
-		}
-	});
-
-	// Remote site
-	wsio.on('addNewElementFromRemoteServer', function(data) {
-		//console.log("received element from server: " + data.src);
-		if(data.type == "img"){
-			request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
-				if(err) throw err;
-
-				itemCount++;
-				loader.loadImage(body, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-				});
-			});
-		}
-		else if(data.type == "video"){
-			itemCount++;
-			loader.loadVideo(data.src, data.src, data.src, "item"+itemCount.toString(), decodeURI(data.src.substring(data.src.lastIndexOf("/")+1)), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "youtube"){
-			itemCount++;
-			loader.loadYoutube(data.src, "item"+itemCount.toString(), function(newItem) {
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-			});
-		}
-		else if(data.type == "pdf"){
-			var filename = decodeURI(data.src.substring(data.src.lastIndexOf("/")+1));
-			var url = path.join("uploads", "pdfs", filename);
-			var localPath = path.join(public_https, url);
-			var tmp = fs.createWriteStream(localPath);
-			tmp.on('error', function(err) {
-				if(err) throw err;
-			});
-			tmp.on('close', function() {
-				itemCount++;
-				loader.loadPdf(localPath, url, data.src, "item"+itemCount.toString(), path.basename(localPath), function(newItem) {
-					broadcast('addNewElement', newItem);
-
-					items.push(newItem);
-				});
-			});
-			request({url: data.src, strictSSL: false}).pipe(tmp);
-		}
-		else if(data.type == "canvas" || data.type == "webgl" || data.type == "kineticjs" || data.type == "threejs"){
-			console.log("remote app: " + data.src);
-			
-			itemCount++;
-			var id = "item"+itemCount.toString();
-			loader.loadRemoteApp(data.src, id, function(newItem, instructions) {
-				// add resource scripts to clients
-				for(var i=0; i<instructions.resources.length; i++){
-					if(instructions.resources[i].type == "script"){
-						broadcast('addScript', {source: data.src + "/" + instructions.resources[i].src});
-					}
-				}
-	
-				// add item to clients (after waiting 1 second to ensure resources have loaded)
-				setTimeout(function() {
-					broadcast('addNewElement', newItem);
-					
-					items.push(newItem);
-
-					// set interval timer if specified
-					if(instructions.animation == "timer"){
-						setInterval(function() {
-							var now = new Date();
-							broadcast('animateCanvas', {elemId: id, type: instructions.type, date: now});
-						}, instructions.interval);
-					}
-				}, 1000);
-			});
-		}
-		else if(data.type == "screen"){
-			var remote_id = "remote" + wsio.remoteAddress.address + ":" + wsio.remoteAddress.port + "|" + data.id;
-
-			mediaStreams[remote_id] = {ready: true, clients: {}};
-			for(var i=0; i<clients.length; i++){
-				if(clients[i].clientType == "display"){
-					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-					mediaStreams[remote_id].clients[clientAddress] = false;
-				}
-			}
-
-			loader.loadRemoteScreen(data.src, remote_id, data.title, function(newItem) {
-				console.log("REMOTE SCREEN");
-				broadcast('addNewElement', newItem);
-
-				items.push(newItem);
-				itemCount++;
-			});
-		}
-		else{
-			console.log("unknown type: " + data.type);
-		}
-	});
-
-	wsio.on('requestNextRemoteFrame', function(data) {
-		var stream = findItemById(data.id);
-		var remote_id = "remote" + config.host + ":" + config.port + "|" + data.id;
-
-		if(stream !== null) wsio.emit('updateRemoteMediaStreamFrame', {id: remote_id, src: stream.src});
-		else wsio.emit('stopMediaStream', {id: remote_id});
-	});
-
-    wsio.on('receivedWebpageStreamFrame', function(data) {
-        webStreams[data.id].clients[address] = true;
-		if(allTrueDict(webStreams[data.id].clients) && webStreams[data.id].ready){
-			webStreams[data.id].ready = false;
-            data.src = webBrowser.getFrame(data.id);
-            broadcast('updateWebpageStreamFrame', data, "display");
-
-            webStreams[data.id].ready = true;
-            for(var key in webStreams[data.id].clients){
-                webStreams[data.id].clients[key] = false;
-            }
-        }
-	});
-
-    wsio.on('openNewWebpage', function(data) {
-        var width = 1366;
-        var height = 390;
-        console.log("Opening a new webpage:" + data.url);
-
-        data.id = data.id + "_" + itemCount.toString();
-        var web = {src: "", title: "WebBrowser: " + data.url, width: width, height: height};
-
-        webBrowser.createWindow(data.id, data.url);
-
-        webStreams[data.id] = {ready: true, clients: {}};
-		for(var i=0; i<clients.length; i++){
-			if(clients[i].clientType == "display"){
-				var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
-				webStreams[data.id].clients[clientAddress] = false;
-			}
-		
-        }
-	
-        loader.loadWebpage(web.src, data.id, web.title, web.width, web.height, function(newItem) {
-			broadcast('addNewElement', newItem);
-
-            data.src = webBrowser.getFrame(data.id);
-            broadcast('updateWebpageStreamFrame', data, "display");
-
-			items.push(newItem);
-			itemCount++;
-		});
-    });
-});
-*/
-
-
-
-
 function loadConfiguration() {
 	var configFile = null;
 	
@@ -1563,6 +879,13 @@ function loadConfiguration() {
 	userConfig.pointerHeight  = Math.round(0.050 * userConfig.totalHeight);
 	
 	return userConfig;
+}
+
+function getUniqueAppId() {
+	var id = "application_"+itemCount.toString();
+	itemCount++;
+	
+	return id;	
 }
 
 function initializeSavedFilesList() {
@@ -1721,8 +1044,16 @@ function manageUploadedFiles(files) {
     var fileKeys = Object.keys(files);
 	fileKeys.forEach(function(key) {
 		var file = files[key][0];
-		var type = file.headers['content-type'];
-
+		
+		appLoader.manageAndLoadUploadedFile(file, function(appInstance) {
+			appInstance.id = getUniqueAppId();
+			broadcast('createAppWindow', appInstance, 'requiresFullApps');
+			broadcast('createAppWindowPositionSizeOnly', getAppPositionSize(appInstance), 'requiresAppPositionSizeTypeOnly');
+			
+			applications.push(appInstance);
+		});
+		
+		/*
 		if(type == "image/jpeg" || type == "image/png"){
 			console.log("uploaded image: " + file.originalFilename);
 			url = path.join("uploads", "images", file.originalFilename);
@@ -1827,6 +1158,7 @@ function manageUploadedFiles(files) {
 		else{
 			console.log("uploaded unknown type: " + type);
 		}
+		*/
 	});
 }
 
@@ -2208,12 +1540,22 @@ function findRemoteSiteByConnection(wsio) {
 }
 
 function findItemUnderPointer(pointerX, pointerY) {
+	var i;
+	for(i=applications.length-1; i>=0; i--){
+		if(pointerX >= applications[i].left && pointerX <= (applications[i].left+applications[i].width) && pointerY >= applications[i].top && pointerY <= (applications[i].top+applications[i].height+config.titleBarHeight)){
+			return applications[i];
+		}
+	}
+	return null;
+	
+	/*
 	for(var i=items.length-1; i>=0; i--){
 		if(pointerX >= items[i].left && pointerX <= (items[i].left+items[i].width) && pointerY >= items[i].top && pointerY <= (items[i].top+items[i].height+config.titleBarHeight)){
 			return items[i];
 		}
 	}
 	return null;
+	*/
 }
 
 function findItemById(id) {
@@ -2284,8 +1626,12 @@ function moveElementToEnd(list, elem) {
 	list[list.length-1] = elem;
 }
 
-function getItemPositionSizeType(item){
+function getItemPositionSizeType(item) {
 	return {type: item.type, id: item.id, left: item.left, top: item.top, width: item.width, height: item.height, aspect: item.aspect};
+}
+
+function getAppPositionSize(appInstance) {
+	return {id: appInstance.id, application: appInstance.application, left: appInstance.left, top: appInstance.top, width: appInstance.width, height: appInstance.height};
 }
 
 /**** Pointer Functions ********************************************************************/
@@ -2404,11 +1750,6 @@ function pointerPress( address, pointerX, pointerY ) {
 				var itemRelY = pointerY - elem.top - config.titleBarHeight;
 				var now = new Date();
 				broadcast('eventInItem', {eventType: "pointerPress", elemId: elem.id, user_id: sagePointers[address].id, user_label: sagePointers[address].label, user_color: sagePointers[address].color, itemRelativeX: itemRelX, itemRelativeY: itemRelY, data: {button: "left"}, date: now }, 'receivesInputEvents');
-                // Send the pointer press to node-modules
-                // Send it to the webBrowser
-				if (webBrowser !== null) {
-					webBrowser.click(elem.id, itemRelX, itemRelY);
-				}
 			}
 
 			var newOrder = moveItemToFront(elem.id);
@@ -2434,9 +1775,6 @@ function pointerRelease(address, pointerX, pointerY) {
 		if(remoteInteraction[address].selectedResizeItem !== null){
 			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id, elemWidth: remoteInteraction[address].selectedResizeItem.width, elemHeight: remoteInteraction[address].selectedResizeItem.height}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
-			if (webBrowser !== null) {
-				webBrowser.resize(elem.elemId, Math.round(elem.elemWidth), Math.round(elem.elemHeight));
-			}
 		}
 		if(remoteInteraction[address].selectedMoveItem !== null){
 			var remoteIdx = -1;
@@ -2521,9 +1859,6 @@ function pointerScroll( address, data ) {
 			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
 				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
 				remoteInteraction[address].selectedScrollItem = null;
-				if (webBrowser !== null) {
-					webBrowser.resize(updatedItem.elemId, Math.round(updatedItem.elemWidth), Math.round(updatedItem.elemHeight));
-				}
 			}, 500);
 		}
 	}
@@ -2547,12 +1882,6 @@ function pointerScroll( address, data ) {
 }
 
 function deleteElement( elem ) {
-    if(elem.type == "webpage") {
-		if (webBrowser !== null) {
-			webBrowser.removeWindow(elem.id);
-		}
-    }
-
 	broadcast('deleteElement', {elemId: elem.id}, 'requiresFullApps');
 	broadcast('deleteElement', {elemId: elem.id}, 'requiresAppPositionSizeTypeOnly');
 	if(elem.type == "screen"){
