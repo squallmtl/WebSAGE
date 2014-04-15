@@ -3,14 +3,14 @@ var image_viewer = SAGE2_App.extend( {
 		this.src = null;
 	},
 	
-	init: function(id, resrc, date) {
+	init: function(id, width, height, resrc, date) {
 		// call super-class 'init'
-		arguments.callee.superClass.init.call(this, id, "img", resrc, date);
+		arguments.callee.superClass.init.call(this, id, "img", width, height, resrc, date);
 		
 		// application specific 'init'
 	},
 	
-	load: function(data) {
+	load: function(data, date) {
 		this.element.src = data.src;
 	},
 	

@@ -5,9 +5,9 @@ var movie_player = SAGE2_App.extend( {
 		this.playDelay = 0.75;
 	},
 	
-	init: function(id, resrc, date) {
+	init: function(id, width, height, resrc, date) {
 		// call super-class 'init'
-		arguments.callee.superClass.init.call(this, id, "video", resrc, date);
+		arguments.callee.superClass.init.call(this, id, "video", width, height, resrc, date);
 		
 		// application specific 'init'
 		this.element.controls = false;
@@ -17,7 +17,7 @@ var movie_player = SAGE2_App.extend( {
 		this.element.appendChild(this.source);
 	},
 	
-	load: function(data) {
+	load: function(data, date) {
 		var param = data.src.indexOf('?');
 		if(param >= 0) this.source.src = data.src + "&clientID=" + clientID.toString();
 		else this.source.src = data.src + "?clientID=" + clientID.toString();

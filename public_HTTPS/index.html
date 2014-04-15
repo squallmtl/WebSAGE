@@ -8,10 +8,10 @@
 <script type="text/javascript" src="lib/SAGE2_App.js"></script>
 <script type="text/javascript" src="lib/image_viewer.js"></script>
 <script type="text/javascript" src="lib/movie_player.js"></script>
+<script type="text/javascript" src="lib/pdf_viewer.js"></script>
 
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
-<script type="text/javascript" src="scripts/pdf_canvas.js"></script>
 <script type="text/javascript" src="scripts/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="scripts/kinetic-v4.7.4.min.js"></script>
 <script type="text/javascript" src="scripts/three.min.js"></script>
@@ -332,8 +332,8 @@
 			
 			// App launched in window 
 			var app = new window[data.application];
-			app.init(data.id, data.resrc, date);
-			app.load(data.data);
+			app.init(data.id, data.width, data.height, data.resrc, date);
+			app.load(data.data, date);
 			app.draw(date);
 			//
 			

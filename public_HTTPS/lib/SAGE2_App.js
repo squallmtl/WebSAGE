@@ -3,6 +3,7 @@ var SAGE2_App = Class.extend( {
 		this.div = null;
 		this.element = null;
 		this.resrcPath = null;
+		this.resizeEvents = "never";
 	
 		this.startDate = null;
 		this.prevDate = null;
@@ -12,10 +13,12 @@ var SAGE2_App = Class.extend( {
 		this.frame = null;
 	},
 	
-	init: function(id, elem, resrc, date) {
+	init: function(id, elem, width, height, resrc, date) {
 		this.div = document.getElementById(id);
 		this.element = document.createElement(elem);
 		this.element.className = "sageItem";
+		this.element.width = width;
+		this.element.height = height;
 		this.div.appendChild(this.element);
 		
 		this.resrcPath = resrc;
