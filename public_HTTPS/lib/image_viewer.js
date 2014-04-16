@@ -10,8 +10,8 @@ var image_viewer = SAGE2_App.extend( {
 		// application specific 'init'
 	},
 	
-	load: function(data, date) {
-		this.element.src = data.src;
+	load: function(state, date) {
+		this.element.src = "data:" + state.type + ";base64, " + state.src;
 	},
 	
 	draw: function(date) {

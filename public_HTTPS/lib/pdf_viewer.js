@@ -9,6 +9,7 @@ var pdf_viewer = SAGE2_App.extend( {
 		this.loaded = null;
 		this.pdfDoc = null;
 		this.pageNum = 1;
+		this.numPagesShown = 1
 	},
 	
 	init: function(id, width, height, resrc, date) {
@@ -24,13 +25,24 @@ var pdf_viewer = SAGE2_App.extend( {
 		this.loaded = false;
 	},
 	
-	load: function(data, date) {
-		var _this = this;
-		PDFJS.getDocument(data.src).then(function getPdfHelloWorld(_pdfDoc) {
-			_this.pdfDoc = _pdfDoc;
-			_this.loaded = true;
-			_this.draw(date);
-		});
+	load: function(state, date) {
+		// load new document
+		if(state.src !== undefined && state.src !== null) {		
+			var _this = this;
+			PDFJS.getDocument(state.src).then(function getPdfHelloWorld(_pdfDoc) {
+				_this.pdfDoc = _pdfDoc;
+				_this.pageNum = state.page;
+				_this.numPagesShown = state.numPagesShown;
+				_this.loaded = true;
+				_this.draw(date);
+			});
+		}
+		// load new state of same document
+		else {
+			this.pageNum = state.page;
+			this.numPagesShown = state.numPagesShown;
+			this.draw(date);
+		}
 	},
 	
 	draw: function(date) {
@@ -66,22 +78,22 @@ var pdf_viewer = SAGE2_App.extend( {
 	},
 	
 	event: function(eventType, userId, x, y, data, date) {
-		// Left Arrow - go back
-		// Right Arrow - go forward
-		/*
-		this.goBack = function () {
-			if(this.pageNum <= 1) return;
-			this.pageNum = this.pageNum - 1;
+		// Left Arrow - go back one page
+		// Right Arrow - go forward one page
 		
-			this.renderPage();
-		};
+		if(eventType === "specialKey"){
+			if(data.code === 37 && data.state === "up"){ // Left Arrow
+				if(this.pageNum <= 1) return;
+				this.pageNum = this.pageNum - 1;
 		
-		this.goForward = function () {
-			if(this.pageNum >= this.pdfDoc.numPages) return;
-			this.pageNum = this.pageNum + 1;
+				this.draw(date);
+			}
+			if(data.code === 39 && data.state === "up"){ // Right Arrow
+				if(this.pageNum >= this.pdfDoc.numPages) return;
+				this.pageNum = this.pageNum + 1;
 		
-			this.renderPage();
-		};
-		*/
+				this.draw(date);
+			}
+		}
 	}
 });

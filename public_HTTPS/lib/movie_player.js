@@ -3,6 +3,8 @@ var movie_player = SAGE2_App.extend( {
 		this.source = null;
 		this.playTimeout = null;
 		this.playDelay = 0.75;
+		
+		this.canplayCallback = this.canplay.bind(this);
 	},
 	
 	init: function(id, width, height, resrc, date) {
@@ -17,11 +19,19 @@ var movie_player = SAGE2_App.extend( {
 		this.element.appendChild(this.source);
 	},
 	
-	load: function(data, date) {
-		var param = data.src.indexOf('?');
-		if(param >= 0) this.source.src = data.src + "&clientID=" + clientID.toString();
-		else this.source.src = data.src + "?clientID=" + clientID.toString();
-		this.source.type = data.type;
+	canplay: function() {
+		console.log("video can play!");
+		
+		this.element.removeEventListener('canplay', this.canplayCallback, false);
+	},
+	
+	load: function(state, date) {
+		this.element.addEventListener('canplay', this.canplayCallback, false);
+		
+		var param = state.src.indexOf('?');
+		if(param >= 0) this.source.src = state.src + "&clientID=" + clientID.toString();
+		else this.source.src = state.src + "?clientID=" + clientID.toString();
+		this.source.type = state.type;
 	},
 	
 	draw: function(date) {

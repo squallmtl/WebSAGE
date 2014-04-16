@@ -244,7 +244,7 @@ function initializeExistingSagePointers(wsio) {
 function initializeExistingApps(wsio) {
 	var i;
 	for(i=0; i<applications.length; i++){
-		wsio.emit('createAppWindow', app[i]);
+		wsio.emit('createAppWindow', applications[i]);
 	}
 	
 	/*
@@ -334,7 +334,7 @@ function wsPointerDblClick(wsio, data) {
 			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight, date: new Date()}, 'receivesWindowModification');
 			}
 		} else {
 			// already maximized, need to restore the item size
@@ -342,7 +342,7 @@ function wsPointerDblClick(wsio, data) {
 			if (updatedItem !== null) {
 				broadcast('setItemPositionAndSize', updatedItem, 'receivesWindowModification');
 				// the PDF files need an extra redraw
-				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight, date: new Date()}, 'receivesWindowModification');
 			}
 		}
 	}
@@ -1773,7 +1773,7 @@ function pointerRelease(address, pointerX, pointerY) {
 	// From pointerRelease
 	if( remoteInteraction[address].windowManagementMode() ){
 		if(remoteInteraction[address].selectedResizeItem !== null){
-			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id, elemWidth: remoteInteraction[address].selectedResizeItem.width, elemHeight: remoteInteraction[address].selectedResizeItem.height}, 'receivesWindowModification');
+			broadcast('finishedResize', {id: remoteInteraction[address].selectedResizeItem.id, elemWidth: remoteInteraction[address].selectedResizeItem.width, elemHeight: remoteInteraction[address].selectedResizeItem.height, date: new Date()}, 'receivesWindowModification');
 			remoteInteraction[address].releaseItem(true);
 		}
 		if(remoteInteraction[address].selectedMoveItem !== null){
@@ -1857,7 +1857,7 @@ function pointerScroll( address, data ) {
 			}
 
 			remoteInteraction[address].selectTimeId[updatedItem.elemId] = setTimeout(function() {
-				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight}, 'receivesWindowModification');
+				broadcast('finishedResize', {id: updatedItem.elemId, elemWidth: updatedItem.elemWidth, elemHeight: updatedItem.elemHeight, date: new Date()}, 'receivesWindowModification');
 				remoteInteraction[address].selectedScrollItem = null;
 			}, 500);
 		}
@@ -1896,5 +1896,6 @@ function deleteElement( elem ) {
 
 		if(broadcastWS !== null) broadcastWS.emit('stopMediaCapture', {streamId: broadcastID});
 	}
-	removeElement(items, elem);
+	//removeElement(items, elem);
+	removeElement(applications, elem);
 }

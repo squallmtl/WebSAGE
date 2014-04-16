@@ -35,6 +35,10 @@
 	var pdfsDir;
 	var videosDir;
 
+	// Explicitely close web socket when web broswer is closed
+	window.onbeforeunload = function() {
+		if(wsio !== undefined) wsio.close();
+	};
 	
 	function init() {
 		hostname = window.location.hostname;
@@ -70,6 +74,25 @@
 				receivesRemoteServerInfo: false
 			};
 			wsio.emit('addClient', clientDescription);
+		});
+		
+		// Socket close event (ie server crashed)		
+		wsio.on('close', function (evt) {
+			var refresh = setInterval(function () {
+				// make a dummy request to test the server every 2 sec
+				xhr = new XMLHttpRequest();
+				xhr.open("GET", "/", true);
+				xhr.onreadystatechange = function() {
+					if(xhr.readyState == 4 && xhr.status == 200){
+						console.log("server ready");
+						// when server ready, clear the interval callback
+						clearInterval(refresh);
+						// and reload the page
+						window.location.reload();
+					}
+				};
+				xhr.send();
+			}, 2000);
 		});
 		
 		serverUploadBtn = document.getElementById('serverUploadBtn');

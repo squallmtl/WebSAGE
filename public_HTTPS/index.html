@@ -42,8 +42,7 @@
 	
 	// Explicitely close web socket when web broswer is closed
 	window.onbeforeunload = function() {
-		if (typeof wsio !== "undefined")
-    		wsio.close();
+		if(wsio !== undefined) wsio.close();
 	};
 
 	function init() {
@@ -51,6 +50,9 @@
 		port = window.location.port;
 		if(window.location.protocol == "http:" && port == "") port = "80";
 		if(window.location.protocol == "https:" && port == "") port = "443";
+		
+		clientID = parseInt(getParameterByName("clientID"));
+		console.log("clientID: " + clientID);
 		
 		wsio = new websocketIO(window.location.protocol, hostname, parseInt(port));
 		console.log("Connected to server: ", window.location.origin);
@@ -77,9 +79,6 @@
 			};
 			wsio.emit('addClient', clientDescription);
 		});
-		
-		clientID = parseInt(getParameterByName("clientID"));
-		console.log("clientID: " + clientID);
 
 		// Socket close event (ie server crashed)		
 		wsio.on('close', function (evt) {
@@ -608,6 +607,8 @@
 		});
 		
 		wsio.on('deleteElement', function(elem_data) {
+			console.log("delete: " + elem_data.elemId);
+			
 			var deleteElemTitle = document.getElementById(elem_data.elemId + "_title");
 			deleteElemTitle.parentNode.removeChild(deleteElemTitle);
 			
@@ -659,8 +660,6 @@
 		});
 		
 		wsio.on('setItemPositionAndSize', function(position_data) {
-			var date = new Date(position_data.date);
-			
 			var eLeft = position_data.elemLeft - offsetX;
 			var eTop = position_data.elemTop - offsetY;
 			
@@ -692,11 +691,26 @@
 				child[0].width = Math.round(position_data.elemWidth);
 				child[0].height = Math.round(position_data.elemHeight);
 			}
+			
+			var app = applications[position_data.elemId];
+			if(app !== undefined && app.resizeEvents === "continuous"){
+				var date = new Date(position_data.date);
+				app.resize(date);
+			}
+			/*
 			// triggers the resize callback in the application
 			if(child[0].id in canvasItems) canvasItems[child[0].id].resize(date);
+			*/
 		});
 		
-		wsio.on('finishedResize', function(elem) {
+		wsio.on('finishedResize', function(data) {
+			var app = applications[data.id];
+			if(app !== undefined && app.resizeEvents === "onfinish"){
+				var date = new Date(data.date);
+				app.resize(date);
+			}
+			
+			/*
 			var selectedElem = document.getElementById(elem.id);
 			
 			var child = selectedElem.getElementsByClassName("sageItem");
@@ -704,22 +718,7 @@
 			if(child[0].id in pdfItems){
 				pdfItems[child[0].id].renderPage();
 			}
-		});
-		
-		wsio.on('keypressItem', function(keypress_data) {
-			var selectedElem = document.getElementById(keypress_data.elemId);
-			
-			var child = selectedElem.getElementsByClassName("sageItem");
-		
-			if(keypress_data.keyCode == "32"){ // spacebar
-				
-			}
-			else if(keypress_data.keyCode == "37"){ // left arrow
-				if(child[0].id in pdfItems) pdfItems[child[0].id].goPrevious();
-			}
-			else if(keypress_data.keyCode == "39"){ // right arrow
-				if(child[0].id in pdfItems) pdfItems[child[0].id].goNext();
-			}
+			*/
 		});
 		
 		wsio.on('updateVideoItemTime', function(video_data) {
@@ -733,7 +732,7 @@
 			var child = selectedElem.getElementsByClassName("sageItem");
 			var diff = (video_data.time + delay) - child[0].currentTime;
 			
-			var app = applications[video_data.elemId]
+			var app = applications[video_data.elemId];
 			app.event("videoTimeSync", null, null, null, {videoTime: video_data.time, delay: delay, play: video_data.play}, sentTime);
 		});
 		
@@ -751,7 +750,11 @@
 		
 		wsio.on('eventInItem', function(event_data){
 			var date = new Date(event_data.date);
-
+			
+			var app = applications[event_data.elemId];
+			app.event(event_data.eventType, event_data.user_id, event_data.itemRelativeX, event_data.itemRelativeY, event_data.data, date);
+			
+			/*
 			var selectedElem = document.getElementById(event_data.elemId);
 			var child = selectedElem.getElementsByClassName("sageItem");
 			if(child[0].id in canvasItems){
@@ -771,6 +774,7 @@
 					if(child[0].id in pdfItems) pdfItems[child[0].id].goNext();
 				}
 			}
+			*/
 		});
 	}
 	
