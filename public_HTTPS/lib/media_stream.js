@@ -1,4 +1,4 @@
-var image_viewer = SAGE2_App.extend( {
+var media_stream = SAGE2_App.extend( {
 	construct: function() {
 		this.src = null;
 	},
@@ -11,7 +11,10 @@ var image_viewer = SAGE2_App.extend( {
 	},
 	
 	load: function(state, date) {
-		this.element.src = "data:" + state.type + ";base64," + state.src;
+		var base64;
+		if(state.encoding === "base64") base64 = state.src;
+		else if(state.encoding === "binary") base64 = btoa(state.src);
+		this.element.src = "data:" + state.type + ";base64," + base64;
 	},
 	
 	draw: function(date) {

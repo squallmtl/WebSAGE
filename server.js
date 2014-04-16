@@ -498,6 +498,14 @@ function wsStartNewMediaStream(wsio, data) {
 		}
 	}
 
+	appLoader.createMediaStream(data.src, data.type, data.encoding, data.title, data.width, data.height, function(appInstance) {
+		appInstance.id = data.id;
+		broadcast('createAppWindow', appInstance, 'requiresFullApps');
+		broadcast('createAppWindowPositionSizeOnly', getAppPositionSize(appInstance), 'requiresAppPositionSizeTypeOnly');
+			
+		applications.push(appInstance);
+	});
+	/*
 	loader.loadScreenCapture(data.src, data.id, data.title, data.width, data.height, function(newItem) {
 		broadcast('addNewElement', newItem, 'requiresFullApps');
 		broadcast('addNewElementPositionSizeTypeOnly', getItemPositionSizeType(newItem), 'requiresAppPositionSizeTypeOnly');
@@ -505,6 +513,7 @@ function wsStartNewMediaStream(wsio, data) {
 		items.push(newItem);
 		itemCount++;
 	});
+	*/
 }
 
 function wsUpdateMediaStreamFrame(wsio, data) {
@@ -513,16 +522,16 @@ function wsUpdateMediaStreamFrame(wsio, data) {
 		mediaStreams[data.id].clients[key] = false;
 	}
 	var streamItem = findItemById(data.id);
-	if(streamItem !== null) streamItem.src = data.src;
+	if(streamItem !== null) streamItem.src = data.state.src;
 
 	broadcast('updateMediaStreamFrame', data, 'receivesMediaStreamFrames');
 }
 
 function wsUpdateMediaStreamChunk(wsio, data) {
 	if(mediaStreams[data.id].chunks.length === 0) mediaStreams[data.id].chunks = initializeArray(data.total, "");
-	mediaStreams[data.id].chunks[data.piece] = data.src;
+	mediaStreams[data.id].chunks[data.piece] = data.state.src;
 	if(allNonBlank(mediaStreams[data.id].chunks)){
-		wsUpdateMediaStreamFrame(wsio, {id: data.id, src: mediaStreams[data.id].chunks.join("")});
+		wsUpdateMediaStreamFrame(wsio, {id: data.id, state: {src: mediaStreams[data.id].chunks.join(""), type: data.state.type, encoding: data.state.encoding}});
 		mediaStreams[data.id].chunks = [];
 	}
 }

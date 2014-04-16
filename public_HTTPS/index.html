@@ -9,6 +9,7 @@
 <script type="text/javascript" src="lib/image_viewer.js"></script>
 <script type="text/javascript" src="lib/movie_player.js"></script>
 <script type="text/javascript" src="lib/pdf_viewer.js"></script>
+<script type="text/javascript" src="lib/media_stream.js"></script>
 
 <script type="text/javascript" src="scripts/pointer.js"></script>
 <script type="text/javascript" src="scripts/pdf.js"></script>
@@ -274,11 +275,18 @@
 		wsio.on('updateMediaStreamFrame', function(data) {
 			wsio.emit('receivedMediaStreamFrame', {id: data.id});
 			
+			var app = applications[data.id];
+			if(app !== undefined && app !== null){
+				app.load(data.state);
+			}
+			
+			/*
 			var screen = document.getElementById(data.id + "_screen");
 			if(data.encoding === undefined || data.encoding === "binary")
 				screen.src = "data:image/jpeg;base64," + stringToBase64(data.src);
 			else if(data.encoding === "base64")
 				screen.src = "data:image/jpeg;base64," + data.src;
+			*/
 		});
 		
 		wsio.on('updateRemoteMediaStreamFrame', function(data) {
@@ -330,6 +338,8 @@
 			main.appendChild(windowItem);
 			
 			// App launched in window 
+			if(data.application === "media_stream") wsio.emit('receivedMediaStreamFrame', {id: data.id});
+			
 			var app = new window[data.application];
 			app.init(data.id, data.width, data.height, data.resrc, date);
 			app.load(data.data, date);
