@@ -1064,19 +1064,41 @@ function setupHttpsOptions() {
 	// build a list of certs to support multi-homed computers
 	var certs = {};
 	// add the default cert from the hostname specified in the config file
-	certs[config.host] = crypto.createCredentials({
-		key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
-		cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
-		ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
-	}).context;
+	try {
+		certs[config.host] = crypto.createCredentials({
+			key:  fs.readFileSync(path.join("keys", config.host + "-server.key")),
+			cert: fs.readFileSync(path.join("keys", config.host + "-server.crt")),
+			ca:   fs.readFileSync(path.join("keys", config.host + "-ca.crt")),
+		}).context;
+	}
+	catch (e) {
+		console.log("\n");
+		console.log(e);
+		console.log("\n----------");
+		console.log("Cannot open certificate for default host: ", config.host);
+		console.log(" --> Please generate the appropriate certificate in the 'keys' folder");
+		console.log("----------\n\n");
+		process.exit(1);
+	}
 
 	for(var h in config.alternate_hosts){
-		var alth = config.alternate_hosts[h];
-		certs[ alth ] = crypto.createCredentials({
-			key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
-			cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
-			ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
-		}).context;
+		try {
+			var alth = config.alternate_hosts[h];
+			certs[ alth ] = crypto.createCredentials({
+				key:  fs.readFileSync(path.join("keys", alth + "-server.key")),
+				cert: fs.readFileSync(path.join("keys", alth + "-server.crt")),
+				ca:   fs.readFileSync(path.join("keys", alth + "-ca.crt")),
+			}).context;
+		}
+		catch (e) {
+			console.log("\n");
+			console.log(e);
+			console.log("\n----------");
+			console.log("Cannot open certificate for the alternate host: ", config.alternate_hosts[h]);
+			console.log(" --> Please generate the appropriate certificates in the 'keys' folder");
+			console.log("----------\n\n");
+			process.exit(1);
+		}
 	}
 
 	var httpsOptions = {
