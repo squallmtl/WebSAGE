@@ -314,19 +314,19 @@ function sagePointer(wsio) {
 			if(url == null) dataUrl = text;
 			else if(text == null) dataUrl = url;
 			else dataUrl = (url.length > text.length) ? url : text;
-			var urlType = "";
+			var mimeType = "";
 			var youtube = dataUrl.indexOf("www.youtube.com");
 			var ext = dataUrl.substring(dataUrl.lastIndexOf('.')+1);
 			if(ext.length > 3) ext = ext.substring(0,3);
 			ext = ext.toLowerCase();
-			if(youtube >= 0) urlType = "youtube";
-			else if(ext == "jpg" || ext == "png") urlType = "img";
-			else if(ext == "mp4") urlType = "video";
-			else if(ext == "pdf") urlType = "pdf";
-			else urlType = "site";  //if all else fails, will try to open in iframe as a webpage
-			console.log("URL: " + dataUrl + ", type: " + urlType);
+			if(youtube >= 0) mimeType = "video/youtube";
+			else if(ext == "jpg" || ext == "jpeg") mimeType = "image/jpeg";
+			else if(ext == "png") mimeType = "image/png";
+			else if(ext == "mp4") mimeType = "video/mp4";
+			else if(ext == "pdf") mimeType = "application/pdf";
+			console.log("URL: " + dataUrl + ", type: " + mimeType);
 
-			if(urlType != "") this.wsio.emit('addNewWebElement', {type: urlType, src: dataUrl});
+			if(mimeType != "") this.wsio.emit('addNewWebElement', {type: mimeType, url: dataUrl});
 		}
 	};
 	

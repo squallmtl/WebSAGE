@@ -61,6 +61,7 @@ var mediaStreams = {};
 
 var appLoader = new loader(public_https, hostOrigin);
 var applications = [];
+var appAnimations = {};
 
 // arrays of files on the server (used for media browser)
 var savedFiles = initializeSavedFilesList();
@@ -118,6 +119,11 @@ function closeWebSocketClient(wsio) {
 		for(key in mediaStreams) {
 			if (mediaStreams.hasOwnProperty(key)) {
 				delete mediaStreams[key].clients[uniqueID];
+			}
+		}
+		for(key in appAnimations) {
+			if (appAnimations.hasOwnProperty(key)) {
+				delete appAnimations[key].clients[uniqueID];
 			}
 		}
 	}
@@ -192,6 +198,9 @@ function initializeWSClient(wsio) {
 		wsio.on('receivedMediaStreamFrame',  wsReceivedMediaStreamFrame);
 		wsio.on('receivedRemoteMediaStreamFrame',  wsReceivedRemoteMediaStreamFrame);
 	}
+	if(wsio.messages.requiresFullApps){
+		wsio.on('finishedRenderingAppFrame', wsFinishedRenderingAppFrame);
+	}
 	if(wsio.messages.requestsServerFiles){
 		wsio.on('requestStoredFiles', wsRequestStoredFiles);
 		wsio.on('addNewElementFromStoredFiles', wsAddNewElementFromStoredFiles);
@@ -243,8 +252,17 @@ function initializeExistingSagePointers(wsio) {
 
 function initializeExistingApps(wsio) {
 	var i;
+	var key;
+	
+	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	
 	for(i=0; i<applications.length; i++){
 		wsio.emit('createAppWindow', applications[i]);
+	}
+	for(key in appAnimations){
+		if (appAnimations.hasOwnProperty(key)) {
+			appAnimations[key].clients[uniqueID] = false;
+		}
 	}
 	
 	/*
@@ -275,7 +293,9 @@ function initializeRemoteServerInfo(wsio) {
 }
 
 function initializeMediaStreams(uniqueID) {
-	for(var key in mediaStreams){
+	var key;
+	
+	for(key in mediaStreams){
 		if (mediaStreams.hasOwnProperty(key)) {
 			mediaStreams[key].clients[uniqueID] = false;
 		}
@@ -561,12 +581,48 @@ function wsReceivedMediaStreamFrame(wsio, data) {
 	}
 }
 
+/******************** Application Animation Functions ********************/
+function wsFinishedRenderingAppFrame(wsio, data) {
+	var uniqueID = wsio.remoteAddress.address + ":" + wsio.remoteAddress.port;
+	
+	appAnimations[data.id].clients[uniqueID] = true;
+	if(allTrueDict(appAnimations[data.id].clients) && appAnimations[data.id].ready){
+		var key;
+		for(key in appAnimations[data.id].clients){
+			appAnimations[data.id].clients[key] = false;
+		}
+		broadcast('animateCanvas', {id: data.id, date: new Date()}, 'requiresFullApps');
+	}
+}
+
 /******************** Server File Functions ********************/
 function wsRequestStoredFiles(wsio, data) {
 	wsio.emit('storedFileList', savedFiles);
 }
 
-function wsAddNewElementFromStoredFiles(wsio, file) {
+function wsAddNewElementFromStoredFiles(wsio, data) {
+	appLoader.loadFileFromLocalStorage(data, function(appInstance) {
+		appInstance.id = getUniqueAppId();
+		
+		if(appInstance.animation){
+			var i;
+			appAnimations[appInstance.id] = {ready: true, clients: {}};
+			for(i=0; i<clients.length; i++){
+				if(clients[i].messages.requiresFullApps){
+					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+					appAnimations[appInstance.id].clients[clientAddress] = false;
+				}
+			}
+		}
+		
+		broadcast('createAppWindow', appInstance, 'requiresFullApps');
+		broadcast('createAppWindowPositionSizeOnly', getAppPositionSize(appInstance), 'requiresAppPositionSizeTypeOnly');
+		
+		applications.push(appInstance);
+	});
+	
+	
+	/*
 	var url = path.join("uploads", file.dir, file.name);
 	var external_url = hostOrigin + encodeURI(url);
 	var localPath = path.join(public_https, url);
@@ -630,10 +686,31 @@ function wsAddNewElementFromStoredFiles(wsio, file) {
 			}, 1000);
 		});
 	}
+	*/
 }
 
 /******************** Adding Web Content (URL) ********************/
 function wsAddNewWebElement(wsio, data) {
+	appLoader.loadFileFromWebURL(data, function(appInstance) {
+		appInstance.id = getUniqueAppId();
+		broadcast('createAppWindow', appInstance, 'requiresFullApps');
+		broadcast('createAppWindowPositionSizeOnly', getAppPositionSize(appInstance), 'requiresAppPositionSizeTypeOnly');
+		
+		applications.push(appInstance);
+		
+		if(appInstance.animation){
+			var i;
+			appAnimations[appInstance.id] = {ready: true, clients: {}};
+			for(i=0; i<clients.length; i++){
+				if(clients[i].messages.requiresFullApps){
+					var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+					appAnimations[appInstance.id].clients[clientAddress] = false;
+				}
+			}
+		}
+	});
+	
+	/*
 	if(data.type == "img"){
 		request({url: data.src, encoding: null, strictSSL: false}, function(err, response, body) {
 			if(err) throw err;
@@ -684,6 +761,7 @@ function wsAddNewWebElement(wsio, data) {
 		});
 		request({url: data.src, strictSSL: false}).pipe(tmp);
 	}
+	*/
 }
 
 /*********************** Launching Web Browser ************************/
@@ -1060,6 +1138,17 @@ function manageUploadedFiles(files) {
 			broadcast('createAppWindowPositionSizeOnly', getAppPositionSize(appInstance), 'requiresAppPositionSizeTypeOnly');
 			
 			applications.push(appInstance);
+			
+			if(appInstance.animation){
+				var i;
+				appAnimations[appInstance.id] = {ready: true, clients: {}};
+				for(i=0; i<clients.length; i++){
+					if(clients[i].messages.requiresFullApps){
+						var clientAddress = clients[i].remoteAddress.address + ":" + clients[i].remoteAddress.port;
+						appAnimations[appInstance.id].clients[clientAddress] = false;
+					}
+				}
+			}
 		});
 		
 		/*

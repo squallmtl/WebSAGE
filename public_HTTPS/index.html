@@ -340,10 +340,28 @@
 			// App launched in window 
 			if(data.application === "media_stream") wsio.emit('receivedMediaStreamFrame', {id: data.id});
 			
-			var app = new window[data.application];
-			app.init(data.id, data.width, data.height, data.resrc, date);
-			app.load(data.data, date);
-			app.draw(date);
+			if(window[data.application] === undefined) {
+				var js = document.createElement("script");
+				js.addEventListener('load', function(event) {
+					var app = new window[data.application];
+					app.init(data.id, data.width, data.height, data.resrc, date);
+					app.load(data.data, date);
+					app.draw(date);
+					applications[data.id] = app;
+					if(data.animation === true) wsio.emit('finishedRenderingAppFrame', {id: data.id});
+				}, false);
+				js.type = "text/javascript";
+				js.src = data.resrc + "/" + data.application + ".js";
+				document.head.appendChild(js);
+			}
+			else {
+				var app = new window[data.application];
+				app.init(data.id, data.width, data.height, data.resrc, date);
+				app.load(data.data, date);
+				app.draw(date);
+				applications[data.id] = app;
+				if(data.animation === true) wsio.emit('finishedRenderingAppFrame', {id: data.id});
+			}
 			//
 			
 			var cornerSize = Math.min(data.width, data.height) / 5;
@@ -358,7 +376,6 @@
             dragCorner.style.border = "none";
             windowItem.appendChild(dragCorner);
 			
-			applications[data.id] = app;
 			itemCount += 2;
 			
 		});
@@ -743,12 +760,21 @@
 			var diff = (video_data.time + delay) - child[0].currentTime;
 			
 			var app = applications[video_data.elemId];
-			app.event("videoTimeSync", null, null, null, {videoTime: video_data.time, delay: delay, play: video_data.play}, sentTime);
+			if(app !== undefined && app !== null){
+				app.event("videoTimeSync", null, null, null, {videoTime: video_data.time, delay: delay, play: video_data.play}, sentTime);
+			}
 		});
 		
-		wsio.on('animateCanvas', function(animate_data) {
-			var date = new Date(animate_data.date);
+		wsio.on('animateCanvas', function(data) {
+			var date = new Date(data.date);
 			
+			var app = applications[data.id];
+			if(app !== undefined && app !== null){
+				app.draw(date);
+				wsio.emit('finishedRenderingAppFrame', {id: data.id});
+			}
+			
+			/*
 			var canvasElem = document.getElementById(animate_data.elemId);
 			if(canvasElem != null){
 				var child = canvasElem.getElementsByClassName("sageItem");
@@ -756,6 +782,7 @@
 					canvasItems[child[0].id].draw(date);
 				}
 			}
+			*/
 		});
 		
 		wsio.on('eventInItem', function(event_data){

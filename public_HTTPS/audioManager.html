@@ -45,6 +45,25 @@
 			wsio.emit('addClient', clientDescription);
 		});
 		
+		// Socket close event (ie server crashed)		
+		wsio.on('close', function (evt) {
+			var refresh = setInterval(function () {
+				// make a dummy request to test the server every 2 sec
+				xhr = new XMLHttpRequest();
+				xhr.open("GET", "/", true);
+				xhr.onreadystatechange = function() {
+					if(xhr.readyState == 4 && xhr.status == 200){
+						console.log("server ready");
+						// when server ready, clear the interval callback
+						clearInterval(refresh);
+						// and reload the page
+						window.location.reload();
+					}
+				};
+				xhr.send();
+			}, 2000);
+		});
+		
 		wsio.on('initialize', function(data) {
 			var serverTime = new Date(data.time);
 			var clientTime = new Date();
@@ -95,6 +114,8 @@
 				
 				main.appendChild(vid);
 			}
+			
+			if(data.animation === true) wsio.emit('finishedRenderingAppFrame', {id: data.id});
 		});
 		
 		wsio.on('addNewElement', function(elem_data) {
@@ -148,6 +169,10 @@
 				clearInterval(videos[deleteElem.id].interval);
 				deleteElem.parentNode.removeChild(deleteElem);
 			}
+		});
+		
+		wsio.on('animateCanvas', function(data) {
+			wsio.emit('finishedRenderingAppFrame', {id: data.id});
 		});
 		
 		wsio.on('eventInItem', function(event_data) {

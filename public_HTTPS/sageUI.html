@@ -34,6 +34,13 @@
 	var imagesDir;
 	var pdfsDir;
 	var videosDir;
+	
+	var dir2app = {
+    	"images": "image_viewer",
+    	"videos": "movie_player",
+    	"pdfs": "pdf_viewer",
+    	"apps": "custom_app"
+    };
 
 	// Explicitely close web socket when web broswer is closed
 	window.onbeforeunload = function() {
@@ -239,8 +246,10 @@
 	function selectServerFiles(event) {
 		var directory = selectedFile.parentNode.id
 		var fileName = selectedFile.innerHTML;
+		var app = dir2app[directory];
 		
-		wsio.emit('addNewElementFromStoredFiles', {dir: directory, name: fileName});
+		
+		wsio.emit('addNewElementFromStoredFiles', {application: app, filename: fileName});
 		
 		closeServerFileBrowser(event);
 	}
